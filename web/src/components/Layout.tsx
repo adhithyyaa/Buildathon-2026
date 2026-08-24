@@ -21,6 +21,9 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
           </Link>
           <div className="flex items-center gap-2">
+            <Pill tone={health?.integrations.ml ? 'emerald' : 'slate'}>
+              ML: {health?.integrations.ml ? `v${health.integrations.mlVersion ?? ''}` : 'off'}
+            </Pill>
             <Pill tone={health?.integrations.ai ? 'emerald' : 'slate'}>
               AI:{' '}
               {health?.integrations.ai

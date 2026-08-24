@@ -5,6 +5,7 @@ import { pipelineBuckets, ACTOR_FILL } from '../lib/stages';
 import { Card, Stat, Button, cx } from '../components/ui';
 import { DemoControls } from '../components/DemoControls';
 import { CaseTable } from '../components/CaseTable';
+import { ModelPanel } from '../components/ModelPanel';
 
 const FILTERS: Array<{ key: string; label: string }> = [
   { key: '', label: 'All' },
@@ -69,6 +70,8 @@ export function Dashboard() {
         <Card title="At-risk by failure reason">{metrics ? <BarList data={metrics.byReason} tone="bg-sky-400" /> : <Skeleton />}</Card>
         <Card title="Chosen recovery action">{metrics ? <BarList data={metrics.byAction} tone="bg-violet-400" /> : <Skeleton />}</Card>
       </div>
+
+      <ModelPanel />
 
       {/* Queue */}
       <Card

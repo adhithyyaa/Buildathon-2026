@@ -5,6 +5,8 @@ import { formatINR, titleCase, timeAgo } from '../lib/format';
 import { Card, Button, StateBadge, ActionBadge, Pill, cx } from '../components/ui';
 import { AuditTimeline } from '../components/AuditTimeline';
 import { StageTracker } from '../components/StageTracker';
+import { MLPanel } from '../components/MLPanel';
+import { AIAssist } from '../components/AIAssist';
 
 function last<T>(arr: T[]): T | undefined {
   return arr.length ? arr[arr.length - 1] : undefined;
@@ -49,6 +51,7 @@ export function CasePage() {
   if (error) return <div className="py-16 text-center text-rose-400">Error: {error}</div>;
   if (!data || !id) return null;
 
+  const prediction = last(data.predictions) ?? null;
   const decision = last(data.decisions) ?? null;
   const diag = decision?.rawOutput?.diagnosis as
     | { reason_category?: string; recovery_probability?: number; is_auto_retriable?: boolean; rationale?: string }
@@ -100,6 +103,8 @@ export function CasePage() {
       </div>
 
       <StageTracker state={data.state} />
+
+      <MLPanel prediction={prediction} />
 
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Left: the decision story */}
@@ -179,6 +184,7 @@ export function CasePage() {
               )}
             </Card>
           )}
+          <AIAssist caseId={id} />
         </div>
 
         {/* Right: facts, outcome, audit */}

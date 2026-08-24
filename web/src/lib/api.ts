@@ -103,6 +103,22 @@ export interface Outcome {
   notes: string | null;
 }
 
+export interface Prediction {
+  id: string;
+  source: string;
+  model: string;
+  modelVersion: string | null;
+  recoveryProbability: number;
+  actionClass: string;
+  calibratedConfidence: number | null;
+  escalationProbability: number | null;
+  anomalyScore: number | null;
+  reasonTag: string | null;
+  perAction: Record<string, number> | null;
+  latencyMs: number | null;
+  createdAt: string;
+}
+
 export interface CaseDetail {
   id: string;
   state: string;
@@ -138,6 +154,7 @@ export interface CaseDetail {
     createdAt: string;
   };
   outcome: Outcome | null;
+  predictions: Prediction[];
   decisions: Decision[];
   actions: ActionRec[];
   auditLogs: AuditLog[];
@@ -145,7 +162,32 @@ export interface CaseDetail {
 
 export interface HealthInfo {
   ok: boolean;
-  integrations: { razorpay: boolean; ai: boolean; aiProvider?: 'anthropic' | 'openai-compatible' | 'none' };
+  integrations: {
+    razorpay: boolean;
+    ai: boolean;
+    aiProvider?: 'anthropic' | 'openai-compatible' | 'none';
+    ml?: boolean;
+    mlVersion?: string | null;
+  };
+}
+
+export interface MlMetrics {
+  version: string;
+  dataset: { rows: number; train: number; test: number; recovered_rate: number };
+  recovery: Record<string, { roc_auc: number; f1: number; brier: number } | any> & {
+    primary: string;
+    calibration_curve: Array<{ bin_mid: number; predicted: number; observed: number; count: number }>;
+  };
+  action: {
+    catboost: { accuracy: number; f1_macro: number };
+    xgboost: { accuracy: number; f1_macro: number };
+    logistic_regression: { accuracy: number; f1_macro: number };
+    top_features: Array<{ feature: string; importance: number }>;
+    agreement_with_ev_argmax: number;
+    classes: string[];
+  };
+  escalation: { catboost_calibrated: { roc_auc: number; brier: number } };
+  anomaly: { window: { incident_detection_rate: number; flagged: number; windows: number } };
 }
 
 async function get<T>(url: string): Promise<T> {
@@ -180,4 +222,8 @@ export const api = {
   process: () => post<{ processed: number }>('/api/demo/process'),
   tick: () => post<{ recovered: number; reQueued: number; expired: number }>('/api/demo/tick?fastForward=true'),
   reset: () => post('/api/demo/reset'),
+  mlMetrics: () => get<MlMetrics>('/api/ml/metrics'),
+  explainCase: (id: string) => post<{ text: string; source: string; llmConfigured: boolean }>(`/api/ai/cases/${id}/explain`),
+  draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),
+  summarizeCase: (id: string) => post<{ text: string; source: string }>(`/api/ai/cases/${id}/summarize`),
 };
