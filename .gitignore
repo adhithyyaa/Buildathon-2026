@@ -19,6 +19,9 @@ web/dist/
 server/prisma/*.db
 server/prisma/*.db-journal
 
+# Embedded local Postgres data
+server/.pgdata/
+
 # Logs
 logs/
 *.log
