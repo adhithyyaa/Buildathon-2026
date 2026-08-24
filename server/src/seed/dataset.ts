@@ -46,6 +46,14 @@ function weightedPick(rng: () => number, specs: ReasonSpec[]): ReasonSpec {
   return specs[specs.length - 1]!;
 }
 
+/** Minutes since the failure, weighted toward recent (drives urgency + time-to-recover). */
+function pickAgeMinutes(rng: () => number): number {
+  const r = rng();
+  if (r < 0.4) return 5 + Math.floor(rng() * 355); // < 6h
+  if (r < 0.8) return 360 + Math.floor(rng() * (24 * 60 - 360)); // 6–24h
+  return 24 * 60 + Math.floor(rng() * 24 * 60); // 24–48h
+}
+
 /** Amount in paise: a few sub-floor tiny orders, mostly small, with a high-value tail. */
 function pickAmountPaise(rng: () => number): number {
   const r = rng();
@@ -93,6 +101,7 @@ export function generateSyntheticCases(count = 120, seed = 42): AtRiskInput[] {
       channel: spec.channel,
       retryCount: 0,
       dedupeKey: `seed:${i}`,
+      ageMinutes: pickAgeMinutes(rng),
     });
   }
 

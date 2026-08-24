@@ -30,6 +30,7 @@ export interface NormalizedEvent {
   channel?: string;
   retryCount: number;
   dedupeKey: string;
+  occurredAt?: Date; // when the failure actually happened (for realistic ages)
   raw: unknown;
 }
 
@@ -56,6 +57,7 @@ export const AtRiskInputSchema = z.object({
   retryCount: z.coerce.number().int().nonnegative().default(0),
   dedupeKey: z.string().optional(),
   externalId: z.string().optional(),
+  ageMinutes: z.coerce.number().int().nonnegative().optional(),
 });
 
 export type AtRiskInput = z.infer<typeof AtRiskInputSchema>;
@@ -97,6 +99,7 @@ export function normalizeAtRiskInput(input: AtRiskInput, source: 'csv' | 'demo')
     channel: input.channel,
     retryCount: input.retryCount,
     dedupeKey,
+    occurredAt: input.ageMinutes != null ? new Date(Date.now() - input.ageMinutes * 60_000) : undefined,
     raw: input,
   };
 }

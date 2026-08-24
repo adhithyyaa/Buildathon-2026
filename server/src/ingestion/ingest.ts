@@ -100,6 +100,7 @@ export async function ingestEvent(n: NormalizedEvent): Promise<IngestResult> {
       retryCount: n.retryCount,
       dedupeKey: n.dedupeKey,
       raw: n.raw as unknown as Prisma.InputJsonValue,
+      ...(n.occurredAt ? { createdAt: n.occurredAt } : {}),
     },
   });
 
@@ -112,6 +113,7 @@ export async function ingestEvent(n: NormalizedEvent): Promise<IngestResult> {
       currency: n.currency,
       reasonTag,
       state: 'new',
+      ...(n.occurredAt ? { createdAt: n.occurredAt } : {}),
     },
   });
 
