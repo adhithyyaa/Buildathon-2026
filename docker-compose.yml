@@ -1,0 +1,24 @@
+# Local PostgreSQL for Recoup.
+# Start with:  docker compose up -d   (requires Docker Desktop running)
+# Then set server/.env DATABASE_URL to the value in server/.env.example.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: recoup-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: recoup
+      POSTGRES_PASSWORD: recoup
+      POSTGRES_DB: recoup
+    ports:
+      - "5432:5432"
+    volumes:
+      - recoup-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recoup -d recoup"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  recoup-db-data:

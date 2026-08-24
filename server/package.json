@@ -1,0 +1,39 @@
+{
+  "name": "recoup-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Recoup — bounded AI revenue-recovery engine (Razorpay AI Buildathon 2026)",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "worker": "tsx watch src/worker/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:seed": "tsx src/seed/seed.ts",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "prisma": {
+    "seed": "tsx src/seed/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "cors": "^2.8.6",
+    "dayjs": "^1.11.23",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "razorpay": "^2.9.8",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/node": "^24.13.3",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.3"
+  }
+}

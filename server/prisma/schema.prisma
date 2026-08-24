@@ -1,0 +1,242 @@
+// Recoup data model — the backbone of the recovery pipeline.
+// Money is ALWAYS stored as integer paise (₹1,499.00 -> 149900). Never floats.
+// events -> cases -> (decisions, actions, outcomes) with an append-only audit_logs trail.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum EventType {
+  payment_failed
+  checkout_abandoned
+  subscription_failed
+}
+
+enum CaseState {
+  new
+  at_risk
+  analyzed
+  action_selected
+  action_dispatched
+  waiting_for_outcome
+  recovered
+  expired
+  manual_escalation
+}
+
+enum ReasonTag {
+  insufficient_funds
+  card_declined
+  upi_collect_timeout
+  bank_downtime
+  authentication_failed
+  expired_card
+  abandoned
+  unknown
+}
+
+enum ActionType {
+  smart_retry
+  send_payment_link
+  send_reminder
+  offer_incentive
+  escalate_to_human
+  no_action
+}
+
+enum ActionStatus {
+  pending
+  dispatched
+  succeeded
+  failed
+  blocked
+}
+
+enum Channel {
+  email
+  sms
+  whatsapp
+  none
+}
+
+enum OutcomeStatus {
+  pending
+  recovered
+  unrecovered
+  expired
+}
+
+// ---------- Core entities ----------
+
+model Merchant {
+  id        String     @id @default(cuid())
+  name      String
+  createdAt DateTime   @default(now())
+  customers Customer[]
+  events    Event[]
+  cases     Case[]
+}
+
+model Customer {
+  id               String   @id @default(cuid())
+  merchantId       String
+  merchant         Merchant @relation(fields: [merchantId], references: [id])
+  externalId       String? // the merchant's own customer id
+  name             String?
+  email            String?
+  phone            String?
+  optedOut         Boolean  @default(false)
+  // soft priors that feed recovery-probability
+  priorPayments    Int      @default(0)
+  priorConversions Int      @default(0)
+  createdAt        DateTime @default(now())
+  events           Event[]
+  cases            Case[]
+
+  @@index([merchantId])
+}
+
+/// A normalized at-risk signal from any source (webhook / CSV / demo panel).
+model Event {
+  id                String    @id @default(cuid())
+  merchantId        String
+  merchant          Merchant  @relation(fields: [merchantId], references: [id])
+  customerId        String?
+  customer          Customer? @relation(fields: [customerId], references: [id])
+  eventType         EventType
+  externalOrderId   String? // Razorpay order id
+  externalPaymentId String? // Razorpay payment id
+  amount            Int // paise
+  currency          String    @default("INR")
+  method            String? // upi | card | netbanking | wallet
+  failureReason     String? // raw reason string from the gateway
+  failureCode       String? // raw error code
+  channel           String? // checkout | payment_link | subscription
+  retryCount        Int       @default(0)
+  dedupeKey         String?   @unique // idempotency across replays
+  raw               Json // full original payload
+  createdAt         DateTime  @default(now())
+  case              Case?
+
+  @@index([merchantId])
+  @@index([eventType])
+}
+
+/// One recovery workflow instance for one event.
+model Case {
+  id                  String      @id @default(cuid())
+  eventId             String      @unique
+  event               Event       @relation(fields: [eventId], references: [id])
+  merchantId          String
+  merchant            Merchant    @relation(fields: [merchantId], references: [id])
+  customerId          String?
+  customer            Customer?   @relation(fields: [customerId], references: [id])
+  state               CaseState   @default(new)
+  // scoring
+  riskScore           Float       @default(0)
+  urgencyScore        Float       @default(0)
+  reasonTag           ReasonTag?
+  recoveryProbability Float?
+  recommendedLane     String?
+  // decisioning
+  assignedAction      ActionType?
+  amount              Int // paise (denormalized from event for fast queries)
+  currency            String      @default("INR")
+  attempts            Int         @default(0)
+  nextRetryAt         DateTime?
+  blockedReason       String?
+  expiresAt           DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  decisions Decision[]
+  actions   Action[]
+  outcome   Outcome?
+  auditLogs AuditLog[]
+
+  @@index([state])
+  @@index([merchantId])
+  @@index([nextRetryAt])
+}
+
+/// An AI proposal (diagnosis + decision). Append-only.
+model Decision {
+  id                    String      @id @default(cuid())
+  caseId                String
+  case                  Case        @relation(fields: [caseId], references: [id])
+  model                 String
+  kind                  String // "diagnosis" | "decision"
+  rawOutput             Json
+  // parsed decision fields (null for pure diagnosis rows)
+  action                ActionType?
+  confidence            Float?
+  channel               Channel?
+  reason                String?
+  requiresHumanApproval Boolean     @default(false)
+  suggestedRetryAt      DateTime?
+  incentivePct          Int         @default(0)
+  valid                 Boolean     @default(true) // did output pass schema validation?
+  usedFallback          Boolean     @default(false)
+  latencyMs             Int?
+  createdAt             DateTime    @default(now())
+
+  @@index([caseId])
+}
+
+/// Something the executor actually did (or was blocked from doing). Append-only.
+model Action {
+  id              String       @id @default(cuid())
+  caseId          String
+  case            Case         @relation(fields: [caseId], references: [id])
+  actionType      ActionType
+  channel         Channel      @default(none)
+  status          ActionStatus @default(pending)
+  policyPassed    Boolean      @default(true)
+  policyNotes     String? // human-readable "why blocked / what was capped"
+  payload         Json? // action-specific detail
+  paymentLinkId   String? // Razorpay payment link id
+  paymentLinkUrl  String?
+  messageContent  String?
+  incentivePct    Int          @default(0)
+  scheduledFor    DateTime?
+  deliveryStatus  String?
+  createdAt       DateTime     @default(now())
+
+  @@index([caseId])
+}
+
+/// Whether (and how much) money was recovered. One per case.
+model Outcome {
+  id              String        @id @default(cuid())
+  caseId          String        @unique
+  case            Case          @relation(fields: [caseId], references: [id])
+  status          OutcomeStatus @default(pending)
+  recoveredAmount Int           @default(0) // paise
+  recoveredAt     DateTime?
+  recoveryMinutes Int?
+  notes           String?
+  updatedAt       DateTime      @updatedAt
+}
+
+/// Append-only log of every meaningful state transition.
+model AuditLog {
+  id          String   @id @default(cuid())
+  caseId      String
+  case        Case     @relation(fields: [caseId], references: [id])
+  step        String // short label, e.g. "ai_decision", "policy_block", "webhook_recovered"
+  actor       String   @default("system") // system | ai | policy | executor | webhook | human
+  beforeState String?
+  afterState  String?
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([caseId])
+  @@index([createdAt])
+}
