@@ -1,6 +1,7 @@
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { env, hasAnthropic, hasOpenAI } from '../env';
 import { toMessage } from '../lib/errors';
+import { logger } from '../lib/logger';
 import { getAnthropic } from './client';
 import { RecoveryPlanSchema, type RecoveryPlan } from './schemas';
 import { fallbackPlan } from './fallback';
@@ -27,6 +28,9 @@ function fallbackResult(
   latencyMs: number,
   raw: unknown,
 ): PlanResult {
+  if (reason === 'ai_error' || reason === 'ai_invalid') {
+    logger.warn('ai.fallback', { reason, model, raw });
+  }
   return { plan: fallbackPlan(ctx), source: 'fallback', valid: false, usedFallback: true, fallbackReason: reason, model, latencyMs, raw };
 }
 
@@ -98,15 +102,30 @@ async function proposeViaOpenAI(ctx: DecisionContext): Promise<PlanResult> {
       }),
     });
 
-  try {
-    // Try JSON mode; if a provider rejects the param, retry once without it (SHAPE_HINT still guides it).
-    let res = await call(true);
-    if (!res.ok) res = await call(false);
+  let useRF = true;
+  const MAX_RETRIES = 4;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let res: Response;
+    try {
+      res = await call(useRF);
+    } catch (err) {
+      return fallbackResult(ctx, 'ai_error', model, Date.now() - started, { error: toMessage(err) });
+    }
 
-    const latencyMs = Date.now() - started;
+    // Free-tier tokens-per-minute limits: honor the "try again in Ns" hint and retry.
+    if (res.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(retryDelayMs(res, await res.text()));
+      continue;
+    }
+
     if (!res.ok) {
+      // Some providers reject response_format — drop it once and retry.
+      if (useRF && res.status === 400) {
+        useRF = false;
+        continue;
+      }
       const body = await res.text();
-      return fallbackResult(ctx, 'ai_error', model, latencyMs, { error: `${res.status} ${body.slice(0, 400)}` });
+      return fallbackResult(ctx, 'ai_error', model, Date.now() - started, { error: `${res.status} ${body.slice(0, 400)}` });
     }
 
     const data: any = await res.json();
@@ -115,19 +134,33 @@ async function proposeViaOpenAI(ctx: DecisionContext): Promise<PlanResult> {
     try {
       parsed = JSON.parse(extractJson(content));
     } catch {
-      return fallbackResult(ctx, 'ai_invalid', model, latencyMs, { note: 'non-JSON content', sample: content.slice(0, 200) });
+      return fallbackResult(ctx, 'ai_invalid', model, Date.now() - started, { note: 'non-JSON content', sample: content.slice(0, 200) });
     }
 
     const check = RecoveryPlanSchema.safeParse(parsed);
     if (!check.success || !ctx.allowedActions.includes(check.data.decision.action)) {
-      return fallbackResult(ctx, 'ai_invalid', model, latencyMs, {
+      return fallbackResult(ctx, 'ai_invalid', model, Date.now() - started, {
         note: check.success ? 'action not allowed' : 'schema validation failed',
+        issues: check.success ? undefined : check.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+        output: parsed,
       });
     }
-    return aiResult(check.data, model, latencyMs, { usage: data?.usage ?? null });
-  } catch (err) {
-    return fallbackResult(ctx, 'ai_error', model, Date.now() - started, { error: toMessage(err) });
+    return aiResult(check.data, model, Date.now() - started, { usage: data?.usage ?? null });
   }
+
+  return fallbackResult(ctx, 'ai_error', model, Date.now() - started, { error: 'rate-limited: retries exhausted' });
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, Math.min(Math.max(ms, 0), 8000)));
+}
+
+function retryDelayMs(res: Response, body: string): number {
+  const hdr = res.headers.get('retry-after');
+  if (hdr && !Number.isNaN(Number(hdr))) return Number(hdr) * 1000 + 250;
+  const m = body.match(/try again in ([\d.]+)\s*s/i);
+  if (m && m[1]) return Math.ceil(parseFloat(m[1]) * 1000) + 300;
+  return 2000;
 }
 
 /** Pull the JSON object out of a model response that may wrap it in prose or ``` fences. */
