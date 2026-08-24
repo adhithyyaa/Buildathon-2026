@@ -46,11 +46,12 @@ function weightedPick(rng: () => number, specs: ReasonSpec[]): ReasonSpec {
   return specs[specs.length - 1]!;
 }
 
-/** Amount in paise, weighted toward small orders with a long tail of high-value ones. */
+/** Amount in paise: a few sub-floor tiny orders, mostly small, with a high-value tail. */
 function pickAmountPaise(rng: () => number): number {
   const r = rng();
-  if (r < 0.7) return (200 + Math.floor(rng() * 4800)) * 100; // ₹200–5,000
-  if (r < 0.92) return (5000 + Math.floor(rng() * 20000)) * 100; // ₹5,000–25,000
+  if (r < 0.06) return (15 + Math.floor(rng() * 80)) * 100; // ₹15–₹95 (below pursuit floor → blocked)
+  if (r < 0.72) return (200 + Math.floor(rng() * 4800)) * 100; // ₹200–5,000
+  if (r < 0.93) return (5000 + Math.floor(rng() * 20000)) * 100; // ₹5,000–25,000
   return (25000 + Math.floor(rng() * 50000)) * 100; // ₹25,000–75,000 (triggers approval)
 }
 

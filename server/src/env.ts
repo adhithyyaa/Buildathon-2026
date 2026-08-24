@@ -26,6 +26,8 @@ const EnvSchema = z.object({
   POLICY_HUMAN_APPROVAL_AMOUNT_PAISE: z.coerce.number().default(2_500_000),
   POLICY_QUIET_HOURS_START: z.coerce.number().default(21),
   POLICY_QUIET_HOURS_END: z.coerce.number().default(8),
+  // Below this amount it isn't economical to spend gateway/outreach cost chasing recovery.
+  POLICY_MIN_PURSUIT_PAISE: z.coerce.number().default(10_000),
 });
 
 export const env = EnvSchema.parse(process.env);

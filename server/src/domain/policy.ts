@@ -58,6 +58,12 @@ export function evaluatePolicy(input: PolicyInput): PolicyDecision {
     return blocked(notes);
   }
 
+  // 0b. Economic floor: not worth spending gateway/outreach cost below this amount.
+  if (action !== 'no_action' && input.amountPaise < p.minPursuitPaise) {
+    notes.push(`Amount below the ₹${Math.round(p.minPursuitPaise / 100)} pursuit floor; recovery not economical — blocked.`);
+    return blocked(notes);
+  }
+
   // 1. Opt-out blocks all outreach.
   if (input.optedOut && OUTREACH.includes(action)) {
     notes.push('Customer opted out of outreach; outreach blocked.');

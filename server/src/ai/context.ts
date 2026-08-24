@@ -7,6 +7,7 @@ export interface PolicyEnvelope {
   humanApprovalAmountPaise: number;
   quietHoursStart: number;
   quietHoursEnd: number;
+  minPursuitPaise: number;
 }
 
 /** Everything the decisioner needs about one at-risk case. */

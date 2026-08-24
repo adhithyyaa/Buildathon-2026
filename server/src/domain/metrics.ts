@@ -14,6 +14,12 @@ export interface Metrics {
   blockedActionCount: number;
   actionSuccessRatePct: number | null;
   avgTimeToRecoveryMin: number | null;
+  // Before/after impact of the SAME at-risk batch (all in paise; sum ≈ grossAtRisk).
+  impact: {
+    recoveredPaise: number;
+    inProgressPaise: number;
+    lostPaise: number;
+  };
   ai: {
     decisions: number;
     validCount: number;
@@ -88,6 +94,13 @@ export async function computeMetrics(merchantId?: string): Promise<Metrics> {
     blockedActionCount,
     actionSuccessRatePct: terminalActions.length ? pct(succeeded, terminalActions.length) : null,
     avgTimeToRecoveryMin,
+    impact: {
+      recoveredPaise,
+      inProgressPaise: cases
+        .filter((c) => ACTIVE_STATES.includes(c.state) || c.state === 'manual_escalation')
+        .reduce((s, c) => s + c.amount, 0),
+      lostPaise: cases.filter((c) => c.state === 'expired').reduce((s, c) => s + c.amount, 0),
+    },
     ai: {
       decisions: aiDecisions.length,
       validCount: aiValid,

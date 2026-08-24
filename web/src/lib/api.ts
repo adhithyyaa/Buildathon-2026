@@ -12,6 +12,11 @@ export interface Metrics {
   blockedActionCount: number;
   actionSuccessRatePct: number | null;
   avgTimeToRecoveryMin: number | null;
+  impact: {
+    recoveredPaise: number;
+    inProgressPaise: number;
+    lostPaise: number;
+  };
   ai: {
     decisions: number;
     validCount: number;

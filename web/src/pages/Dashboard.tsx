@@ -57,6 +57,8 @@ export function Dashboard() {
         <MiniStat label="Avg time to recover" value={metrics?.avgTimeToRecoveryMin != null ? `${metrics.avgTimeToRecoveryMin}m` : '—'} />
       </div>
 
+      {metrics && <RecoveryImpact m={metrics} />}
+
       <DemoControls onChanged={load} />
 
       {/* Breakdowns */}
@@ -99,6 +101,40 @@ export function Dashboard() {
         )}
       </Card>
     </div>
+  );
+}
+
+function RecoveryImpact({ m }: { m: Metrics }) {
+  const total = Math.max(1, m.grossAtRiskPaise);
+  const seg = (v: number) => `${(v / total) * 100}%`;
+  return (
+    <Card title="Recovery impact" right={<span className="text-xs text-slate-500">of {formatINR(m.grossAtRiskPaise)} at risk</span>}>
+      <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-800">
+        <div className="bg-emerald-500" style={{ width: seg(m.impact.recoveredPaise) }} title="Recovered" />
+        <div className="bg-amber-500/70" style={{ width: seg(m.impact.inProgressPaise) }} title="In progress" />
+        <div className="bg-rose-500/70" style={{ width: seg(m.impact.lostPaise) }} title="Lost" />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
+        <Legend color="bg-emerald-500" label="Recovered" value={formatINR(m.impact.recoveredPaise)} />
+        <Legend color="bg-amber-500/70" label="In progress" value={formatINR(m.impact.inProgressPaise)} />
+        <Legend color="bg-rose-500/70" label="Lost (expired)" value={formatINR(m.impact.lostPaise)} />
+      </div>
+      <p className="mt-3 text-xs text-slate-500">
+        With no recovery system this batch brings back <span className="text-slate-300">₹0</span>. Recoup has recovered{' '}
+        <span className="font-medium text-emerald-400">{formatINR(m.impact.recoveredPaise)}</span>, with{' '}
+        <span className="font-medium text-amber-400">{formatINR(m.impact.inProgressPaise)}</span> still in play.
+      </p>
+    </Card>
+  );
+}
+
+function Legend({ color, label, value }: { color: string; label: string; value: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={cx('h-2.5 w-2.5 rounded-sm', color)} />
+      <span className="text-slate-400">{label}</span>
+      <span className="font-medium tabular-nums text-slate-200">{value}</span>
+    </span>
   );
 }
 

@@ -28,6 +28,7 @@ export function policyEnvelope(): PolicyEnvelope {
     humanApprovalAmountPaise: env.POLICY_HUMAN_APPROVAL_AMOUNT_PAISE,
     quietHoursStart: env.POLICY_QUIET_HOURS_START,
     quietHoursEnd: env.POLICY_QUIET_HOURS_END,
+    minPursuitPaise: env.POLICY_MIN_PURSUIT_PAISE,
   };
 }
 
