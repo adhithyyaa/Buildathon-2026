@@ -20,13 +20,14 @@
     "seed": "tsx src/seed/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@prisma/client": "^6.19.3",
     "cors": "^2.8.6",
     "dayjs": "^1.11.23",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",
     "razorpay": "^2.9.8",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

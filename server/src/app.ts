@@ -1,18 +1,22 @@
-import express from 'express';
+import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import { env, hasRazorpay, hasAI } from './env';
+import { logger } from './lib/logger';
+import { webhookRouter } from './routes/webhooks';
+import { casesRouter } from './routes/cases';
+import { eventsRouter } from './routes/events';
+import { metricsRouter } from './routes/metrics';
+import { demoRouter } from './routes/demo';
 
-/**
- * Builds the Express app. Routers are mounted here as they are implemented.
- *
- * NOTE: the Razorpay webhook route needs the *raw* request body to verify the
- * HMAC signature, so it is mounted with express.raw() BEFORE the global json()
- * parser (done in the webhook router, not here).
- */
 export function createApp() {
   const app = express();
 
   app.use(cors({ origin: env.WEB_ORIGIN, credentials: true }));
+
+  // The Razorpay webhook needs the RAW body to verify its HMAC signature, so it
+  // is mounted BEFORE the global JSON parser.
+  app.use('/api/webhooks', webhookRouter);
+
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/health', (_req, res) => {
@@ -26,18 +30,19 @@ export function createApp() {
   });
 
   app.get('/', (_req, res) => {
-    res.json({
-      name: 'Recoup',
-      tagline: 'Bounded AI revenue recovery for Razorpay',
-      docs: '/health',
-    });
+    res.json({ name: 'Recoup', tagline: 'Bounded AI revenue recovery for Razorpay', health: '/health' });
   });
 
-  // Routers mounted here as they land:
-  //   app.use('/api/events', eventsRouter);
-  //   app.use('/api/cases', casesRouter);
-  //   app.use('/api/metrics', metricsRouter);
-  //   app.use('/api/webhooks/razorpay', webhookRouter);
+  app.use('/api/cases', casesRouter);
+  app.use('/api/events', eventsRouter);
+  app.use('/api/metrics', metricsRouter);
+  app.use('/api/demo', demoRouter);
+
+  const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+    logger.error('unhandled_error', { message: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: 'internal_error', message: err instanceof Error ? err.message : String(err) });
+  };
+  app.use(errorHandler);
 
   return app;
 }

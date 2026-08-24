@@ -19,7 +19,7 @@ const EnvSchema = z.object({
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
   ANTHROPIC_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().default('claude-sonnet-5'),
+  AI_MODEL: z.string().default('claude-opus-5'),
 
   POLICY_MAX_RETRIES: z.coerce.number().default(3),
   POLICY_MAX_DISCOUNT_PCT: z.coerce.number().default(10),
