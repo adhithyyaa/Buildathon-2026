@@ -21,6 +21,12 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default('claude-opus-5'),
 
+  // Optional: ANY OpenAI-compatible provider (Groq, Google Gemini, OpenRouter, Ollama, OpenAI).
+  // When OPENAI_BASE_URL + OPENAI_MODEL are set, this takes precedence over Anthropic.
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_BASE_URL: z.string().optional(),
+  OPENAI_MODEL: z.string().optional(),
+
   POLICY_MAX_RETRIES: z.coerce.number().default(3),
   POLICY_MAX_DISCOUNT_PCT: z.coerce.number().default(10),
   POLICY_HUMAN_APPROVAL_AMOUNT_PAISE: z.coerce.number().default(2_500_000),
@@ -35,5 +41,14 @@ export const isProd = env.NODE_ENV === 'production';
 
 /** True only when real Razorpay test-mode keys are configured. */
 export const hasRazorpay = Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);
-/** True only when an Anthropic key is configured (otherwise AI layer uses deterministic fallback). */
-export const hasAI = Boolean(env.ANTHROPIC_API_KEY);
+
+/** Which LLM backend is configured (OpenAI-compatible wins if both are set). */
+export const hasAnthropic = Boolean(env.ANTHROPIC_API_KEY);
+export const hasOpenAI = Boolean(env.OPENAI_BASE_URL && env.OPENAI_MODEL);
+/** True when ANY LLM is configured (otherwise the AI layer uses the deterministic fallback). */
+export const hasAI = hasAnthropic || hasOpenAI;
+export const aiProvider: 'openai-compatible' | 'anthropic' | 'none' = hasOpenAI
+  ? 'openai-compatible'
+  : hasAnthropic
+    ? 'anthropic'
+    : 'none';

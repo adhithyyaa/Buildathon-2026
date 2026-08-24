@@ -21,7 +21,14 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
           </Link>
           <div className="flex items-center gap-2">
-            <Pill tone={health?.integrations.ai ? 'emerald' : 'slate'}>AI: {health?.integrations.ai ? 'Claude live' : 'fallback'}</Pill>
+            <Pill tone={health?.integrations.ai ? 'emerald' : 'slate'}>
+              AI:{' '}
+              {health?.integrations.ai
+                ? health.integrations.aiProvider === 'anthropic'
+                  ? 'Claude live'
+                  : 'LLM live'
+                : 'fallback'}
+            </Pill>
             <Pill tone={health?.integrations.razorpay ? 'emerald' : 'slate'}>Razorpay: {health?.integrations.razorpay ? 'test-mode' : 'simulated'}</Pill>
           </div>
         </div>

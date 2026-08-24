@@ -1,6 +1,6 @@
 import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
-import { env, hasRazorpay, hasAI } from './env';
+import { env, hasRazorpay, hasAI, aiProvider } from './env';
 import { logger } from './lib/logger';
 import { toMessage } from './lib/errors';
 import { webhookRouter } from './routes/webhooks';
@@ -25,7 +25,7 @@ export function createApp() {
       ok: true,
       service: 'recoup-server',
       env: env.NODE_ENV,
-      integrations: { razorpay: hasRazorpay, ai: hasAI },
+      integrations: { razorpay: hasRazorpay, ai: hasAI, aiProvider },
       ts: new Date().toISOString(),
     });
   });

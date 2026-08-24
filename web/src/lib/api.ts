@@ -145,7 +145,7 @@ export interface CaseDetail {
 
 export interface HealthInfo {
   ok: boolean;
-  integrations: { razorpay: boolean; ai: boolean };
+  integrations: { razorpay: boolean; ai: boolean; aiProvider?: 'anthropic' | 'openai-compatible' | 'none' };
 }
 
 async function get<T>(url: string): Promise<T> {
