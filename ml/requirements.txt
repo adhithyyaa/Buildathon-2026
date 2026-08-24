@@ -1,0 +1,10 @@
+# Recoup ML service — tabular models + anomaly detection + serving
+catboost>=1.2
+xgboost>=3.0
+scikit-learn>=1.9
+pandas>=2.2
+numpy>=1.26
+joblib>=1.3
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7

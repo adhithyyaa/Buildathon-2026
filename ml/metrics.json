@@ -1,0 +1,226 @@
+{
+  "version": "20260824-1454",
+  "dataset": {
+    "rows": 30000,
+    "train": 24000,
+    "test": 6000,
+    "recovered_rate": 0.3105
+  },
+  "recovery": {
+    "logistic_regression": {
+      "roc_auc": 0.7492,
+      "pr_auc": 0.593,
+      "precision": 0.6503,
+      "recall": 0.3344,
+      "f1": 0.4417,
+      "brier": 0.1772
+    },
+    "xgboost": {
+      "roc_auc": 0.7409,
+      "pr_auc": 0.5838,
+      "precision": 0.6328,
+      "recall": 0.3607,
+      "f1": 0.4595,
+      "brier": 0.1797
+    },
+    "catboost_uncalibrated": {
+      "roc_auc": 0.7586,
+      "pr_auc": 0.6038,
+      "precision": 0.6486,
+      "recall": 0.3607,
+      "f1": 0.4636,
+      "brier": 0.174
+    },
+    "catboost_calibrated": {
+      "roc_auc": 0.7561,
+      "pr_auc": 0.5825,
+      "precision": 0.7102,
+      "recall": 0.2802,
+      "f1": 0.4018,
+      "brier": 0.1746
+    },
+    "calibration_curve": [
+      {
+        "bin_mid": 0.05,
+        "predicted": 0.0555,
+        "observed": 0.0704,
+        "count": 867
+      },
+      {
+        "bin_mid": 0.15,
+        "predicted": 0.1518,
+        "observed": 0.1558,
+        "count": 1393
+      },
+      {
+        "bin_mid": 0.25,
+        "predicted": 0.2436,
+        "observed": 0.2428,
+        "count": 523
+      },
+      {
+        "bin_mid": 0.35,
+        "predicted": 0.323,
+        "observed": 0.3242,
+        "count": 1567
+      },
+      {
+        "bin_mid": 0.45,
+        "predicted": 0.4653,
+        "observed": 0.4678,
+        "count": 915
+      },
+      {
+        "bin_mid": 0.55,
+        "predicted": 0.5511,
+        "observed": 0.625,
+        "count": 264
+      },
+      {
+        "bin_mid": 0.65,
+        "predicted": 0.6843,
+        "observed": 0.6395,
+        "count": 172
+      },
+      {
+        "bin_mid": 0.75,
+        "predicted": 0.7808,
+        "observed": 0.7667,
+        "count": 30
+      },
+      {
+        "bin_mid": 0.85,
+        "predicted": 0.8455,
+        "observed": 0.799,
+        "count": 204
+      },
+      {
+        "bin_mid": 0.95,
+        "predicted": 0.9811,
+        "observed": 0.9385,
+        "count": 65
+      }
+    ],
+    "primary": "catboost_calibrated"
+  },
+  "action": {
+    "logistic_regression": {
+      "accuracy": 0.994,
+      "f1_macro": 0.9501,
+      "f1_weighted": 0.9939
+    },
+    "xgboost": {
+      "accuracy": 0.9948,
+      "f1_macro": 0.965,
+      "f1_weighted": 0.9948
+    },
+    "catboost": {
+      "accuracy": 0.995,
+      "f1_macro": 0.9647,
+      "f1_weighted": 0.995
+    },
+    "primary": "catboost",
+    "classes": [
+      "escalate_to_human",
+      "no_action",
+      "offer_incentive",
+      "send_payment_link",
+      "send_reminder",
+      "smart_retry"
+    ],
+    "top_features": [
+      {
+        "feature": "failure_reason",
+        "importance": 36.48
+      },
+      {
+        "feature": "channel",
+        "importance": 31.77
+      },
+      {
+        "feature": "opt_out_flag",
+        "importance": 8.82
+      },
+      {
+        "feature": "amount",
+        "importance": 7.91
+      },
+      {
+        "feature": "order_value",
+        "importance": 5.63
+      },
+      {
+        "feature": "historical_conversion_rate",
+        "importance": 2.46
+      },
+      {
+        "feature": "urgency_score",
+        "importance": 2.09
+      },
+      {
+        "feature": "payment_method",
+        "importance": 0.9
+      },
+      {
+        "feature": "merchant_type",
+        "importance": 0.82
+      },
+      {
+        "feature": "hour_of_day",
+        "importance": 0.5
+      },
+      {
+        "feature": "retry_count",
+        "importance": 0.43
+      },
+      {
+        "feature": "day_of_week",
+        "importance": 0.36
+      }
+    ],
+    "agreement_with_ev_argmax": 0.8473
+  },
+  "escalation": {
+    "catboost_calibrated": {
+      "roc_auc": 0.999,
+      "pr_auc": 0.9988,
+      "precision": 0.9792,
+      "recall": 0.9858,
+      "f1": 0.9825,
+      "brier": 0.0119
+    }
+  },
+  "anomaly": {
+    "case": {
+      "flagged_rate_test": 0.0197,
+      "score_note": "anomaly_score = sigmoid(-4*decision_function); >0.5 ~ anomalous"
+    },
+    "window": {
+      "windows": 360,
+      "flagged": 15,
+      "injected_incident_windows": 8,
+      "incident_detection_rate": 0.875,
+      "baseline_mean": {
+        "abandoned": 14.88,
+        "authentication_failed": 9.17,
+        "bank_downtime": 10.15,
+        "card_declined": 12.91,
+        "expired_card": 4.83,
+        "insufficient_funds": 10.3,
+        "unknown": 4.07,
+        "upi_collect_timeout": 17.01
+      },
+      "baseline_std": {
+        "abandoned": 9.89,
+        "authentication_failed": 6.27,
+        "bank_downtime": 9.24,
+        "card_declined": 10.3,
+        "expired_card": 3.61,
+        "insufficient_funds": 7.11,
+        "unknown": 3.15,
+        "upi_collect_timeout": 12.88
+      }
+    }
+  },
+  "train_seconds": 183.6
+}
