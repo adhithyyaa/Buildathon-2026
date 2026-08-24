@@ -8,6 +8,8 @@ import { normalizeAtRiskInput } from '../ingestion/normalize';
 import { ingestEvent } from '../ingestion/ingest';
 import { tick } from '../worker/tick';
 import { formatINR } from '../lib/money';
+import { logger } from '../lib/logger';
+import { toMessage } from '../lib/errors';
 
 export const demoRouter = Router();
 
@@ -43,8 +45,18 @@ demoRouter.post(
       orderBy: [{ riskScore: 'desc' }],
       take: limit,
     });
-    for (const c of atRisk) await runCase(c.id);
-    res.json({ processed: atRisk.length });
+    let processed = 0;
+    let failed = 0;
+    for (const c of atRisk) {
+      try {
+        await runCase(c.id);
+        processed++;
+      } catch (e) {
+        failed++;
+        logger.error('process.case_failed', { caseId: c.id, error: toMessage(e) });
+      }
+    }
+    res.json({ processed, failed });
   }),
 );
 

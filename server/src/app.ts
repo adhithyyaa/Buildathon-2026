@@ -2,6 +2,7 @@ import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import { env, hasRazorpay, hasAI } from './env';
 import { logger } from './lib/logger';
+import { toMessage } from './lib/errors';
 import { webhookRouter } from './routes/webhooks';
 import { casesRouter } from './routes/cases';
 import { eventsRouter } from './routes/events';
@@ -39,8 +40,9 @@ export function createApp() {
   app.use('/api/demo', demoRouter);
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-    logger.error('unhandled_error', { message: err instanceof Error ? err.message : String(err) });
-    res.status(500).json({ error: 'internal_error', message: err instanceof Error ? err.message : String(err) });
+    const message = toMessage(err);
+    logger.error('unhandled_error', { message });
+    res.status(500).json({ error: 'internal_error', message });
   };
   app.use(errorHandler);
 

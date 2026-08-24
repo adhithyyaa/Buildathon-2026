@@ -4,6 +4,7 @@ import { transition } from '../domain/state';
 import { logAudit } from '../domain/audit';
 import { markRecovered, markExpired } from '../domain/recovery';
 import { runCase } from '../pipeline/runCase';
+import { toMessage } from '../lib/errors';
 
 export interface TickResult {
   dueRetries: number;
@@ -37,6 +38,7 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
   const due = await prisma.case.findMany({ where: dueWhere });
 
   for (const c of due) {
+   try {
     if (c.assignedAction === 'no_action') {
       await transition(c.id, 'at_risk', { step: 'revisit', actor: 'system', details: { from: 'no_action' } });
       await runCase(c.id, now);
@@ -55,6 +57,9 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
       await runCase(c.id, now); // re-decide (will retry until cap, then escalate)
       reQueued++;
     }
+   } catch (e) {
+      logger.error('tick.case_failed', { caseId: c.id, error: toMessage(e) });
+   }
   }
 
   const overdue = await prisma.case.findMany({

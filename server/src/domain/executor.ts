@@ -4,6 +4,8 @@ import { env, hasRazorpay } from '../env';
 import { transition } from './state';
 import { logAudit } from './audit';
 import { applyDiscountPaise } from '../lib/money';
+import { logger } from '../lib/logger';
+import { toMessage } from '../lib/errors';
 import { createPaymentLink } from '../integrations/razorpay';
 import type { RecoveryPlan } from '../ai/schemas';
 import type { PolicyDecision } from './policy';
@@ -239,19 +241,24 @@ async function moveToWaiting(caseId: string, step: string, details: Prisma.Input
 
 async function makePaymentLink(input: ExecuteInput, finalAmountPaise: number) {
   if (hasRazorpay) {
-    const link = await createPaymentLink({
-      amountPaise: finalAmountPaise,
-      description: `Recovery for ${input.merchantName}`,
-      customer: {
-        name: input.customer?.name ?? undefined,
-        email: input.customer?.email ?? undefined,
-        contact: input.customer?.phone ?? undefined,
-      },
-      referenceId: `case_${input.caseId}`,
-      callbackUrl: `${env.PUBLIC_BASE_URL}/api/paid`,
-      notes: { caseId: input.caseId },
-    });
-    return { id: link.id, url: link.shortUrl, simulated: false };
+    try {
+      const link = await createPaymentLink({
+        amountPaise: finalAmountPaise,
+        description: `Recovery for ${input.merchantName}`,
+        customer: {
+          name: input.customer?.name ?? undefined,
+          email: input.customer?.email ?? undefined,
+          contact: input.customer?.phone ?? undefined,
+        },
+        referenceId: `case_${input.caseId}`,
+        callbackUrl: `${env.PUBLIC_BASE_URL}/api/paid`,
+        notes: { caseId: input.caseId },
+      });
+      return { id: link.id, url: link.shortUrl, simulated: false };
+    } catch (err) {
+      // Gateway failure must not crash the recovery — degrade to a simulated link and log why.
+      logger.warn('razorpay.link_failed', { caseId: input.caseId, amountPaise: finalAmountPaise, error: toMessage(err) });
+    }
   }
   // Simulated link — the demo "pay" endpoint marks the case recovered.
   return {
