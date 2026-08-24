@@ -3,6 +3,7 @@ import cors from 'cors';
 import { env, hasRazorpay, hasAI, aiProvider } from './env';
 import { logger } from './lib/logger';
 import { toMessage } from './lib/errors';
+import { mlHealth } from './ml/client';
 import { webhookRouter } from './routes/webhooks';
 import { casesRouter } from './routes/cases';
 import { eventsRouter } from './routes/events';
@@ -20,12 +21,13 @@ export function createApp() {
 
   app.use(express.json({ limit: '1mb' }));
 
-  app.get('/health', (_req, res) => {
+  app.get('/health', async (_req, res) => {
+    const ml = await mlHealth();
     res.json({
       ok: true,
       service: 'recoup-server',
       env: env.NODE_ENV,
-      integrations: { razorpay: hasRazorpay, ai: hasAI, aiProvider },
+      integrations: { razorpay: hasRazorpay, ai: hasAI, aiProvider, ml: ml.ok, mlVersion: ml.version },
       ts: new Date().toISOString(),
     });
   });

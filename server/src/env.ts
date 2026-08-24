@@ -27,6 +27,11 @@ const EnvSchema = z.object({
   OPENAI_BASE_URL: z.string().optional(),
   OPENAI_MODEL: z.string().optional(),
 
+  // ML inference service (CatBoost/XGBoost/IsolationForest). Falls back to
+  // deterministic scoring if the service is unreachable.
+  ML_SERVICE_URL: z.string().default('http://localhost:8899'),
+  ML_TIMEOUT_MS: z.coerce.number().default(4000),
+
   POLICY_MAX_RETRIES: z.coerce.number().default(3),
   POLICY_MAX_DISCOUNT_PCT: z.coerce.number().default(10),
   POLICY_HUMAN_APPROVAL_AMOUNT_PAISE: z.coerce.number().default(2_500_000),

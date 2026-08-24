@@ -156,10 +156,11 @@ model Case {
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
-  decisions Decision[]
-  actions   Action[]
-  outcome   Outcome?
-  auditLogs AuditLog[]
+  decisions   Decision[]
+  predictions Prediction[]
+  actions     Action[]
+  outcome     Outcome?
+  auditLogs   AuditLog[]
 
   @@index([state])
   @@index([merchantId])
@@ -223,6 +224,47 @@ model Outcome {
   recoveryMinutes Int?
   notes           String?
   updatedAt       DateTime      @updatedAt
+}
+
+/// ML prediction for a case: the six required outputs + per-action detail. Append-only.
+model Prediction {
+  id                    String      @id @default(cuid())
+  caseId                String
+  case                  Case        @relation(fields: [caseId], references: [id])
+  source                String // "ml" | "fallback"
+  model                 String
+  modelVersion          String?
+  recoveryProbability   Float
+  actionClass           ActionType
+  calibratedConfidence  Float?
+  escalationProbability Float?
+  anomalyScore          Float?
+  reasonTag             ReasonTag?
+  perAction             Json? // per-action calibrated recovery probabilities
+  latencyMs             Int?
+  createdAt             DateTime    @default(now())
+
+  @@index([caseId])
+}
+
+/// One row per loaded model version — captures the training/validation metrics snapshot.
+model ModelRun {
+  id       String   @id @default(cuid())
+  version  String   @unique
+  metrics  Json
+  loadedAt DateTime @default(now())
+}
+
+/// A detected failure-spike (windowed IsolationForest anomaly).
+model AnomalyFlag {
+  id           String   @id @default(cuid())
+  windowKey    String
+  score        Float
+  reason       String?
+  contributors Json?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 /// Append-only log of every meaningful state transition.

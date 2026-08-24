@@ -1,4 +1,4 @@
-import { ActionType, Channel, ReasonTag } from '@prisma/client';
+import { ActionType, Channel, Prisma, ReasonTag } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { env } from '../env';
 import { logger } from '../lib/logger';
@@ -9,7 +9,7 @@ import { transition } from '../domain/state';
 import { logAudit } from '../domain/audit';
 import { evaluatePolicy } from '../domain/policy';
 import { execute } from '../domain/executor';
-import { proposeRecoveryPlan } from '../ai/decide';
+import { decideCase } from './decide';
 import type { DecisionContext, PolicyEnvelope } from '../ai/context';
 
 export const ALLOWED_ACTIONS = [
@@ -38,7 +38,7 @@ export interface RunResult {
   action?: ActionType;
   outcome?: string;
   finalState?: string;
-  source?: 'ai' | 'fallback';
+  source?: 'ml' | 'fallback';
 }
 
 /**
@@ -105,7 +105,28 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
     policy: policyEnvelope(),
   };
 
-  const result = await proposeRecoveryPlan(ctx);
+  const priorActions = await prisma.action.findMany({ where: { caseId }, orderBy: { createdAt: 'desc' }, take: 5 });
+  const lastAction = priorActions[0];
+
+  const result = await decideCase(ctx, {
+    amountPaise: kase.amount,
+    currency: kase.currency,
+    reasonTag,
+    method: kase.event.method,
+    channel: kase.event.channel,
+    attempts: kase.attempts,
+    ageMinutes,
+    now,
+    merchantName: kase.merchant.name,
+    customer: kase.customer
+      ? { priorPayments: kase.customer.priorPayments, priorConversions: kase.customer.priorConversions, optedOut: kase.customer.optedOut }
+      : null,
+    urgencyScore: scores.urgencyScore,
+    previousContactAttempts: priorActions.filter((a) => a.channel !== 'none').length,
+    lastActionType: lastAction ? lastAction.actionType : 'none',
+    lastActionOutcome: lastAction ? (lastAction.deliveryStatus ?? lastAction.status) : 'none',
+    allowedActions: ALLOWED_ACTIONS,
+  });
   const plan = result.plan;
 
   const suggestedRetryAt =
@@ -113,6 +134,25 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
       ? new Date(now.getTime() + Math.max(0, plan.decision.retry_delay_hours) * 3_600_000)
       : null;
 
+  // Persist the ML prediction (the six required outputs + per-action detail).
+  await prisma.prediction.create({
+    data: {
+      caseId,
+      source: result.source,
+      model: result.model,
+      modelVersion: result.modelVersion,
+      recoveryProbability: result.recoveryProbability,
+      actionClass: result.actionClass,
+      calibratedConfidence: result.calibratedConfidence,
+      escalationProbability: result.escalationProbability,
+      anomalyScore: result.anomalyScore,
+      reasonTag: result.reasonTag,
+      perAction: result.perAction ? (result.perAction as unknown as Prisma.InputJsonValue) : undefined,
+      latencyMs: result.latencyMs,
+    },
+  });
+
+  // Keep the Decision row for the audit/dashboard timeline.
   await prisma.decision.create({
     data: {
       caseId,
@@ -126,31 +166,33 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
       requiresHumanApproval: plan.decision.requires_human_approval,
       suggestedRetryAt,
       incentivePct: Math.round(plan.decision.incentive_pct),
-      valid: result.valid,
-      usedFallback: result.usedFallback,
+      valid: result.source === 'ml',
+      usedFallback: result.source === 'fallback',
       latencyMs: result.latencyMs,
     },
   });
 
-  // The AI's diagnosis refines the baseline reason + recovery probability.
+  // ML refines the reason + recovery probability on the case.
   await prisma.case.update({
     where: { id: caseId },
     data: {
-      reasonTag: plan.diagnosis.reason_category as ReasonTag,
-      recoveryProbability: plan.diagnosis.recovery_probability,
-      assignedAction: plan.decision.action as ActionType,
+      reasonTag: result.reasonTag,
+      recoveryProbability: result.recoveryProbability,
+      assignedAction: result.actionClass,
     },
   });
 
   await transition(caseId, 'action_selected', {
-    step: 'ai_decision',
-    actor: result.source === 'ai' ? 'ai' : 'system',
+    step: 'ml_decision',
+    actor: 'system',
     details: {
       source: result.source,
-      action: plan.decision.action,
-      confidence: plan.decision.confidence,
-      valid: result.valid,
-      fallbackReason: result.fallbackReason,
+      model: result.model,
+      action: result.actionClass,
+      recoveryProbability: result.recoveryProbability,
+      confidence: result.calibratedConfidence,
+      escalationProbability: result.escalationProbability,
+      anomalyScore: result.anomalyScore,
       latencyMs: result.latencyMs,
     },
   });
