@@ -4,6 +4,7 @@ import { api, type CaseDetail } from '../lib/api';
 import { formatINR, titleCase, timeAgo } from '../lib/format';
 import { Card, Button, StateBadge, ActionBadge, Pill, cx } from '../components/ui';
 import { AuditTimeline } from '../components/AuditTimeline';
+import { StageTracker } from '../components/StageTracker';
 
 function last<T>(arr: T[]): T | undefined {
   return arr.length ? arr[arr.length - 1] : undefined;
@@ -97,6 +98,8 @@ export function CasePage() {
           <Button variant="ghost" disabled={busy} onClick={load}>Refresh</Button>
         </div>
       </div>
+
+      <StageTracker state={data.state} />
 
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Left: the decision story */}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api, type CaseRow, type Metrics } from '../lib/api';
 import { formatINR, pctText, titleCase } from '../lib/format';
+import { pipelineBuckets, ACTOR_FILL } from '../lib/stages';
 import { Card, Stat, Button, cx } from '../components/ui';
 import { DemoControls } from '../components/DemoControls';
 import { CaseTable } from '../components/CaseTable';
@@ -58,6 +59,8 @@ export function Dashboard() {
       </div>
 
       {metrics && <RecoveryImpact m={metrics} />}
+
+      {metrics && <PipelineFlow byState={metrics.byState} />}
 
       <DemoControls onChanged={load} />
 
@@ -134,6 +137,49 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
       <span className={cx('h-2.5 w-2.5 rounded-sm', color)} />
       <span className="text-slate-400">{label}</span>
       <span className="font-medium tabular-nums text-slate-200">{value}</span>
+    </span>
+  );
+}
+
+function PipelineFlow({ byState }: { byState: Record<string, number> }) {
+  const { flow, escalated, expired } = pipelineBuckets(byState);
+  return (
+    <Card title="Recovery pipeline" right={<span className="text-xs text-slate-500">where every case flows</span>}>
+      <div className="flex flex-wrap items-center gap-2">
+        {flow.map((b, i) => (
+          <div key={b.key} className="flex items-center gap-2">
+            <div className="min-w-[112px] rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className={cx('h-2 w-2 rounded-full', ACTOR_FILL[b.actor])} />
+                <span className="text-[11px] uppercase tracking-wide text-slate-400">{b.label}</span>
+              </div>
+              <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">{b.count}</div>
+            </div>
+            {i < flow.length - 1 && <span className="text-slate-600">→</span>}
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-slate-500">Branches:</span>
+        <BranchChip label="Escalated to human" count={escalated} tone="rose" />
+        <BranchChip label="Expired" count={expired} tone="slate" />
+        <span className="ml-auto hidden text-[11px] text-slate-500 sm:inline">
+          <span className="mr-1 inline-block h-2 w-2 rounded-full bg-sky-400 align-middle" />
+          AI stages — every suggestion is policy-checked before any action
+        </span>
+      </div>
+    </Card>
+  );
+}
+
+function BranchChip({ label, count, tone }: { label: string; count: number; tone: 'rose' | 'slate' }) {
+  const c =
+    tone === 'rose'
+      ? 'bg-rose-500/15 text-rose-300 ring-rose-500/30'
+      : 'bg-slate-500/15 text-slate-300 ring-slate-500/30';
+  return (
+    <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset', c)}>
+      {label} <span className="font-bold tabular-nums">{count}</span>
     </span>
   );
 }
