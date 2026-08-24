@@ -44,6 +44,7 @@ casesRouter.get(
         merchant: true,
         event: true,
         outcome: true,
+        predictions: { orderBy: { createdAt: 'asc' } },
         decisions: { orderBy: { createdAt: 'asc' } },
         actions: { orderBy: { createdAt: 'asc' } },
         auditLogs: { orderBy: { createdAt: 'asc' } },
