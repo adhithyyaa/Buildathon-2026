@@ -39,6 +39,9 @@ const EnvSchema = z.object({
   POLICY_QUIET_HOURS_END: z.coerce.number().default(8),
   // Below this amount it isn't economical to spend gateway/outreach cost chasing recovery.
   POLICY_MIN_PURSUIT_PAISE: z.coerce.number().default(10_000),
+  // NPCI/RBI additional-factor-auth ceiling for an auto-debit retry (₹15,000; higher for
+  // MF/insurance/card-bills). Above it, an auto-retry needs a human/AFA step, not a silent retry.
+  POLICY_AFA_THRESHOLD_PAISE: z.coerce.number().default(1_500_000),
 });
 
 export const env = EnvSchema.parse(process.env);

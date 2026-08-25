@@ -9,6 +9,7 @@ import { transition } from '../domain/state';
 import { logAudit } from '../domain/audit';
 import { evaluatePolicy } from '../domain/policy';
 import { execute } from '../domain/executor';
+import { activeIncidentReasons } from '../domain/incidents';
 import { decideCase } from './decide';
 import type { DecisionContext, PolicyEnvelope } from '../ai/context';
 
@@ -29,6 +30,7 @@ export function policyEnvelope(): PolicyEnvelope {
     quietHoursStart: env.POLICY_QUIET_HOURS_START,
     quietHoursEnd: env.POLICY_QUIET_HOURS_END,
     minPursuitPaise: env.POLICY_MIN_PURSUIT_PAISE,
+    afaThresholdPaise: env.POLICY_AFA_THRESHOLD_PAISE,
   };
 }
 
@@ -43,8 +45,8 @@ export interface RunResult {
 
 /**
  * Run the full recovery pipeline for one case that is currently `at_risk`:
- *   score (deterministic) -> analyze -> AI diagnosis+decision -> policy -> execute.
- * Persists a Decision row and drives all state transitions + audit logs.
+ *   score (deterministic) -> ML decision -> deterministic policy -> execute.
+ * Persists a Prediction + Decision and drives all state transitions + audit logs.
  */
 export async function runCase(caseId: string, now: Date = new Date()): Promise<RunResult> {
   const kase = await prisma.case.findUniqueOrThrow({
@@ -86,7 +88,7 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
     details: { riskScore: scores.riskScore, urgencyScore: scores.urgencyScore, recoveryPrior: scores.recoveryPrior, lane: scores.recommendedLane },
   });
 
-  // 2. AI diagnosis + decision (or deterministic fallback).
+  // 2. ML decision (CatBoost) — or deterministic fallback if the ML service is down.
   const ctx: DecisionContext = {
     merchantName: kase.merchant.name,
     amountPaise: kase.amount,
@@ -143,7 +145,7 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
       modelVersion: result.modelVersion,
       recoveryProbability: result.recoveryProbability,
       actionClass: result.actionClass,
-      calibratedConfidence: result.calibratedConfidence,
+      actionConfidence: result.actionConfidence,
       escalationProbability: result.escalationProbability,
       anomalyScore: result.anomalyScore,
       reasonTag: result.reasonTag,
@@ -190,23 +192,25 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
       model: result.model,
       action: result.actionClass,
       recoveryProbability: result.recoveryProbability,
-      confidence: result.calibratedConfidence,
+      confidence: result.actionConfidence,
       escalationProbability: result.escalationProbability,
       anomalyScore: result.anomalyScore,
       latencyMs: result.latencyMs,
     },
   });
 
-  // 3. Deterministic policy engine (can override the AI).
+  // 3. Deterministic policy engine (can override the ML).
   const policy = evaluatePolicy({
     plan,
     amountPaise: kase.amount,
     attempts: kase.attempts,
     optedOut: kase.customer?.optedOut ?? false,
-    isAutoRetriable: isAutoRetriable(reasonTag),
+    isAutoRetriable: isAutoRetriable(result.reasonTag),
+    reasonTag: result.reasonTag,
     now,
     policy: policyEnvelope(),
     allowedActions: ALLOWED_ACTIONS,
+    incidentReasons: await activeIncidentReasons(now),
   });
 
   await logAudit({

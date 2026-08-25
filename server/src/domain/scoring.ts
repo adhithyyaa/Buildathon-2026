@@ -36,6 +36,7 @@ const REASON_URGENCY: Record<ReasonTag, number> = {
   insufficient_funds: 0.6,
   card_declined: 0.6,
   expired_card: 0.5,
+  debited_pending_reversal: 0.2, // low: we hold, not pursue (RBI TAT auto-reversal handles it)
   unknown: 0.5,
 };
 

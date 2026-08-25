@@ -1,4 +1,4 @@
-import { ActionType, Channel } from '@prisma/client';
+import { ActionType, Channel, ReasonTag } from '@prisma/client';
 import { isQuietHours, nextAllowedTime } from '../lib/time';
 import type { RecoveryPlan } from '../ai/schemas';
 import type { PolicyEnvelope } from '../ai/context';
@@ -21,9 +21,12 @@ export interface PolicyInput {
   attempts: number;
   optedOut: boolean;
   isAutoRetriable: boolean;
+  reasonTag: ReasonTag;
   now: Date;
   policy: PolicyEnvelope;
   allowedActions: readonly string[];
+  /** Reasons with an active failure spike right now (from windowed anomaly detection). */
+  incidentReasons?: ReadonlySet<string>;
 }
 
 export interface PolicyDecision {
@@ -64,6 +67,33 @@ export function evaluatePolicy(input: PolicyInput): PolicyDecision {
     return blocked(notes);
   }
 
+  // 0c. RBI TAT compliance hold: the payment failed but the customer WAS debited. It
+  // auto-reverses by T+1 (RBI harmonised TAT, ₹100/day compensation), so ANY retry or
+  // outreach now risks a double-debit complaint. Take no action until the reversal settles.
+  if (input.reasonTag === 'debited_pending_reversal') {
+    notes.push('Failed-but-debited: awaiting RBI TAT T+1 auto-reversal. No retry or outreach (double-debit risk) — hold.');
+    return blocked(notes);
+  }
+
+  // 0d. Deterministic hard-decline triage: a smart_retry only makes sense for auto-retriable
+  // failures (bank downtime, UPI timeout, momentary NSF). On a hard decline a retry just burns
+  // a gateway hit — override to a fresh payment link (card-update path). The model never gets
+  // to retry a non-retriable failure.
+  if (action === 'smart_retry' && !input.isAutoRetriable) {
+    notes.push(`"${input.reasonTag}" is not auto-retriable; overriding smart_retry → send_payment_link.`);
+    action = 'send_payment_link';
+    channel = 'whatsapp';
+  }
+
+  // 0e. Live failure-spike defer: if a windowed anomaly says this reason is spiking right now
+  // (e.g. a bank/UPI outage), a retry will just fail again and add to the storm — defer it.
+  if (action === 'smart_retry' && input.incidentReasons?.has(input.reasonTag)) {
+    notes.push(`Active failure spike for "${input.reasonTag}"; deferring retry this cycle (no_action) until it clears.`);
+    action = 'no_action';
+    channel = 'none';
+    incentivePct = 0;
+  }
+
   // 1. Opt-out blocks all outreach.
   if (input.optedOut && OUTREACH.includes(action)) {
     notes.push('Customer opted out of outreach; outreach blocked.');
@@ -78,10 +108,17 @@ export function evaluatePolicy(input: PolicyInput): PolicyDecision {
     }
   }
 
-  // 2. Retry cap.
+  // 2. Retry cap (NPCI e-mandate rule: 1 original attempt + at most `maxRetries` retries).
   if (action === 'smart_retry' && input.attempts >= p.maxRetries) {
-    notes.push(`Max retries (${p.maxRetries}) reached; not retrying again.`);
+    notes.push(`NPCI retry cap reached (1 original + ${p.maxRetries} retries); not retrying again.`);
     return escalate('escalate_to_human', 'none', 0, notes);
+  }
+
+  // 2b. AFA ceiling: a high-value auto-debit retry needs an additional-factor-auth / human
+  // step (NPCI/RBI e-mandate framework), not a silent retry.
+  if (action === 'smart_retry' && input.amountPaise >= p.afaThresholdPaise) {
+    requiresHumanApproval = true;
+    notes.push(`Retry amount ≥ AFA threshold (₹${Math.round(p.afaThresholdPaise / 100)}); requires an additional-factor-auth / human step.`);
   }
 
   // 3. Incentive requires human approval.

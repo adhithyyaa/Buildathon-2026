@@ -8,6 +8,7 @@ export interface PolicyEnvelope {
   quietHoursStart: number;
   quietHoursEnd: number;
   minPursuitPaise: number;
+  afaThresholdPaise: number; // NPCI/RBI additional-factor-auth ceiling for auto-debit (₹15,000)
 }
 
 /** Everything the decisioner needs about one at-risk case. */

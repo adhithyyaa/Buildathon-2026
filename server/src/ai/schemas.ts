@@ -14,6 +14,7 @@ export const REASON_CATEGORIES = [
   'authentication_failed',
   'expired_card',
   'abandoned',
+  'debited_pending_reversal',
   'unknown',
 ] as const;
 

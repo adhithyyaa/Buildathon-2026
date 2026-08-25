@@ -23,6 +23,14 @@ export function classifyReason(input: {
   const method = (input.method ?? '').toLowerCase();
   const isUpi = method.includes('upi');
 
+  // Failed-but-DEBITED: the customer's account was debited even though the payment failed.
+  // Under the RBI TAT circular this auto-reverses by T+1 (with ₹100/day compensation), so
+  // we must NOT retry or nudge — a fresh charge would be a double-debit complaint. Detect it
+  // first, before any generic decline match.
+  if (/debited|amount_debited|awaiting.?reversal|pending.?reversal|tat_reversal|debit_reversal/.test(s)) {
+    return ReasonTag.debited_pending_reversal;
+  }
+
   if (/insufficient|insuff|low.?balance|\bnsf\b|not_enough/.test(s)) return ReasonTag.insufficient_funds;
   if (/expired/.test(s) && /card/.test(s)) return ReasonTag.expired_card;
   if (/auth|otp|3ds|3-?d-?secure|authentication|not.?authenticated/.test(s)) return ReasonTag.authentication_failed;
@@ -59,6 +67,8 @@ export function basePriorRecovery(tag: ReasonTag): number {
       return 0.4; // needs a new card via fresh link
     case ReasonTag.abandoned:
       return 0.4; // a nudge / small incentive can convert
+    case ReasonTag.debited_pending_reversal:
+      return 0.0; // the RBI-mandated reversal returns the money; we take NO recovery action
     default:
       return 0.3;
   }

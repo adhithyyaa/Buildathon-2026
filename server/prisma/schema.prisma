@@ -39,6 +39,7 @@ enum ReasonTag {
   authentication_failed
   expired_card
   abandoned
+  debited_pending_reversal // failed-but-debited: awaiting RBI TAT T+1 auto-reversal — do NOT re-nudge
   unknown
 }
 
@@ -234,10 +235,10 @@ model Prediction {
   source                String // "ml" | "fallback"
   model                 String
   modelVersion          String?
-  recoveryProbability   Float
+  recoveryProbability   Float // isotonic-calibrated
   actionClass           ActionType
-  calibratedConfidence  Float?
-  escalationProbability Float?
+  actionConfidence      Float? // uncalibrated action-head softmax
+  escalationProbability Float? // sigmoid-calibrated
   anomalyScore          Float?
   reasonTag             ReasonTag?
   perAction             Json? // per-action calibrated recovery probabilities
@@ -263,6 +264,17 @@ model AnomalyFlag {
   reason       String?
   contributors Json?
   createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Webhook idempotency ledger — one row per Razorpay `x-razorpay-event-id` we have
+/// already processed. Razorpay retries webhooks for 24h with no ordering guarantee, so a
+/// duplicate or out-of-order redelivery must be a no-op; we insert-then-check on this table.
+model ProcessedWebhook {
+  eventId   String   @id // x-razorpay-event-id
+  eventType String
+  createdAt DateTime @default(now())
 
   @@index([createdAt])
 }
