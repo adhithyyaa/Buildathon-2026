@@ -10,6 +10,7 @@ import { logAudit } from '../domain/audit';
 import { evaluatePolicy } from '../domain/policy';
 import { execute } from '../domain/executor';
 import { activeIncidentReasons } from '../domain/incidents';
+import { getSuppressedReasons } from '../domain/lab';
 import { decideCase } from './decide';
 import type { DecisionContext, PolicyEnvelope } from '../ai/context';
 
@@ -223,6 +224,7 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
     policy: policyEnvelope(),
     allowedActions: ALLOWED_ACTIONS,
     incidentReasons: await activeIncidentReasons(now),
+    suppressedReasons: await getSuppressedReasons(),
   });
 
   await logAudit({

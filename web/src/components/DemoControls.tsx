@@ -57,7 +57,10 @@ function summarize(label: string, r: unknown): string {
   if (label === 'seed') return `Seeded: ${o.created} new, ${o.deduped} duplicate`;
   if (label === 'process') return `Processed ${o.processed} cases`;
   if (label === 'tick') return `Recovered ${o.recovered}, re-queued ${o.reQueued}, expired ${o.expired}`;
-  if (label === 'resolve') return `Resolved ${o.resolved}: ${o.recovered} recovered, ${o.expired} expired`;
+  if (label === 'resolve') {
+    const sup = (r as { suppressed?: string[] }).suppressed ?? [];
+    return `Resolved ${o.resolved}: ${o.recovered} recovered, ${o.expired} expired` + (sup.length ? ` · auto-suppressed ${sup.join(', ')}` : '');
+  }
   if (label === 'reset') return 'All data cleared';
   return '';
 }

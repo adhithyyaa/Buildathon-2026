@@ -123,4 +123,14 @@ describe('policy engine — the deterministic guardrails', () => {
     expect(d.finalAction).toBe('no_action');
     expect(d.notes.join(' ')).toMatch(/spike/i);
   });
+
+  it('Recovery Lab auto-suppression: a reason with no proven lift takes no action', () => {
+    const d = evaluatePolicy(input({
+      reasonTag: ReasonTag.unknown,
+      plan: plan({ action: 'send_payment_link' }),
+      suppressedReasons: new Set(['unknown']),
+    }));
+    expect(d.finalAction).toBe('no_action');
+    expect(d.notes.join(' ')).toMatch(/suppress/i);
+  });
 });

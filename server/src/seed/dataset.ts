@@ -34,6 +34,9 @@ const REASONS: ReasonSpec[] = [
   { eventType: 'payment_failed', method: 'card', failureReason: '3DS authentication failed, OTP not entered', failureCode: 'BAD_REQUEST_ERROR', channel: 'checkout', weight: 10 },
   { eventType: 'checkout_abandoned', method: 'upi', channel: 'checkout', weight: 16 },
   { eventType: 'payment_failed', method: 'wallet', failureReason: 'Payment failed', failureCode: 'SERVER_ERROR', channel: 'checkout', weight: 4 },
+  // An undiagnosable failure → classifies as `unknown` → a genuine "lost cause" the Recovery Lab
+  // detects (no action beats doing nothing) and the closed loop auto-suppresses.
+  { eventType: 'payment_failed', method: 'wallet', failureReason: 'Transaction could not be processed', failureCode: 'RISK_REJECTED', channel: 'checkout', weight: 10 },
 ];
 
 function weightedPick(rng: () => number, specs: ReasonSpec[]): ReasonSpec {

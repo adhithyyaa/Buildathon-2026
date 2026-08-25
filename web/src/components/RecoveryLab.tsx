@@ -84,11 +84,12 @@ export const RecoveryLab = forwardRef<RecoveryLabHandle>(function RecoveryLab(_p
         </div>
       )}
 
-      {/* Efficiency loop: reasons that don't beat control are wasted effort. */}
+      {/* The self-optimizing loop: reasons with no proven lift are auto-suppressed IN the policy. */}
       {lab.suppressionCandidates.length > 0 && (
-        <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-200/90">
-          <b>Auto-suppress candidates:</b> {lab.suppressionCandidates.map(titleCase).join(', ')} — the treatment arm does not
-          beat control here, so pursuing these wastes actions and spend. The policy can stop acting on them until the model improves.
+        <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-xs text-rose-200/90">
+          <b>⟳ Auto-suppressed (policy is now skipping these):</b> {lab.suppressionCandidates.map(titleCase).join(', ')} — the
+          treatment arm shows <i>no proven lift over control</i> here, so the policy takes <b>no action</b> on these reasons
+          until they re-prove themselves. This is the closed loop: measure → prune → recover more per ₹ spent.
         </div>
       )}
     </Card>

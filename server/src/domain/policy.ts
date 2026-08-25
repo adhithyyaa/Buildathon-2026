@@ -27,6 +27,8 @@ export interface PolicyInput {
   allowedActions: readonly string[];
   /** Reasons with an active failure spike right now (from windowed anomaly detection). */
   incidentReasons?: ReadonlySet<string>;
+  /** Reasons the Recovery Lab auto-suppressed (no proven incremental lift over control). */
+  suppressedReasons?: ReadonlySet<string>;
 }
 
 export interface PolicyDecision {
@@ -89,6 +91,16 @@ export function evaluatePolicy(input: PolicyInput): PolicyDecision {
   // (e.g. a bank/UPI outage), a retry will just fail again and add to the storm — defer it.
   if (action === 'smart_retry' && input.incidentReasons?.has(input.reasonTag)) {
     notes.push(`Active failure spike for "${input.reasonTag}"; deferring retry this cycle (no_action) until it clears.`);
+    action = 'no_action';
+    channel = 'none';
+    incentivePct = 0;
+  }
+
+  // 0f. Recovery-Lab auto-suppression: this reason has NO proven incremental lift over the control
+  // arm, so any recovery action is measured waste — take no action until it re-proves itself. This
+  // is the self-optimizing loop: the system stops spending where it can't beat doing nothing.
+  if (action !== 'no_action' && input.suppressedReasons?.has(input.reasonTag)) {
+    notes.push(`Recovery Lab: "${input.reasonTag}" shows no proven lift over control — auto-suppressed (no action).`);
     action = 'no_action';
     channel = 'none';
     incentivePct = 0;

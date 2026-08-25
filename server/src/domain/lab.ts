@@ -15,7 +15,7 @@ import { recovers } from './world';
  * by its dispatched action, control by the natural no-action rate) so the experiment can be
  * measured in the demo. In production these outcomes arrive as real signed webhooks instead.
  */
-export async function resolveOutcomes(now: Date = new Date()): Promise<{ resolved: number; recovered: number; expired: number }> {
+export async function resolveOutcomes(now: Date = new Date()): Promise<{ resolved: number; recovered: number; expired: number; suppressed: string[] }> {
   const pending = await prisma.case.findMany({
     where: { state: { in: ['waiting_for_outcome', 'manual_escalation'] }, outcome: { is: null } },
     select: { id: true, reasonTag: true, assignedAction: true, arm: true, amount: true },
@@ -35,7 +35,9 @@ export async function resolveOutcomes(now: Date = new Date()): Promise<{ resolve
       expired++;
     }
   }
-  return { resolved: pending.length, recovered, expired };
+  // Learn: recompute the incremental lift and persist which reasons to auto-suppress next cycle.
+  const suppressed = await refreshSuppression();
+  return { resolved: pending.length, recovered, expired, suppressed };
 }
 
 interface ArmStat {
@@ -108,9 +110,38 @@ export async function computeLift() {
     .filter((r) => r.treatment.cases + r.control.cases >= 5)
     .sort((a, b) => b.incrementalPaise - a.incrementalPaise);
 
-  // Efficiency loop: reasons where treatment does NOT beat control are wasted effort — flag them
-  // so the policy can stop pursuing them (surface the recommendation; the operator/policy acts).
-  const suppressionCandidates = byReason.filter((r) => r.liftPct <= 0).map((r) => r.reason);
+  // The efficiency loop: a reason with a decent sample whose lift is NOT significantly positive
+  // (95% CI lower bound ≤ 0) is wasted effort — we could not prove the actions beat control, so
+  // stop spending there ("prove the lift or don't pay for it"). These are the reasons the policy
+  // auto-suppresses. Reasons with too few cases stay in "gathering evidence", not suppressed.
+  // Suppress a reason only with enough evidence AND essentially no lift (≤ 2pp) — a robust point
+  // test that won't wrongly prune a genuinely-helping reason just because a tiny per-reason control
+  // arm made its CI wide. (A lost cause like undiagnosable "unknown" sits at ~0pp; real reasons are
+  // tens of pp above control.)
+  const suppressionCandidates = byReason
+    .filter((r) => r.treatment.cases >= 15 && r.control.cases >= 4 && r.liftPct <= 2)
+    .map((r) => r.reason);
 
   return { overall: block(norm), byReason, suppressionCandidates, totalResolved: norm.length };
+}
+
+const SUPPRESS_KEY = 'lab_suppressed_reasons';
+
+/** Recompute the Lab report and persist the auto-suppressed reason set (the "learn" step). */
+export async function refreshSuppression(): Promise<string[]> {
+  const report = await computeLift();
+  const value = JSON.stringify(report.suppressionCandidates);
+  await prisma.setting.upsert({ where: { key: SUPPRESS_KEY }, create: { key: SUPPRESS_KEY, value }, update: { value } });
+  return report.suppressionCandidates;
+}
+
+/** Reasons the Recovery Lab has auto-suppressed — the policy engine skips recovery actions on these. */
+export async function getSuppressedReasons(): Promise<Set<string>> {
+  const s = await prisma.setting.findUnique({ where: { key: SUPPRESS_KEY } });
+  if (!s?.value) return new Set();
+  try {
+    return new Set(JSON.parse(s.value) as string[]);
+  } catch {
+    return new Set();
+  }
 }

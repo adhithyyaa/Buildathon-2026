@@ -43,8 +43,14 @@ const ACTION_LIFT: Record<string, number> = {
 
 /** Ground-truth recovery probability for a (reason, action) — the independent world mechanism. */
 export function recoveryProb(reasonTag: ReasonTag | null, action: string): number {
-  const base = basePriorRecovery(reasonTag ?? ReasonTag.unknown);
-  return Math.max(0.01, Math.min(0.95, base * (ACTION_LIFT[action] ?? 1.0)));
+  const reason = reasonTag ?? ReasonTag.unknown;
+  const base = basePriorRecovery(reason);
+  let lift = ACTION_LIFT[action] ?? 1.0;
+  // "unknown" is a lost cause — you can't recover a failure you can't diagnose, so no recovery
+  // action beats doing nothing. This is exactly what the Recovery Lab is meant to detect and the
+  // closed loop auto-suppresses (stop spending where there is no measurable lift over control).
+  if (reason === ReasonTag.unknown) lift = Math.min(lift, ACTION_LIFT.no_action ?? 0.28);
+  return Math.max(0.01, Math.min(0.95, base * lift));
 }
 
 /** Deterministic Bernoulli outcome draw for (case, action) — reproducible in a replay. */
