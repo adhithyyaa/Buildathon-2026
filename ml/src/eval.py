@@ -34,8 +34,13 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from features import CASE_FEATURES
-from worldmodel import success_prob, ACTIONS
+from features import CASE_FEATURES, ACTIONS
+import worldmodel
+import worldmodel2
+
+# The ground-truth scorer is chosen by --world (v1 = primary reason-dominated world,
+# v2 = the independent context-driven world). Set in main(); used by collected().
+GT = worldmodel.success_prob
 
 # Pursuit actions an autonomous agent may take (escalate_to_human is a hand-off, not a
 # money-recovery action, so it is excluded from the automated arms' action space).
@@ -79,7 +84,7 @@ def collected(row: dict, action: str) -> float:
     """Ground-truth expected rupees collected if this action is taken on this case."""
     if action == "escalate_to_human":
         action = "send_payment_link"  # a human would send a link; approximate
-    p = success_prob(row, action)  # rng=None -> the deterministic world mechanism
+    p = GT(row, action)  # rng=None -> the deterministic world mechanism
     gross = p * row["order_value"]
     if action == "offer_incentive":
         gross *= (1.0 - INCENTIVE_PCT)  # we collect less when we discount
@@ -96,8 +101,8 @@ def wasted_incentive(rows: list[dict], actions: list[str]) -> float:
     recovered anyway (ground-truth no-action recovery >= 0.5)."""
     total = 0.0
     for r, a in zip(rows, actions):
-        if a == "offer_incentive" and success_prob(r, "no_action") >= 0.5:
-            total += INCENTIVE_PCT * r["order_value"] * success_prob(r, a)
+        if a == "offer_incentive" and GT(r, "no_action") >= 0.5:
+            total += INCENTIVE_PCT * r["order_value"] * GT(r, a)
     return total
 
 
@@ -109,7 +114,9 @@ def boot_ci(diff: np.ndarray, n: int = 1000, seed: int = 123) -> tuple[float, fl
     return float(diff.sum()), float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
 
 
-def main(data_path: str, art: str, out_path: str) -> None:
+def main(data_path: str, art: str, out_path: str, world: str = "v1") -> None:
+    global GT
+    GT = worldmodel2.success_prob if world == "v2" else worldmodel.success_prob
     df = pd.read_csv(data_path)
 
     # Same time-ordered held-out split as train.py.
@@ -153,10 +160,11 @@ def main(data_path: str, art: str, out_path: str) -> None:
     at_risk = float(test["order_value"].sum())
     per_case = {name: arm_net(rows, acts) for name, acts in arms.items()}
     report: dict = {
+        "world": world,
         "split": "time_ordered_by_day_index (latest ~20% of days)",
         "test_cases": n,
         "at_risk_rupees": round(at_risk, 2),
-        "ground_truth": "worldmodel.success_prob (independent of the ML model — no self-grading)",
+        "ground_truth": f"{'worldmodel2' if world == 'v2' else 'worldmodel'}.success_prob (independent of the ML model — no self-grading)",
         "arms": {},
     }
     for name, net in per_case.items():
@@ -205,5 +213,6 @@ if __name__ == "__main__":
     ap.add_argument("--data", default="ml/data/train.csv")
     ap.add_argument("--art", default="ml/artifacts")
     ap.add_argument("--out", default="ml/eval.json")
+    ap.add_argument("--world", default="v1", choices=["v1", "v2"], help="ground-truth world: v1 (primary) or v2 (context-driven)")
     args = ap.parse_args()
-    main(args.data, args.art, args.out)
+    main(args.data, args.art, args.out, args.world)

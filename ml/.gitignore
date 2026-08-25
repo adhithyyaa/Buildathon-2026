@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 
-# Derived artifacts (reproducible from source + seed via worldmodel.py + train.py)
+# Derived artifacts (reproducible from source + seed via worldmodel*.py + train.py)
 data/
 artifacts/
+artifacts_v2/

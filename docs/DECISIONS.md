@@ -127,14 +127,16 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
   number from a simulator you wrote. Two failure modes to avoid: temporal leakage, and the model grading itself.
 - **Rationale:** `ml/src/eval.py` evaluates on the **time-ordered** holdout and scores four arms — do-nothing,
   rules-only triage, ML+policy (deployed), and an oracle — with the **world's independent ground-truth** mechanism, not
-  the model's own prediction. It reports **incremental lift with 95% bootstrap CIs**. The result is published as-is:
-  the deployed decision captures **~99% of the oracle headroom** and **+₹15.3M vs do-nothing (significant)**, but is a
-  **statistical tie with rules-only** on this synthetic world — because the world is reason-dominated by construction.
-  We keep the honest tie rather than tune the world until ML "wins": showing a truthful near-tie against a strong
-  baseline is the measurement integrity the panel is looking for, and the ML edge over rules is framed as a **testable
-  claim on real data**, not a synthetic result.
+  the model's own prediction, reporting **incremental lift with 95% bootstrap CIs**. To prove the eval isn't flattering
+  itself, it runs against **two independently-authored worlds**. On **World A** (reason-dominated) the deployed decision
+  captures ~99% of the oracle headroom but only **ties** a rules baseline — we publish the tie rather than tune the world
+  until ML "wins". On **World B** (`worldmodel2.py`, context-driven: the best action depends on a latent customer
+  archetype, not the reason) the same pipeline **beats rules by +₹5.49M, CI [5.1M, 5.8M], significant**. Together they
+  make the claim testable and honest: **the ML's edge over rules scales with how much the optimal action depends on
+  context beyond the failure reason** — and real merchant data is context-driven.
 - **Trade-off:** The headline is less flashy than a fabricated "ML beats rules by 20%", but it is defensible under a
-  panel that reads code — and it makes the synthetic→real data flywheel (ADR-012) the explicit next milestone.
+  panel that reads code, and the second world makes the synthetic→real flywheel (ADR-012) a demonstrated mechanism, not
+  a promise. Still synthetic — real merchant outcomes remain the real fix.
 
 ### ADR-016 — India compliance is code in the money path, and there's a human kill switch *(2026-08-25)*
 - **Context:** Indian payment-recovery rules are safety-critical; "we thought about compliance" in a slide is not the

@@ -48,12 +48,20 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r ml/requirements.txt
-      - run: python ml/src/worldmodel.py --out ml/data/train.csv
-      - run: python ml/src/train.py --data ml/data/train.csv --out ml/artifacts
-      - run: python ml/src/eval.py --data ml/data/train.csv --art ml/artifacts --out ml/eval.json
+      - name: world A — train + counterfactual eval
+        run: |
+          python ml/src/worldmodel.py --out ml/data/train.csv
+          python ml/src/train.py --data ml/data/train.csv --out ml/artifacts
+          python ml/src/eval.py --data ml/data/train.csv --art ml/artifacts --out ml/eval.json
+      - name: world B — independent context-driven world (robustness)
+        run: |
+          python ml/src/worldmodel2.py --out ml/data/train_v2.csv
+          python ml/src/train.py --data ml/data/train_v2.csv --out ml/artifacts_v2
+          python ml/src/eval.py --world v2 --data ml/data/train_v2.csv --art ml/artifacts_v2 --out ml/eval_v2.json
       - uses: actions/upload-artifact@v4
         with:
           name: ml-metrics
           path: |
             ml/metrics.json
             ml/eval.json
+            ml/eval_v2.json

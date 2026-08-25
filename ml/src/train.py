@@ -336,8 +336,9 @@ def main(data_path: str, out_dir: str) -> None:
     metrics["train_seconds"] = round(time.time() - t0, 1)
     with open(f"{out_dir}/metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
-    with open("ml/metrics.json", "w") as f:  # git-tracked copy
-        json.dump(metrics, f, indent=2)
+    if out_dir.rstrip("/").endswith("artifacts"):  # only the primary (world A) run updates the git-tracked copy
+        with open("ml/metrics.json", "w") as f:
+            json.dump(metrics, f, indent=2)
 
     print(json.dumps({k: metrics[k] for k in ("recovery", "action", "escalation")}, indent=2))
     print(f"DONE in {metrics['train_seconds']}s -> {out_dir}")

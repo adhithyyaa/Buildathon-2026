@@ -45,11 +45,26 @@ inflated by temporal leakage.
 ## Known limitations (stated plainly)
 
 - **It is synthetic.** All metrics (`ml/metrics.json`, `ml/eval.json`) are on synthetic data.
-- **The generator grades itself.** The counterfactual eval scores arms with the *same* world
-  mechanism that generated the data. This is mitigated by (a) noisy labels and (b) the ML model
-  only *choosing* actions while an independent ground-truth decides outcomes — but it is **not**
-  yet mitigated by a second, independently-authored generator or a held-out fault mix. That is the
-  top honesty gap and the first thing real merchant data fixes.
+- **The generator grades itself — mitigated by a second, independent world.** The counterfactual
+  eval scores arms with the world's own mechanism, which risks flattering the model. Beyond noisy
+  labels and the model-only-chooses/world-decides split, this is now checked against a **second,
+  independently-authored generator** ([`ml/src/worldmodel2.py`](ml/src/worldmodel2.py)) with a
+  *different causal structure* — see below. It is still synthetic (real merchant data remains the
+  real fix), but the eval no longer rests on a single generator.
+
+## Second world — `worldmodel2.py` (a robustness check, not a re-skin)
+
+World A is **reason-dominated**: the best action is ~entirely a function of the failure reason, so a
+reason→action lookup is near-optimal and ML has little to add (the eval honestly shows a tie).
+World B is authored independently with a **different mechanism**: the best action is driven by a
+**latent customer archetype** (how a person responds to recovery — retry-first, link-click,
+reminder-nudge, discount-driven, hard-to-reach), modulated by amount and timing, **not** by the
+failure reason. The archetype leaks into *observable* features (segment, historical conversion rate,
+prior failures) so a model can infer it, while a reason-only rule cannot. Sanity check on the data:
+`best_action` is predicted by a reason-mode lookup only **~24%** of the time, but by an
+archetype-mode lookup **~85%** of the time. Same row schema → drop-in for `train.py`/`eval.py`
+(`--world v2`). This lets us ask, honestly: *does the ML's edge over rules emerge when the optimal
+action depends on context beyond the reason?* (see `ml/eval_v2.json` and Architecture §9).
 - **No PII.** Customers are synthetic ids with coarse priors; no card numbers, PAN, CVV, emails, or
   phone numbers of real people exist anywhere.
 

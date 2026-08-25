@@ -1,4 +1,5 @@
 {
+  "world": "v1",
   "split": "time_ordered_by_day_index (latest ~20% of days)",
   "test_cases": 6000,
   "at_risk_rupees": 47934286.0,
