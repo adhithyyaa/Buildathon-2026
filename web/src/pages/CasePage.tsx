@@ -60,6 +60,7 @@ export function CasePage() {
   const linkAction = [...data.actions].reverse().find((a) => a.paymentLinkUrl);
   const policyEval = [...data.auditLogs].reverse().find((l) => l.step === 'policy_eval');
   const policyOutcome = policyEval?.details?.outcome as string | undefined;
+  const recoveredPaymentId = data.outcome?.notes?.match(/pay_[A-Za-z0-9]+/)?.[0];
 
   return (
     <div className="space-y-5">
@@ -198,7 +199,24 @@ export function CasePage() {
             <Card title="Outcome">
               <div className="text-3xl font-bold text-emerald-300">{formatINR(data.outcome.recoveredAmount)}</div>
               <div className="mt-1 text-sm text-emerald-400/80">Recovered {data.outcome.recoveryMinutes != null ? `in ${data.outcome.recoveryMinutes} min` : ''}</div>
-              {data.outcome.notes && <div className="mt-1 text-xs text-slate-500">{data.outcome.notes}</div>}
+              {data.outcome.notes && (
+                <div className="mt-1 text-xs text-slate-500">
+                  {data.outcome.notes}
+                  {recoveredPaymentId && (
+                    <>
+                      {' · '}
+                      <a
+                        href={`https://dashboard.razorpay.com/app/payments/${recoveredPaymentId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-400/80 hover:text-emerald-300"
+                      >
+                        Verify on Razorpay ↗
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
             </Card>
           ) : (
             <Card title="Outcome">

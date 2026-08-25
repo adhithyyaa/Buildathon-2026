@@ -45,7 +45,7 @@ export interface CaseRow {
   blockedReason: string | null;
   merchant: { name: string };
   customer: { name: string | null; email: string | null; optedOut: boolean } | null;
-  outcome: { status: string; recoveredAmount: number } | null;
+  outcome: { status: string; recoveredAmount: number; notes: string | null } | null;
   event: { method: string | null; failureReason: string | null; channel: string | null; eventType: string; createdAt: string };
 }
 

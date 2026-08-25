@@ -9,6 +9,11 @@ function riskTone(score: number): string {
   return 'bg-slate-500/15 text-slate-300 ring-slate-500/30';
 }
 
+// Real Razorpay captures carry a pay_ id in the outcome notes (e.g. "Recovered via webhook (pay_…)").
+function payRef(notes?: string | null): string | null {
+  return notes?.match(/pay_[A-Za-z0-9]+/)?.[0] ?? null;
+}
+
 export function CaseTable({ cases }: { cases: CaseRow[] }) {
   const nav = useNavigate();
 
@@ -57,6 +62,16 @@ export function CaseTable({ cases }: { cases: CaseRow[] }) {
                   <span className="font-semibold text-emerald-300">{formatINR(c.outcome.recoveredAmount)}</span>
                 ) : (
                   <span className="text-slate-600">—</span>
+                )}
+                {payRef(c.outcome?.notes) && (
+                  <div className="mt-1 flex justify-end">
+                    <span
+                      title="Real Razorpay capture"
+                      className="inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] leading-none text-emerald-300/90 ring-1 ring-inset ring-emerald-500/30 bg-emerald-500/10"
+                    >
+                      {payRef(c.outcome?.notes)}
+                    </span>
+                  </div>
                 )}
               </td>
             </tr>

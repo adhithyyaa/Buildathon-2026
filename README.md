@@ -57,6 +57,25 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
   escalations — off the money path, with template fallback.
 - **Full audit trail.** Every state transition is logged (`before → after`, actor, details).
 
+### Real captured round-trip (not just a self-test)
+
+Beyond the signed self-test above, **two REAL Razorpay test-mode payments** were captured through Razorpay's hosted
+**Checkout + 3DS** flow and recovered real cases via the **production signed-webhook path** — the same code that runs
+in the demo, exercised end-to-end by an actual payment. The captured payments (as fetched back from the Razorpay API)
+are committed at [`server/fixtures/razorpay/live-captures.json`](server/fixtures/razorpay/live-captures.json), with the
+real payment ids `pay_TTxufNdQ8rLAvB` and `pay_TTyBx4OQoIQFkj`.
+
+You can replay that exact round-trip against a local server — **no keys, no tunnel, no dashboard**:
+
+```bash
+# terminal A
+cd server && RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run dev
+# terminal B
+cd server && RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run replay:roundtrip   # → prints "✅ REPLAYED …"
+```
+
+Full write-up: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md).
+
 ## Architecture at a glance
 
 ```

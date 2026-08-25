@@ -109,6 +109,16 @@ Now: open a recovery case → **Open payment link** → pay with a [Razorpay tes
 > RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run selftest:webhook   # terminal B → all green
 > ```
 
+> **Replay the REAL captured round-trip** — two actual Razorpay test-mode payments (`pay_TTxufNdQ8rLAvB`,
+> `pay_TTyBx4OQoIQFkj`, committed at `server/fixtures/razorpay/live-captures.json`) recovered via the signed-webhook
+> path, no keys or tunnel needed:
+> ```bash
+> cd server
+> RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run dev                 # terminal A
+> RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run replay:roundtrip    # terminal B → "✅ REPLAYED …"
+> ```
+> See [`WEBHOOKS.md`](./WEBHOOKS.md) for the full write-up.
+
 ## Troubleshooting
 
 - **Port 8787 in use** → change `PORT` and `PUBLIC_BASE_URL` in `.env`, and the proxy in `web/vite.config.ts`.

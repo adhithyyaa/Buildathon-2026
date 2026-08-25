@@ -46,7 +46,7 @@ function DetailLine({ details }: { details: any }) {
       </ul>
     );
   }
-  const keys = ['action', 'source', 'outcome', 'finalAction', 'paymentLinkUrl', 'recoveredAmountPaise', 'confidence', 'lane', 'probability'];
+  const keys = ['action', 'source', 'paymentRef', 'outcome', 'finalAction', 'paymentLinkUrl', 'recoveredAmountPaise', 'confidence', 'lane', 'probability'];
   const parts = keys.filter((k) => details[k] !== undefined && details[k] !== null).map((k) => `${k}: ${details[k]}`);
   if (!parts.length) return null;
   return <div className="mt-1 text-xs text-slate-500">{parts.join(' · ')}</div>;

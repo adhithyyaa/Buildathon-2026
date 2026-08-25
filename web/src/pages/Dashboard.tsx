@@ -21,6 +21,7 @@ export function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [cases, setCases] = useState<CaseRow[] | null>(null);
   const [filter, setFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const labRef = useRef<RecoveryLabHandle>(null);
@@ -43,6 +44,17 @@ export function Dashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Client-side search over the already-loaded rows; composes with the state tabs above.
+  const loaded = cases ?? [];
+  const q = search.trim().toLowerCase();
+  const shownCases = q
+    ? loaded.filter((c) =>
+        [c.merchant.name, c.customer?.name, c.reasonTag, c.id, c.outcome?.notes].some((f) =>
+          f?.toLowerCase().includes(q),
+        ),
+      )
+    : loaded;
 
   return (
     <div className="space-y-6">
@@ -107,8 +119,24 @@ export function Dashboard() {
         ) : loading && !cases ? (
           <Skeleton rows={6} />
         ) : (
-          <div className="-mx-5 -mb-5">
-            <CaseTable cases={cases ?? []} />
+          <div>
+            <div className="mb-3 flex items-center gap-3">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search cases, merchant, or pay_ id…"
+                className="w-full max-w-sm rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-700"
+              />
+              {loaded.length > 0 && (
+                <span className="whitespace-nowrap text-xs tabular-nums text-slate-500">
+                  {shownCases.length} of {loaded.length}
+                </span>
+              )}
+            </div>
+            <div className="-mx-5 -mb-5">
+              <CaseTable cases={shownCases} />
+            </div>
           </div>
         )}
       </Card>
