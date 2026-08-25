@@ -92,10 +92,14 @@ export async function createOrder(p: CreateOrderParams) {
  * Verify a Razorpay webhook signature: HMAC-SHA256 of the raw request body,
  * keyed by the webhook secret, compared in constant time to the header value.
  */
-export function verifyWebhookSignature(rawBody: Buffer | string, signature: string | undefined): boolean {
-  if (!env.RAZORPAY_WEBHOOK_SECRET || !signature) return false;
+export function verifyWebhookSignature(
+  rawBody: Buffer | string,
+  signature: string | undefined,
+  secret: string | undefined = env.RAZORPAY_WEBHOOK_SECRET,
+): boolean {
+  if (!secret || !signature) return false;
   const expected = crypto
-    .createHmac('sha256', env.RAZORPAY_WEBHOOK_SECRET)
+    .createHmac('sha256', secret)
     .update(rawBody)
     .digest('hex');
   try {

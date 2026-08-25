@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import { ah } from '../lib/asyncHandler';
+import { prisma } from '../lib/prisma';
 import { verifyWebhookSignature } from '../integrations/razorpay';
 import { normalizeRazorpayPaymentFailed } from '../ingestion/normalize';
 import { ingestEvent } from '../ingestion/ingest';
@@ -36,6 +37,20 @@ webhookRouter.post(
     }
 
     const event = String(payload.event ?? '');
+
+    // Idempotency: Razorpay retries webhooks for 24h with NO ordering guarantee, so the same
+    // delivery can arrive many times and out of order. De-duplicate on x-razorpay-event-id —
+    // insert-then-catch on the unique PK means a re-delivery is an ack-only no-op.
+    const eventId = req.header('x-razorpay-event-id');
+    if (eventId) {
+      try {
+        await prisma.processedWebhook.create({ data: { eventId, eventType: event } });
+      } catch {
+        logger.info('webhook.duplicate', { eventId, event });
+        res.json({ ok: true, deduped: true });
+        return;
+      }
+    }
 
     if (event === 'payment.failed') {
       const normalized = normalizeRazorpayPaymentFailed(payload);

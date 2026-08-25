@@ -112,6 +112,10 @@ demoRouter.post(
 demoRouter.post(
   '/reset',
   ah(async (_req, res) => {
+    // ML tables first: Prediction has a FK to Case, so it must go before cases.
+    await prisma.prediction.deleteMany({});
+    await prisma.anomalyFlag.deleteMany({});
+    await prisma.modelRun.deleteMany({});
     await prisma.auditLog.deleteMany({});
     await prisma.action.deleteMany({});
     await prisma.decision.deleteMany({});
