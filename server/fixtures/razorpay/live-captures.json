@@ -1,0 +1,54 @@
+{
+  "note": "Real Razorpay TEST-MODE captures. Orders were created via the Razorpay API and paid through Razorpay's real hosted Checkout + 3DS with a domestic test card; the payments below are genuinely CAPTURED (fetched from the Razorpay API, not simulated). Use replayRoundtrip.ts to re-prove that a captured payment recovers a case through the production signed-webhook path — no Razorpay keys required.",
+  "recorded_via": "GET /v1/orders/{id} and GET /v1/payments/{id}",
+  "roundtrips": [
+    {
+      "orderId": "order_TTxoVnj9XbGeWl",
+      "paymentId": "pay_TTxufNdQ8rLAvB",
+      "order": {
+        "id": "order_TTxoVnj9XbGeWl",
+        "amount": 100,
+        "amount_paid": 100,
+        "currency": "INR",
+        "status": "paid",
+        "receipt": "recoup_live_1787652416978",
+        "created_at": 1787652417
+      },
+      "payment": {
+        "id": "pay_TTxufNdQ8rLAvB",
+        "order_id": "order_TTxoVnj9XbGeWl",
+        "amount": 100,
+        "currency": "INR",
+        "status": "captured",
+        "method": "card",
+        "captured": true,
+        "card_id": "card_TTxufY5HXWv9PS",
+        "created_at": 1787652767
+      }
+    },
+    {
+      "orderId": "order_TTyAIJ8ouaVN1v",
+      "paymentId": "pay_TTyBx4OQoIQFkj",
+      "order": {
+        "id": "order_TTyAIJ8ouaVN1v",
+        "amount": 100,
+        "amount_paid": 100,
+        "currency": "INR",
+        "status": "paid",
+        "receipt": "recoup_live_1787653654158",
+        "created_at": 1787653654
+      },
+      "payment": {
+        "id": "pay_TTyBx4OQoIQFkj",
+        "order_id": "order_TTyAIJ8ouaVN1v",
+        "amount": 100,
+        "currency": "INR",
+        "status": "captured",
+        "method": "card",
+        "captured": true,
+        "card_id": "card_TTyBxKV9NgGJoW",
+        "created_at": 1787653749
+      }
+    }
+  ]
+}

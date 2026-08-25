@@ -18,7 +18,8 @@
     "db:seed": "tsx src/seed/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "db:local": "tsx src/scripts/localdb.ts",
-    "selftest:webhook": "tsx src/scripts/webhookSelftest.ts"
+    "selftest:webhook": "tsx src/scripts/webhookSelftest.ts",
+  "replay:roundtrip": "tsx src/scripts/replayRoundtrip.ts"
   },
   "prisma": {
     "seed": "tsx src/seed/seed.ts"

@@ -171,9 +171,10 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
   current retry count (now the customer's historical failed count), `urgency_score` and `past_recovery_rate` were
   computed differently at serve than in training (now mirror `worldmodel.py`), and the windowed anomaly detector queried
   1-hour counts against a 4-hour-trained baseline (now aligned). **Money-path correctness:** the webhook idempotency row
-  now commits *after* processing (a crash no longer loses the event); the scheduler takes a Postgres advisory lock so
-  overlapping ticks can't double-fire retries; the kill switch is DB-backed so the separate worker process actually
-  observes it; and `/approve` no longer books fictional recovery on a hand-off case.
+  now commits *after* processing (a crash no longer loses the event); the scheduler single-flights via an atomic
+  conditional-UPDATE lease on a `Setting` row (with a TTL, so a crashed tick self-heals) so overlapping ticks can't
+  double-fire retries; the kill switch is DB-backed so the separate worker process actually observes it; and `/approve`
+  no longer books fictional recovery on a hand-off case.
 - **Trade-off:** Some remaining gaps are documented, not yet built — owned openly as the production roadmap. *(Follow-up:
   a bearer-token guard (`RECOUP_ADMIN_TOKEN`) now protects the operator/destructive endpoints — enforced when set,
   open for the zero-config demo — and the metrics endpoint was moved to SQL-side aggregation (groupBy/aggregate) so it

@@ -74,6 +74,30 @@ and the API is reachable — otherwise it prints a clear `SKIP`.
 > agree. It is **not** a Razorpay-issued credential and grants no access to anything. In
 > production, use the secret the Razorpay dashboard generates when you register the webhook.
 
+## Real captured payments — recorded proof, replayable without keys
+
+The self-test proves the *plumbing*; these are **real captured rupees**. Two test-mode orders were
+created via the Razorpay API and paid through Razorpay's **real hosted Checkout + 3DS** with a
+domestic card, then **captured** — verified by fetching the Razorpay API (`status: "captured"`).
+The captures are recorded as evidence in
+[`server/fixtures/razorpay/live-captures.json`](../server/fixtures/razorpay/live-captures.json):
+
+| order | payment | status |
+|---|---|---|
+| `order_TTxoVnj9XbGeWl` | `pay_TTxufNdQ8rLAvB` | captured (₹1, card) |
+| `order_TTyAIJ8ouaVN1v` | `pay_TTyBx4OQoIQFkj` | captured (₹1, card) |
+
+Replay it — a real captured payment recovers a case through the production webhook path, **no
+Razorpay keys required** (the fixture holds the real, already-captured payment):
+
+```bash
+cd server
+RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run dev            # terminal A
+RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run replay:roundtrip   # terminal B → all green
+```
+
+The fixture was recorded with `src/scripts/recordProof.ts` (`GET /v1/orders/{id}` + `GET /v1/payments/{id}`).
+
 ## Wire a real Razorpay webhook
 
 1. Expose the local API to the internet with a tunnel:
