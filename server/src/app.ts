@@ -11,6 +11,7 @@ import { metricsRouter } from './routes/metrics';
 import { demoRouter } from './routes/demo';
 import { aiRouter } from './routes/ai';
 import { mlRouter } from './routes/ml';
+import { adminRouter } from './routes/admin';
 
 export function createApp() {
   const app = express();
@@ -44,6 +45,7 @@ export function createApp() {
   app.use('/api/demo', demoRouter);
   app.use('/api/ai', aiRouter);
   app.use('/api/ml', mlRouter);
+  app.use('/api/admin', adminRouter);
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     const message = toMessage(err);

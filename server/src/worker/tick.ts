@@ -3,6 +3,9 @@ import { logger } from '../lib/logger';
 import { transition } from '../domain/state';
 import { logAudit } from '../domain/audit';
 import { markRecovered, markExpired } from '../domain/recovery';
+import { retrySucceeds } from '../domain/world';
+import { detectFailureSpikes } from '../domain/incidents';
+import { isPaused } from '../domain/killswitch';
 import { runCase } from '../pipeline/runCase';
 import { toMessage } from '../lib/errors';
 
@@ -29,6 +32,15 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
   let reQueued = 0;
   let expired = 0;
 
+  // Refresh live failure-spike awareness so retries can be deferred during an incident.
+  await detectFailureSpikes(now).catch((e) => logger.warn('tick.spike_detect_failed', { error: toMessage(e) }));
+
+  // Kill switch: stop firing retries entirely while a human has paused the system.
+  if (isPaused()) {
+    logger.warn('worker.tick.paused', { reason: 'kill switch engaged' });
+    return { dueRetries: 0, recovered: 0, reQueued: 0, expired: 0 };
+  }
+
   const dueWhere: Record<string, unknown> = {
     state: 'waiting_for_outcome',
     assignedAction: { in: ['smart_retry', 'no_action'] },
@@ -46,14 +58,15 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
       continue;
     }
 
-    // smart_retry: simulate whether the retried payment succeeds.
-    const p = c.recoveryProbability ?? 0.4;
-    if (Math.random() < p) {
+    // smart_retry: the INDEPENDENT world (a fixed per-reason true rate, NOT the model's own
+    // prediction) decides whether the retried payment succeeds — so recovered-₹ isn't the model
+    // grading itself. Deterministic in (caseId, attempt) for reproducible replays.
+    if (retrySucceeds(c.id, c.reasonTag, c.attempts)) {
       await markRecovered(c.id, { recoveredAmountPaise: c.amount, source: 'retry', paymentRef: 'auto_retry', now });
       recovered++;
     } else {
-      await logAudit({ caseId: c.id, step: 'retry_failed', actor: 'system', details: { probability: p } });
-      await transition(c.id, 'at_risk', { step: 'retry_failed_requeue', actor: 'system', details: { probability: p } });
+      await logAudit({ caseId: c.id, step: 'retry_failed', actor: 'system', details: { attempts: c.attempts } });
+      await transition(c.id, 'at_risk', { step: 'retry_failed_requeue', actor: 'system', details: { attempts: c.attempts } });
       await runCase(c.id, now); // re-decide (will retry until cap, then escalate)
       reQueued++;
     }

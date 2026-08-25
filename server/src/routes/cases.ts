@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { ActionType, Channel } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ah } from '../lib/asyncHandler';
+import { logAudit } from '../domain/audit';
 import { runCase } from '../pipeline/runCase';
+import type { PolicyDecision } from '../domain/policy';
+import type { RecoveryPlan } from '../ai/schemas';
 
 export const casesRouter = Router();
 
@@ -67,21 +71,71 @@ casesRouter.post(
   }),
 );
 
-/** POST /api/cases/:id/approve — a human approves an escalated case; recovers it manually. */
+/**
+ * POST /api/cases/:id/approve — a human approves an escalated case. This ACTUALLY DISPATCHES the
+ * withheld action (sends the real payment link / schedules the retry) via the executor; it does
+ * NOT book fictional recovery. Recovery is still only confirmed later by the signed webhook.
+ * If the withheld action was itself a hand-off (escalate/no_action), the human is resolving it
+ * manually, so we record a human recovery instead.
+ */
 casesRouter.post(
   '/:id/approve',
   ah(async (req, res) => {
+    const { execute } = await import('../domain/executor');
     const { markRecovered } = await import('../domain/recovery');
-    const kase = await prisma.case.findUnique({ where: { id: req.params.id! } });
-    if (!kase) {
-      res.status(404).json({ error: 'not_found' });
-      return;
-    }
-    const updated = await markRecovered(req.params.id!, {
-      recoveredAmountPaise: kase.amount,
-      source: 'human',
-      paymentRef: 'manual_approval',
+    const kase = await prisma.case.findUnique({
+      where: { id: req.params.id! },
+      include: { customer: true, merchant: true, decisions: { orderBy: { createdAt: 'desc' }, take: 1 } },
     });
-    res.json({ case: updated });
+    if (!kase) return void res.status(404).json({ error: 'not_found' });
+    if (kase.state !== 'manual_escalation') return void res.status(409).json({ error: 'not_escalated', state: kase.state });
+    const decision = kase.decisions[0];
+    if (!decision) return void res.status(409).json({ error: 'no_decision_to_approve' });
+
+    const plan = decision.rawOutput as unknown as RecoveryPlan;
+    const approvedAction = (decision.action ?? plan.decision.action) as ActionType;
+    await logAudit({ caseId: kase.id, step: 'human_approved', actor: 'human', details: { action: approvedAction, approver: (req.body?.approver as string) ?? 'operator' } });
+
+    // Nothing to dispatch (the withheld action was a hand-off) → human is resolving manually.
+    if (approvedAction === 'escalate_to_human' || approvedAction === 'no_action') {
+      const updated = await markRecovered(kase.id, { recoveredAmountPaise: kase.amount, source: 'human', paymentRef: 'manual_resolution' });
+      return void res.json({ case: updated, dispatched: null, resolvedManually: true });
+    }
+
+    const policy: PolicyDecision = {
+      outcome: 'approved',
+      finalAction: approvedAction,
+      finalChannel: (decision.channel ?? 'whatsapp') as Channel,
+      finalIncentivePct: decision.incentivePct ?? 0,
+      requiresHumanApproval: false,
+      scheduledFor: decision.suggestedRetryAt ?? null,
+      notes: [`Human approved the escalated action (${approvedAction}); dispatching now.`],
+    };
+    const result = await execute({
+      caseId: kase.id,
+      amountPaise: kase.amount,
+      currency: kase.currency,
+      merchantName: kase.merchant.name,
+      customer: kase.customer ? { name: kase.customer.name, email: kase.customer.email, phone: kase.customer.phone } : null,
+      plan,
+      policy,
+      now: new Date(),
+    });
+    const updated = await prisma.case.findUnique({ where: { id: kase.id } });
+    res.json({ case: updated, dispatched: { action: approvedAction, state: result.finalState, paymentLinkUrl: result.paymentLinkUrl ?? null } });
+  }),
+);
+
+/** POST /api/cases/:id/reject — a human declines to pursue an escalated case; it expires unrecovered. */
+casesRouter.post(
+  '/:id/reject',
+  ah(async (req, res) => {
+    const { transition } = await import('../domain/state');
+    const kase = await prisma.case.findUnique({ where: { id: req.params.id! } });
+    if (!kase) return void res.status(404).json({ error: 'not_found' });
+    if (kase.state !== 'manual_escalation') return void res.status(409).json({ error: 'not_escalated', state: kase.state });
+    const reason = (req.body?.reason as string) ?? 'human declined to pursue';
+    const updated = await transition(kase.id, 'expired', { step: 'human_rejected', actor: 'human', details: { reason } });
+    res.json({ case: updated, rejected: true });
   }),
 );

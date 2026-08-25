@@ -7,6 +7,7 @@ import { applyDiscountPaise } from '../lib/money';
 import { logger } from '../lib/logger';
 import { toMessage } from '../lib/errors';
 import { createPaymentLink } from '../integrations/razorpay';
+import { isPaused } from './killswitch';
 import type { RecoveryPlan } from '../ai/schemas';
 import type { PolicyDecision } from './policy';
 
@@ -37,6 +38,13 @@ export interface ExecuteResult {
  */
 export async function execute(input: ExecuteInput): Promise<ExecuteResult> {
   const { caseId, policy } = input;
+
+  // Global kill switch: a human has stopped all automated action. Record the intended
+  // action but dispatch nothing, and hold the case for review.
+  if (isPaused()) {
+    input.policy.notes.push('Kill switch engaged; no action dispatched (held for human review).');
+    return recordTerminalAction(input, 'no_action', 'blocked', 'manual_escalation', 'kill_switch_hold');
+  }
 
   if (policy.outcome === 'blocked') {
     return recordTerminalAction(input, 'no_action', 'blocked', 'manual_escalation', 'policy_block');

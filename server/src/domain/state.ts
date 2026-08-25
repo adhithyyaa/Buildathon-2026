@@ -14,7 +14,7 @@ export const TRANSITIONS: Record<CaseState, CaseState[]> = {
   action_selected: ['action_dispatched', 'manual_escalation'],
   action_dispatched: ['waiting_for_outcome'],
   waiting_for_outcome: ['recovered', 'expired', 'at_risk', 'manual_escalation'],
-  manual_escalation: ['recovered', 'expired'],
+  manual_escalation: ['recovered', 'expired', 'action_dispatched'], // human can approve → dispatch the withheld action
   recovered: [],
   expired: [],
 };

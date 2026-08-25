@@ -91,9 +91,14 @@ export function CasePage() {
             </Button>
           )}
           {data.state === 'manual_escalation' && (
-            <Button variant="primary" disabled={busy} onClick={() => act(() => api.approveCase(id))}>
-              {busy ? 'Approving…' : 'Approve & recover'}
-            </Button>
+            <>
+              <Button variant="primary" disabled={busy} onClick={() => act(() => api.approveCase(id))}>
+                {busy ? 'Dispatching…' : 'Approve & dispatch'}
+              </Button>
+              <Button variant="ghost" disabled={busy} onClick={() => act(() => api.rejectCase(id))}>
+                {busy ? '…' : 'Reject'}
+              </Button>
+            </>
           )}
           {linkAction?.paymentLinkUrl && data.state !== 'recovered' && (
             <Button onClick={() => window.open(linkAction.paymentLinkUrl!, '_blank')}>Open payment link ↗</Button>
@@ -110,8 +115,8 @@ export function CasePage() {
         {/* Left: the decision story */}
         <div className="space-y-5 lg:col-span-2">
           <Card
-            title="AI decision"
-            right={decision ? <Pill tone={decision.usedFallback ? 'slate' : 'sky'}>{decision.usedFallback ? 'Deterministic fallback' : `Claude · ${decision.model}`}</Pill> : null}
+            title="Recovery decision"
+            right={decision ? <Pill tone={decision.usedFallback ? 'slate' : 'sky'}>{decision.usedFallback ? 'Deterministic fallback' : decision.model}</Pill> : null}
           >
             {!decision ? (
               <p className="text-sm text-slate-500">Not analyzed yet. Run the pipeline to generate a decision.</p>
@@ -124,7 +129,7 @@ export function CasePage() {
                       <div className="h-1.5 w-24 rounded-full bg-slate-800">
                         <div className="h-1.5 rounded-full bg-sky-400" style={{ width: `${Math.round((decision.confidence ?? 0) * 100)}%` }} />
                       </div>
-                      <span className="text-xs text-slate-400">{Math.round((decision.confidence ?? 0) * 100)}% confidence</span>
+                      <span className="text-xs text-slate-400">{Math.round((decision.confidence ?? 0) * 100)}% action confidence</span>
                     </div>
                   )}
                   {decision.requiresHumanApproval && <Pill tone="amber">Needs human approval</Pill>}
