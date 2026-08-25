@@ -1,0 +1,257 @@
+{
+  "purpose": "cross-world transfer of FROZEN models between two independently designed synthetic worlds \u2014 the defense against 'every number is on a world you wrote': signal that survives on a world the model never saw is generalization, not memorized world quirks",
+  "method": {
+    "frozen": "models are loaded from the source world's artifacts and never retrained or refit",
+    "recovery_metric": "ROC-AUC + Brier of the frozen recovery head on the ENTIRE target dataset (all rows unseen)",
+    "action_value_metric": "incremental net rupees of the frozen action head vs the deterministic rules baseline, graded by the target world's ground-truth value function on its time-ordered held-out split",
+    "bootstrap": {
+      "draws": 1000,
+      "auc_ci_seed": 42,
+      "value_ci_seed": 123,
+      "resampling": "cases (rows), matching train.py / eval.py"
+    },
+    "determinism": "fixed seeds everywhere; no wall-clock enters any number"
+  },
+  "datasets": {
+    "A": {
+      "path": "ml/data/train.csv",
+      "generator": "ml/src/worldmodel.py",
+      "rows": 30000,
+      "recovered_rate": 0.3147,
+      "default_seed": 7,
+      "provenance": "pre-existing CSV (assumed generated with the module default seed 7; regenerate deterministically via `python ml/src/worldmodel.py --out ml/data/train.csv`)"
+    },
+    "B": {
+      "path": "ml/data/train_v2.csv",
+      "generator": "ml/src/worldmodel2.py",
+      "rows": 30000,
+      "recovered_rate": 0.3911,
+      "default_seed": 11,
+      "provenance": "pre-existing CSV (assumed generated with the module default seed 11; regenerate deterministically via `python ml/src/worldmodel2.py --out ml/data/train_v2.csv`)"
+    }
+  },
+  "directions": {
+    "A_to_B": {
+      "direction": "A->B",
+      "frozen_artifacts": "ml/artifacts",
+      "frozen_model_version": {
+        "recovery": "20260825-0942",
+        "action": "20260825-0942"
+      },
+      "target_dataset": "ml/data/train_v2.csv",
+      "target_ground_truth": "worldmodel2.success_prob",
+      "n_rows": 30000,
+      "unseen_note": "every target-world row is unseen by the frozen source-world models: the worlds are separate generators with different seeds and different causal mechanisms, and nothing is retrained here",
+      "recovery": {
+        "scored": "P(recover | case, logged action_taken) vs realized `recovered`, on ALL target rows",
+        "n_rows_scored": 30000,
+        "auc": 0.6834,
+        "auc_ci95": [
+          0.677,
+          0.6892
+        ],
+        "brier": 0.2302,
+        "pr_auc": 0.557,
+        "logreg_auc": 0.6962,
+        "logreg_auc_ci95": [
+          0.6902,
+          0.7024
+        ],
+        "catboost_vs_logreg_transfer": {
+          "diff_median": -0.0129,
+          "ci": [
+            -0.0164,
+            -0.0093
+          ],
+          "significant": true
+        },
+        "in_world_ceiling_auc": 0.8018,
+        "in_world_ceiling_note": "the target world's OWN calibrated primary scored on the same rows \u2014 PARTIALLY IN-SAMPLE (it trained on the earliest ~80% of them), so this is ceiling-only context, not a fair head-to-head",
+        "base_rate_note": "Brier depends on the target world's base rate and the frozen calibration; compare within a direction, not across worlds",
+        "in_world_heldout_auc_at_train_time": {
+          "auc": 0.7522,
+          "auc_ci95": [
+            0.7397,
+            0.7642
+          ],
+          "note": "the target world's own model on its own time-ordered held-out split (from train.py's metrics.json) \u2014 the fair in-world number"
+        }
+      },
+      "action_value": {
+        "eval_split": "time-ordered latest ~20% of target days \u2014 identical split, ground truth and bootstrap seed as the in-world eval.py run, so these numbers are directly comparable with eval.json / eval_v2.json; every case is still unseen by the frozen model",
+        "n_cases": 6000,
+        "policy": "frozen source-world CatBoost action head, argmax over pursuit actions, deployed hard-decline guard applied (eval.apply_policy_guard)",
+        "frozen_vs_rules": {
+          "net_rupees_total": 15624.41,
+          "total_ci95": [
+            -72255.54,
+            96441.58
+          ],
+          "net_rupees_per_case": 2.6,
+          "per_case_ci95": [
+            -12.04,
+            16.07
+          ],
+          "incremental_paise_mean": 260.4,
+          "significant": false
+        },
+        "frozen_vs_no_action": {
+          "net_rupees_total": 9276350.53,
+          "total_ci95": [
+            8784168.09,
+            9750338.17
+          ],
+          "net_rupees_per_case": 1546.06,
+          "per_case_ci95": [
+            1464.03,
+            1625.06
+          ],
+          "incremental_paise_mean": 154605.8,
+          "significant": true
+        },
+        "in_world_vs_rules": {
+          "net_rupees_total": 5487010.53,
+          "total_ci95": [
+            5101560.92,
+            5842827.25
+          ],
+          "net_rupees_per_case": 914.5,
+          "per_case_ci95": [
+            850.26,
+            973.8
+          ],
+          "incremental_paise_mean": 91450.2,
+          "significant": true,
+          "note": "context: the TARGET world's own action head on the same cases \u2014 matches eval_v2.json incremental_lift_primary.vs_rules_only"
+        },
+        "arm_net_rupees": {
+          "no_action": 4780036.34,
+          "rules_only": 14040762.46,
+          "frozen_head": 14056386.87,
+          "in_world_head": 19527772.99,
+          "oracle": 22591746.84
+        },
+        "frozen_action_mix": {
+          "no_action": 20,
+          "offer_incentive": 780,
+          "send_payment_link": 2359,
+          "send_reminder": 197,
+          "smart_retry": 2644
+        },
+        "rules_baseline_note": "deterministic error-reason triage (eval.rules_only_action); every arm is graded by the TARGET world's ground-truth success_prob \u2014 models only CHOOSE actions, they never grade themselves",
+        "units": "rupees (paise = rupees x 100)"
+      }
+    },
+    "B_to_A": {
+      "direction": "B->A",
+      "frozen_artifacts": "ml/artifacts_v2",
+      "frozen_model_version": {
+        "recovery": "20260825-0442",
+        "action": "20260825-0442"
+      },
+      "target_dataset": "ml/data/train.csv",
+      "target_ground_truth": "worldmodel.success_prob",
+      "n_rows": 30000,
+      "unseen_note": "every target-world row is unseen by the frozen source-world models: the worlds are separate generators with different seeds and different causal mechanisms, and nothing is retrained here",
+      "recovery": {
+        "scored": "P(recover | case, logged action_taken) vs realized `recovered`, on ALL target rows",
+        "n_rows_scored": 30000,
+        "auc": 0.6787,
+        "auc_ci95": [
+          0.6726,
+          0.6852
+        ],
+        "brier": 0.1991,
+        "pr_auc": 0.4943,
+        "logreg_auc": 0.7231,
+        "logreg_auc_ci95": [
+          0.7174,
+          0.7289
+        ],
+        "catboost_vs_logreg_transfer": {
+          "diff_median": -0.0447,
+          "ci": [
+            -0.0496,
+            -0.0396
+          ],
+          "significant": true
+        },
+        "in_world_ceiling_auc": 0.8015,
+        "in_world_ceiling_note": "the target world's OWN calibrated primary scored on the same rows \u2014 PARTIALLY IN-SAMPLE (it trained on the earliest ~80% of them), so this is ceiling-only context, not a fair head-to-head",
+        "base_rate_note": "Brier depends on the target world's base rate and the frozen calibration; compare within a direction, not across worlds",
+        "in_world_heldout_auc_at_train_time": {
+          "auc": 0.7511,
+          "auc_ci95": [
+            0.7387,
+            0.7647
+          ],
+          "note": "the target world's own model on its own time-ordered held-out split (from train.py's metrics.json) \u2014 the fair in-world number"
+        }
+      },
+      "action_value": {
+        "eval_split": "time-ordered latest ~20% of target days \u2014 identical split, ground truth and bootstrap seed as the in-world eval.py run, so these numbers are directly comparable with eval.json / eval_v2.json; every case is still unseen by the frozen model",
+        "n_cases": 6000,
+        "policy": "frozen source-world CatBoost action head, argmax over pursuit actions, deployed hard-decline guard applied (eval.apply_policy_guard)",
+        "frozen_vs_rules": {
+          "net_rupees_total": -3569830.33,
+          "total_ci95": [
+            -3821371.97,
+            -3338043.94
+          ],
+          "net_rupees_per_case": -594.97,
+          "per_case_ci95": [
+            -636.9,
+            -556.34
+          ],
+          "incremental_paise_mean": -59497.2,
+          "significant": true
+        },
+        "frozen_vs_no_action": {
+          "net_rupees_total": 11726380.04,
+          "total_ci95": [
+            11195582.07,
+            12268116.58
+          ],
+          "net_rupees_per_case": 1954.4,
+          "per_case_ci95": [
+            1865.93,
+            2044.69
+          ],
+          "incremental_paise_mean": 195439.7,
+          "significant": true
+        },
+        "in_world_vs_rules": {
+          "net_rupees_total": -10144.8,
+          "total_ci95": [
+            -22775.65,
+            2518.23
+          ],
+          "net_rupees_per_case": -1.69,
+          "per_case_ci95": [
+            -3.8,
+            0.42
+          ],
+          "incremental_paise_mean": -169.1,
+          "significant": false,
+          "note": "context: the TARGET world's own action head on the same cases \u2014 matches eval.json incremental_lift_primary.vs_rules_only"
+        },
+        "arm_net_rupees": {
+          "no_action": 3073866.28,
+          "rules_only": 18370076.65,
+          "frozen_head": 14800246.32,
+          "in_world_head": 18359931.85,
+          "oracle": 18530573.12
+        },
+        "frozen_action_mix": {
+          "no_action": 53,
+          "offer_incentive": 2880,
+          "send_payment_link": 2051,
+          "send_reminder": 281,
+          "smart_retry": 735
+        },
+        "rules_baseline_note": "deterministic error-reason triage (eval.rules_only_action); every arm is graded by the TARGET world's ground-truth success_prob \u2014 models only CHOOSE actions, they never grade themselves",
+        "units": "rupees (paise = rupees x 100)"
+      }
+    }
+  }
+}

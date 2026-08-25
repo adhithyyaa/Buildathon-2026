@@ -50,6 +50,11 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
   so it's justified on *calibration + native categoricals*, not a headline gap). Action head ≈ **70%** accuracy on
   *deliberately noisy* labels (≈**84%** agreement with the EV-optimal action) — a real learning problem, stated as such.
   Failure-spike detection ≈ **87.5%**. Metrics are on synthetic data, and we say so.
+- **Cross-world transfer** ([`ml/transfer.json`](ml/transfer.json)). A recovery model trained on one synthetic world and
+  **frozen** still ranks the *independently designed* other world's recoveries at ROC-AUC ≈ **0.68 in both directions**
+  (chance 0.50, in-world ceiling ≈ 0.80) — while the action-policy edge does **not** transfer (rules-parity A→B, below
+  rules B→A). Shared payment-recovery structure generalizes; world-specific policy does not — both results ship
+  unfiltered (`python ml/src/transfer.py`).
 - **Real Razorpay test-mode** Orders + Payment Links + Webhooks. Pay a recovery link with a test card → a **signed**
   webhook flips the case to `recovered` and the recovered-₹ counter moves. Ships with an all-green **signed self-test**
   (`npm run selftest:webhook`) — see [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md).

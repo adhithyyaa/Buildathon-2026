@@ -58,6 +58,8 @@ jobs:
           python ml/src/worldmodel2.py --out ml/data/train_v2.csv
           python ml/src/train.py --data ml/data/train_v2.csv --out ml/artifacts_v2
           python ml/src/eval.py --world v2 --data ml/data/train_v2.csv --art ml/artifacts_v2 --out ml/eval_v2.json
+      - name: cross-world transfer — frozen A<->B models (inference-only, no retraining)
+        run: python ml/src/transfer.py --out ml/transfer.json
       - uses: actions/upload-artifact@v4
         with:
           name: ml-metrics
@@ -65,3 +67,4 @@ jobs:
             ml/metrics.json
             ml/eval.json
             ml/eval_v2.json
+            ml/transfer.json
