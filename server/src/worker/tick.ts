@@ -32,11 +32,22 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
   let reQueued = 0;
   let expired = 0;
 
+  // Single-flight guard: a Postgres advisory lock ensures only ONE tick runs at a time across
+  // ALL processes (the worker, the demo /tick endpoint, or replicas). Without it, overlapping
+  // ticks would double-fire retries — duplicate payment links and over-incremented attempts.
+  const LOCK = 4271;
+  const lockRows = await prisma.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${LOCK}) AS locked`;
+  if (!lockRows[0]?.locked) {
+    logger.warn('worker.tick.skipped_locked', {});
+    return { dueRetries: 0, recovered: 0, reQueued: 0, expired: 0 };
+  }
+  try {
+
   // Refresh live failure-spike awareness so retries can be deferred during an incident.
   await detectFailureSpikes(now).catch((e) => logger.warn('tick.spike_detect_failed', { error: toMessage(e) }));
 
   // Kill switch: stop firing retries entirely while a human has paused the system.
-  if (isPaused()) {
+  if (await isPaused()) {
     logger.warn('worker.tick.paused', { reason: 'kill switch engaged' });
     return { dueRetries: 0, recovered: 0, reQueued: 0, expired: 0 };
   }
@@ -44,6 +55,7 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
   const dueWhere: Record<string, unknown> = {
     state: 'waiting_for_outcome',
     assignedAction: { in: ['smart_retry', 'no_action'] },
+    arm: 'treatment', // control cases are held out — the Recovery Lab resolves them, not the scheduler
   };
   if (!ff) dueWhere.nextRetryAt = { lte: now };
 
@@ -86,4 +98,7 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
 
   logger.info('worker.tick', { due: due.length, recovered, reQueued, expired, fastForward: ff });
   return { dueRetries: due.length, recovered, reQueued, expired };
+  } finally {
+    await prisma.$queryRaw`SELECT pg_advisory_unlock(${LOCK})`;
+  }
 }

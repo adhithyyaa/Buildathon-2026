@@ -12,8 +12,11 @@ import { mlAnomalyWindow } from '../ml/client';
  *                           reason that is spiking right now (a bank/UPI outage) instead of
  *                           adding to the storm.
  */
-const DETECT_WINDOW_MIN = 60; // count failures over the last hour
-const ACTIVE_WINDOW_MIN = 30; // a flag counts as an active incident for this long
+// MUST equal the training window (worldmodel.py buckets failures into 4-hour windows; the
+// IsolationForest baseline mean/std are over 4h counts). Counting a shorter window would
+// deflate the live z-scores and the detector would under-fire.
+const DETECT_WINDOW_MIN = 240; // 4-hour window, matching train-time bucketing
+const ACTIVE_WINDOW_MIN = 60; // a flag counts as an active incident for this long
 
 export async function detectFailureSpikes(now: Date = new Date()): Promise<{ anomaly: boolean; reasons: string[] }> {
   const since = new Date(now.getTime() - DETECT_WINDOW_MIN * 60_000);

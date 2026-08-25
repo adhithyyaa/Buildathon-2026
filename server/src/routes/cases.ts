@@ -75,14 +75,13 @@ casesRouter.post(
  * POST /api/cases/:id/approve — a human approves an escalated case. This ACTUALLY DISPATCHES the
  * withheld action (sends the real payment link / schedules the retry) via the executor; it does
  * NOT book fictional recovery. Recovery is still only confirmed later by the signed webhook.
- * If the withheld action was itself a hand-off (escalate/no_action), the human is resolving it
- * manually, so we record a human recovery instead.
+ * If the withheld action was itself a hand-off (escalate/no_action) there is nothing to dispatch,
+ * so we acknowledge it and leave the case escalated — we never book recovery without a real capture.
  */
 casesRouter.post(
   '/:id/approve',
   ah(async (req, res) => {
     const { execute } = await import('../domain/executor');
-    const { markRecovered } = await import('../domain/recovery');
     const kase = await prisma.case.findUnique({
       where: { id: req.params.id! },
       include: { customer: true, merchant: true, decisions: { orderBy: { createdAt: 'desc' }, take: 1 } },
@@ -96,10 +95,11 @@ casesRouter.post(
     const approvedAction = (decision.action ?? plan.decision.action) as ActionType;
     await logAudit({ caseId: kase.id, step: 'human_approved', actor: 'human', details: { action: approvedAction, approver: (req.body?.approver as string) ?? 'operator' } });
 
-    // Nothing to dispatch (the withheld action was a hand-off) → human is resolving manually.
+    // Nothing to dispatch (the withheld action was a hand-off). We do NOT book fictional recovery —
+    // there was no payment. Record the acknowledgement and leave the case escalated for the human to
+    // resolve out-of-band; a real payment.captured webhook is what flips it to recovered.
     if (approvedAction === 'escalate_to_human' || approvedAction === 'no_action') {
-      const updated = await markRecovered(kase.id, { recoveredAmountPaise: kase.amount, source: 'human', paymentRef: 'manual_resolution' });
-      return void res.json({ case: updated, dispatched: null, resolvedManually: true });
+      return void res.json({ case: kase, dispatched: null, note: 'acknowledged; no automated action to dispatch — resolve manually (recovery is only booked on a real capture)' });
     }
 
     const policy: PolicyDecision = {

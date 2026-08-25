@@ -148,6 +148,9 @@ model Case {
   recommendedLane     String?
   // decisioning
   assignedAction      ActionType?
+  // Recovery Lab holdout arm: "treatment" gets ML+policy recovery; "control" is a held-out
+  // no-action arm so we can measure INCREMENTAL recovered-₹ (treatment − control), not gross.
+  arm                 String      @default("treatment")
   amount              Int // paise (denormalized from event for fast queries)
   currency            String      @default("INR")
   attempts            Int         @default(0)
@@ -266,6 +269,14 @@ model AnomalyFlag {
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/// Durable key/value settings — e.g. the kill switch, so it is shared across the API and the
+/// separate worker process (an in-memory flag would only pause the process that set it).
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 /// Webhook idempotency ledger — one row per Razorpay `x-razorpay-event-id` we have

@@ -7,18 +7,18 @@ import { logger } from '../lib/logger';
 export const adminRouter = Router();
 
 adminRouter.get('/status', ah(async (_req, res) => {
-  res.json(killSwitchStatus());
+  res.json(await killSwitchStatus());
 }));
 
 adminRouter.post('/pause', ah(async (req, res) => {
   const reason = (req.body?.reason as string) ?? 'manual pause';
-  engageKillSwitch(reason);
+  await engageKillSwitch(reason);
   logger.warn('admin.kill_switch.engaged', { reason });
-  res.json(killSwitchStatus());
+  res.json(await killSwitchStatus());
 }));
 
 adminRouter.post('/resume', ah(async (_req, res) => {
-  releaseKillSwitch();
+  await releaseKillSwitch();
   logger.warn('admin.kill_switch.released', {});
-  res.json(killSwitchStatus());
+  res.json(await killSwitchStatus());
 }));

@@ -41,7 +41,7 @@ export async function execute(input: ExecuteInput): Promise<ExecuteResult> {
 
   // Global kill switch: a human has stopped all automated action. Record the intended
   // action but dispatch nothing, and hold the case for review.
-  if (isPaused()) {
+  if (await isPaused()) {
     input.policy.notes.push('Kill switch engaged; no action dispatched (held for human review).');
     return recordTerminalAction(input, 'no_action', 'blocked', 'manual_escalation', 'kill_switch_hold');
   }
