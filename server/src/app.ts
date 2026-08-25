@@ -13,6 +13,7 @@ import { aiRouter } from './routes/ai';
 import { mlRouter } from './routes/ml';
 import { adminRouter } from './routes/admin';
 import { labRouter } from './routes/lab';
+import { requireToken } from './lib/auth';
 
 export function createApp() {
   const app = express();
@@ -43,11 +44,11 @@ export function createApp() {
   app.use('/api/cases', casesRouter);
   app.use('/api/events', eventsRouter);
   app.use('/api/metrics', metricsRouter);
-  app.use('/api/demo', demoRouter);
+  app.use('/api/demo', requireToken, demoRouter); // seed/process/reset/tick all mutate — guard them
   app.use('/api/ai', aiRouter);
   app.use('/api/ml', mlRouter);
-  app.use('/api/admin', adminRouter);
-  app.use('/api/lab', labRouter);
+  app.use('/api/admin', requireToken, adminRouter); // kill switch — operator-only
+  app.use('/api/lab', labRouter); // GET is open; POST /resolve is guarded inside the router
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     const message = toMessage(err);

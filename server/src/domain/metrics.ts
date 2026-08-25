@@ -35,82 +35,75 @@ export interface Metrics {
 
 const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
 
-/** Compute batch-level recovery metrics. In-memory aggregation (demo scale). */
+/** Compute batch-level recovery metrics with SQL-side aggregation (no whole-table loads). */
 export async function computeMetrics(merchantId?: string): Promise<Metrics> {
   const caseWhere = merchantId ? { merchantId } : {};
-  const [cases, decisions, actions] = await Promise.all([
-    prisma.case.findMany({ where: caseWhere, include: { outcome: true } }),
-    prisma.decision.findMany({
-      where: merchantId ? { case: { merchantId } } : {},
-      select: { valid: true, usedFallback: true, model: true, latencyMs: true },
-    }),
-    prisma.action.findMany({
-      where: merchantId ? { case: { merchantId } } : {},
-      select: { status: true },
-    }),
-  ]);
+  const scoped = merchantId ? { case: { merchantId } } : {};
 
-  const total = cases.length;
-  const grossAtRiskPaise = cases.reduce((s, c) => s + c.amount, 0);
+  const [byStateRows, byReasonRows, byActionRows, recoveredAgg, decByFallback, decLatency, actByStatus] =
+    await Promise.all([
+      prisma.case.groupBy({ by: ['state'], where: caseWhere, _count: { _all: true }, _sum: { amount: true } }),
+      prisma.case.groupBy({ by: ['reasonTag'], where: caseWhere, _count: { _all: true } }),
+      prisma.case.groupBy({ by: ['assignedAction'], where: caseWhere, _count: { _all: true } }),
+      prisma.outcome.aggregate({ where: { status: 'recovered', ...scoped }, _count: { _all: true }, _sum: { recoveredAmount: true }, _avg: { recoveryMinutes: true } }),
+      prisma.decision.groupBy({ by: ['usedFallback'], where: scoped, _count: { _all: true } }),
+      prisma.decision.aggregate({ where: { ...scoped, usedFallback: false, latencyMs: { gt: 0 } }, _avg: { latencyMs: true }, _count: { _all: true } }),
+      prisma.action.groupBy({ by: ['status'], where: scoped, _count: { _all: true } }),
+    ]);
 
-  const recovered = cases.filter((c) => c.state === 'recovered');
-  const recoveredPaise = recovered.reduce((s, c) => s + (c.outcome?.recoveredAmount ?? 0), 0);
-
+  const IN_PROGRESS = new Set<string>([...ACTIVE_STATES, 'manual_escalation']);
   const byState: Record<string, number> = {};
-  const byReason: Record<string, number> = {};
-  const byAction: Record<string, number> = {};
-  for (const c of cases) {
-    byState[c.state] = (byState[c.state] ?? 0) + 1;
-    const r = c.reasonTag ?? 'unknown';
-    byReason[r] = (byReason[r] ?? 0) + 1;
-    const a = c.assignedAction ?? 'none';
-    byAction[a] = (byAction[a] ?? 0) + 1;
+  let total = 0;
+  let grossAtRiskPaise = 0;
+  let inProgressPaise = 0;
+  let lostPaise = 0;
+  for (const r of byStateRows) {
+    byState[r.state] = r._count._all;
+    total += r._count._all;
+    const amt = r._sum.amount ?? 0;
+    grossAtRiskPaise += amt;
+    if (IN_PROGRESS.has(r.state)) inProgressPaise += amt;
+    if (r.state === 'expired') lostPaise += amt;
   }
+  const byReason: Record<string, number> = {};
+  for (const r of byReasonRows) byReason[r.reasonTag ?? 'unknown'] = r._count._all;
+  const byAction: Record<string, number> = {};
+  for (const r of byActionRows) byAction[r.assignedAction ?? 'none'] = r._count._all;
 
-  const recoveryMins = recovered
-    .map((c) => c.outcome?.recoveryMinutes)
-    .filter((m): m is number => typeof m === 'number');
-  const avgTimeToRecoveryMin = recoveryMins.length
-    ? Math.round(recoveryMins.reduce((s, m) => s + m, 0) / recoveryMins.length)
-    : null;
+  const recoveredCount = recoveredAgg._count._all;
+  const recoveredPaise = recoveredAgg._sum.recoveredAmount ?? 0;
+  const avgTimeToRecoveryMin = recoveredAgg._avg.recoveryMinutes != null ? Math.round(recoveredAgg._avg.recoveryMinutes) : null;
 
-  // Decision source: how many decisions the ML model served vs. the deterministic fallback.
-  const mlServed = decisions.filter((d) => !d.usedFallback).length;
-  const fallbackCount = decisions.filter((d) => d.usedFallback).length;
-  const latencies = decisions
-    .filter((d) => !d.usedFallback)
-    .map((d) => d.latencyMs)
-    .filter((n): n is number => typeof n === 'number' && n > 0);
+  const activeCount = ACTIVE_STATES.reduce((s, st) => s + (byState[st] ?? 0), 0);
 
-  const blockedActionCount = actions.filter((a) => a.status === 'blocked').length;
-  const terminalActions = actions.filter((a) => a.status === 'succeeded' || a.status === 'failed');
-  const succeeded = actions.filter((a) => a.status === 'succeeded').length;
+  const mlServed = decByFallback.find((d) => d.usedFallback === false)?._count._all ?? 0;
+  const fallbackCount = decByFallback.find((d) => d.usedFallback === true)?._count._all ?? 0;
+  const decisionsTotal = mlServed + fallbackCount;
+  const avgLatencyMs = decLatency._count._all ? Math.round(decLatency._avg.latencyMs ?? 0) : null;
+
+  const statusCount = (s: string) => actByStatus.find((a) => a.status === s)?._count._all ?? 0;
+  const succeeded = statusCount('succeeded');
+  const terminal = succeeded + statusCount('failed');
 
   return {
     totalCases: total,
     grossAtRiskPaise,
-    recoveredCount: recovered.length,
+    recoveredCount,
     recoveredPaise,
-    recoveryRatePct: pct(recovered.length, total),
-    activeCount: cases.filter((c) => ACTIVE_STATES.includes(c.state)).length,
+    recoveryRatePct: pct(recoveredCount, total),
+    activeCount,
     escalatedCount: byState['manual_escalation'] ?? 0,
     expiredCount: byState['expired'] ?? 0,
-    blockedActionCount,
-    actionSuccessRatePct: terminalActions.length ? pct(succeeded, terminalActions.length) : null,
+    blockedActionCount: statusCount('blocked'),
+    actionSuccessRatePct: terminal ? pct(succeeded, terminal) : null,
     avgTimeToRecoveryMin,
-    impact: {
-      recoveredPaise,
-      inProgressPaise: cases
-        .filter((c) => ACTIVE_STATES.includes(c.state) || c.state === 'manual_escalation')
-        .reduce((s, c) => s + c.amount, 0),
-      lostPaise: cases.filter((c) => c.state === 'expired').reduce((s, c) => s + c.amount, 0),
-    },
+    impact: { recoveredPaise, inProgressPaise, lostPaise },
     ml: {
-      decisions: decisions.length,
+      decisions: decisionsTotal,
       mlServed,
       fallbackCount,
-      mlServedRatePct: decisions.length ? pct(mlServed, decisions.length) : null,
-      avgLatencyMs: latencies.length ? Math.round(latencies.reduce((s, n) => s + n, 0) / latencies.length) : null,
+      mlServedRatePct: decisionsTotal ? pct(mlServed, decisionsTotal) : null,
+      avgLatencyMs,
     },
     byState,
     byReason,

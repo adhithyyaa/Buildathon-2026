@@ -18,6 +18,10 @@ const EnvSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
+  // Bearer token guarding operator/destructive endpoints (pause, reset, dispatch, approve…).
+  // If unset, those endpoints are OPEN (zero-config demo); set it in production to enforce auth.
+  RECOUP_ADMIN_TOKEN: z.string().optional(),
+
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default('claude-opus-5'),
 

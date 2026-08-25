@@ -174,5 +174,8 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
   now commits *after* processing (a crash no longer loses the event); the scheduler takes a Postgres advisory lock so
   overlapping ticks can't double-fire retries; the kill switch is DB-backed so the separate worker process actually
   observes it; and `/approve` no longer books fictional recovery on a hand-off case.
-- **Trade-off:** Some remaining gaps are documented, not yet built (a real model registry + drift monitoring, endpoint
-  auth, SQL-side aggregation for scale, per-endpoint idempotency outbox) — owned openly as the production roadmap.
+- **Trade-off:** Some remaining gaps are documented, not yet built — owned openly as the production roadmap. *(Follow-up:
+  a bearer-token guard (`RECOUP_ADMIN_TOKEN`) now protects the operator/destructive endpoints — enforced when set,
+  open for the zero-config demo — and the metrics endpoint was moved to SQL-side aggregation (groupBy/aggregate) so it
+  no longer loads whole tables into memory. Still on the roadmap: a real model registry + drift monitoring, a
+  transactional-outbox for per-endpoint idempotency, and order-level out-of-order reconciliation.)*

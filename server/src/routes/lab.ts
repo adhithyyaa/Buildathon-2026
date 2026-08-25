@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ah } from '../lib/asyncHandler';
+import { requireToken } from '../lib/auth';
 import { computeLift, resolveOutcomes } from '../domain/lab';
 
 /** Recovery Lab — live incremental-lift measurement (treatment vs a held-out control arm). */
@@ -11,6 +12,6 @@ labRouter.get('/', ah(async (_req, res) => {
 }));
 
 /** POST /api/lab/resolve — advance the experiment: draw outcomes for pending cases (demo control). */
-labRouter.post('/resolve', ah(async (_req, res) => {
+labRouter.post('/resolve', requireToken, ah(async (_req, res) => {
   res.json(await resolveOutcomes());
 }));

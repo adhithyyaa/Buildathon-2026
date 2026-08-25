@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { ActionType, Channel } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ah } from '../lib/asyncHandler';
+import { requireToken } from '../lib/auth';
 import { logAudit } from '../domain/audit';
 import { runCase } from '../pipeline/runCase';
 import type { PolicyDecision } from '../domain/policy';
@@ -65,6 +66,7 @@ casesRouter.get(
 /** POST /api/cases/:id/run — run the recovery pipeline for one case. */
 casesRouter.post(
   '/:id/run',
+  requireToken,
   ah(async (req, res) => {
     const result = await runCase(req.params.id!);
     res.json(result);
@@ -80,6 +82,7 @@ casesRouter.post(
  */
 casesRouter.post(
   '/:id/approve',
+  requireToken,
   ah(async (req, res) => {
     const { execute } = await import('../domain/executor');
     const kase = await prisma.case.findUnique({
@@ -129,6 +132,7 @@ casesRouter.post(
 /** POST /api/cases/:id/reject — a human declines to pursue an escalated case; it expires unrecovered. */
 casesRouter.post(
   '/:id/reject',
+  requireToken,
   ah(async (req, res) => {
     const { transition } = await import('../domain/state');
     const kase = await prisma.case.findUnique({ where: { id: req.params.id! } });
