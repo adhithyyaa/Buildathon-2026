@@ -1,0 +1,87 @@
+{
+  "split": "time_ordered_by_day_index (latest ~20% of days)",
+  "test_cases": 6000,
+  "at_risk_rupees": 47934286.0,
+  "ground_truth": "worldmodel.success_prob (independent of the ML model \u2014 no self-grading)",
+  "arms": {
+    "no_action": {
+      "net_recovered_rupees": 3060437.96,
+      "gross_recovered_rupees": 3060437.96,
+      "recovery_rate": 0.0638,
+      "action_mix": {
+        "no_action": 6000
+      },
+      "wasted_incentive_rupees": 0.0
+    },
+    "rules_only": {
+      "net_recovered_rupees": 18355711.52,
+      "gross_recovered_rupees": 18363890.52,
+      "recovery_rate": 0.3831,
+      "action_mix": {
+        "send_payment_link": 2225,
+        "send_reminder": 1064,
+        "smart_retry": 2711
+      },
+      "wasted_incentive_rupees": 0.0
+    },
+    "ml_head": {
+      "net_recovered_rupees": 18349608.03,
+      "gross_recovered_rupees": 18358188.53,
+      "recovery_rate": 0.383,
+      "action_mix": {
+        "no_action": 13,
+        "offer_incentive": 807,
+        "send_payment_link": 2246,
+        "send_reminder": 227,
+        "smart_retry": 2707
+      },
+      "wasted_incentive_rupees": 0.0
+    },
+    "ml_ev": {
+      "net_recovered_rupees": 18266328.88,
+      "gross_recovered_rupees": 18274574.38,
+      "recovery_rate": 0.3812,
+      "action_mix": {
+        "no_action": 10,
+        "offer_incentive": 444,
+        "send_payment_link": 2128,
+        "send_reminder": 775,
+        "smart_retry": 2643
+      },
+      "wasted_incentive_rupees": 0.0
+    },
+    "oracle": {
+      "net_recovered_rupees": 18511615.92,
+      "gross_recovered_rupees": 18520422.92,
+      "recovery_rate": 0.3864,
+      "action_mix": {
+        "no_action": 2,
+        "offer_incentive": 740,
+        "send_payment_link": 2059,
+        "send_reminder": 260,
+        "smart_retry": 2939
+      },
+      "wasted_incentive_rupees": 0.0
+    }
+  },
+  "primary_arm": "ml_head",
+  "incremental_lift_primary": {
+    "vs_rules_only": {
+      "net_rupees": -6103.49,
+      "ci95": [
+        -17189.31,
+        3500.96
+      ],
+      "significant": false
+    },
+    "vs_no_action": {
+      "net_rupees": 15289170.07,
+      "ci95": [
+        14652259.65,
+        16050476.77
+      ],
+      "significant": true
+    }
+  },
+  "capture_of_oracle_headroom": 0.9895
+}
