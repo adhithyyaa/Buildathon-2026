@@ -281,17 +281,27 @@ def generate(n_rows: int = 30000, seed: int = 7, days: int = 60) -> pd.DataFrame
         # Ground-truth per-action success probabilities.
         p_by_action = {a: success_prob(row, a) for a in ACTIONS}
 
+        # NOISY per-action outcome probabilities used to LABEL the best action.
+        # Crucially, best_action is derived from these noisy draws — not from the
+        # clean deterministic p_by_action — so the label carries irreducible
+        # uncertainty. The model (which can only see the features, i.e. the clean
+        # expectation) therefore CANNOT hit 100%: it learns the expected-best action
+        # and is genuinely wrong when noise flips which action won. This is what
+        # makes the action/escalation heads a real learning problem, not a lookup.
+        p_noisy = {a: float(np.clip(p_by_action[a] * np.exp(rng.normal(0.0, 0.22)), 0.01, 0.98)) for a in ACTIONS}
+
         # Best action by expected NET value: EV(a) = p * collectable - cost.
         # Incentive collects 95% (5% discount) and costs a send fee; escalation
         # costs human time; no_action is free. This is what makes "reminder"
         # sometimes beat "incentive", and "no_action" correct on tiny orders.
-        def ev(a: str) -> float:
-            collectable = amount * (0.95 if a == "offer_incentive" else 1.0)
-            cost = {"smart_retry": 3.0, "send_payment_link": 6.0, "send_reminder": 4.0,
-                    "offer_incentive": 6.0, "escalate_to_human": 50.0, "no_action": 0.0}[a]
-            return p_by_action[a] * collectable - cost
+        COST = {"smart_retry": 3.0, "send_payment_link": 6.0, "send_reminder": 4.0,
+                "offer_incentive": 6.0, "escalate_to_human": 50.0, "no_action": 0.0}
 
-        best_action = max(ACTIONS, key=ev)
+        def ev(a: str, probs: dict) -> float:
+            collectable = amount * (0.95 if a == "offer_incentive" else 1.0)
+            return probs[a] * collectable - COST[a]
+
+        best_action = max(ACTIONS, key=lambda a: ev(a, p_noisy))
 
         # Behavior policy for the historical log: 70% near-optimal, 30% exploratory.
         if rng.random() < 0.70:
@@ -305,8 +315,10 @@ def generate(n_rows: int = 30000, seed: int = 7, days: int = 60) -> pd.DataFrame
         realized = success_prob(row, taken, rng)
         recovered = int(rng.random() < realized)
 
+        # Escalation label also from the noisy draws (near the 0.35 threshold this
+        # flips stochastically) so the escalation head is not a clean threshold either.
         automated = [a for a in ACTIONS if a not in ("escalate_to_human", "no_action")]
-        automated_recoverable = int(max(p_by_action[a] for a in automated) >= 0.35)
+        automated_recoverable = int(max(p_noisy[a] for a in automated) >= 0.35)
 
         row.update(
             {
