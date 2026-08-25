@@ -35,24 +35,15 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
   // Single-flight guard so only ONE tick runs at a time across ALL processes (the worker, the demo
   // /tick endpoint, replicas) — otherwise overlapping ticks double-fire retries.
   //
-  // We do NOT use a *session* advisory lock: Prisma runs each query on a pooled connection, so a
-  // pg_advisory_lock and its pg_advisory_unlock can land on different connections, leaking the lock.
-  // Instead: a DB lease (a Setting row with an expiry), and a *transaction-scoped* advisory lock that
-  // only serializes the tiny read-modify-write and auto-releases on its own connection at COMMIT. The
-  // lease has a TTL, so if a tick crashes mid-run the next tick reclaims it instead of stalling forever.
-  const LEASE_KEY = 'tick_lease';
+  // We do NOT use a session advisory lock (Prisma pools connections, so lock+unlock can land on
+  // different connections and leak). Instead: a DB LEASE claimed by a single ATOMIC conditional
+  // UPDATE — Postgres row-locks the lease row, so of two concurrent ticks exactly one flips it. The
+  // lease carries a TTL expiry, so a tick that crashes mid-run doesn't wedge the scheduler forever.
   const LEASE_MS = 120_000;
   const nowMs = now.getTime();
-  const acquired = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(4271)`; // serialize the check; released at COMMIT
-    const s = await tx.setting.findUnique({ where: { key: LEASE_KEY } });
-    const until = s ? Number((JSON.parse(s.value) as { until?: number }).until ?? 0) : 0;
-    if (until > nowMs) return false; // another tick holds a live lease
-    const value = JSON.stringify({ until: nowMs + LEASE_MS });
-    await tx.setting.upsert({ where: { key: LEASE_KEY }, create: { key: LEASE_KEY, value }, update: { value } });
-    return true;
-  });
-  if (!acquired) {
+  await prisma.$executeRaw`INSERT INTO "Setting" ("key", "value", "updatedAt") VALUES ('tick_lease', '{"until":0}', now()) ON CONFLICT ("key") DO NOTHING`;
+  const claimed = await prisma.$executeRaw`UPDATE "Setting" SET "value" = ${JSON.stringify({ until: nowMs + LEASE_MS })}, "updatedAt" = now() WHERE "key" = 'tick_lease' AND (("value"::jsonb ->> 'until')::bigint) <= ${nowMs}`;
+  if (claimed === 0) {
     logger.warn('worker.tick.skipped_locked', {});
     return { dueRetries: 0, recovered: 0, reQueued: 0, expired: 0 };
   }
@@ -115,8 +106,8 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
   return { dueRetries: due.length, recovered, reQueued, expired };
   } finally {
     // Release the lease so the next tick can run immediately (rather than waiting out the TTL).
-    await prisma.setting
-      .upsert({ where: { key: LEASE_KEY }, create: { key: LEASE_KEY, value: '{"until":0}' }, update: { value: '{"until":0}' } })
+    await prisma
+      .$executeRaw`UPDATE "Setting" SET "value" = '{"until":0}', "updatedAt" = now() WHERE "key" = 'tick_lease'`
       .catch((e) => logger.warn('tick.lease_release_failed', { error: toMessage(e) }));
   }
 }
