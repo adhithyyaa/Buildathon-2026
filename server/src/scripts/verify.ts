@@ -41,7 +41,7 @@ async function main() {
   console.log('by state           :', JSON.stringify(m.byState));
   console.log('by action          :', JSON.stringify(m.byAction));
   console.log('by reason          :', JSON.stringify(m.byReason));
-  console.log('AI validity        :', m.ai.jsonValidityRatePct, '% over', m.ai.decisions, 'decisions; fallback used', m.ai.fallbackCount);
+  console.log('ML-served rate     :', m.ml.mlServedRatePct, '% (', m.ml.mlServed, 'model /', m.ml.fallbackCount, 'fallback of', m.ml.decisions, 'decisions )');
   console.log('===================');
 }
 

@@ -117,11 +117,12 @@ def predict(inp: CaseInput):
         collectable = order_value * (INCENTIVE_COLLECT if a == "offer_incentive" else 1.0)
         return per_action[a] * collectable - ACTION_COST[a]
 
-    # Action head (CatBoost multiclass) recommendation + confidence.
+    # Action head (CatBoost multiclass) recommendation + its (UNCALIBRATED) softmax
+    # confidence. Note: this softmax is NOT calibrated — the calibrated, trustworthy
+    # number for a case is `recovery_probability` (isotonic-calibrated recovery head).
     proba = M.action.predict_proba(case)[0]
     head_idx = int(np.argmax(proba))
     head_action = M.action_classes[head_idx]
-    head_conf = float(proba[head_idx])
 
     # Restrict to policy-allowed actions if provided, then choose by EV.
     allowed = inp.allowed_actions or ACTIONS
@@ -132,6 +133,10 @@ def predict(inp: CaseInput):
     # otherwise fall back to the EV-optimal allowed action.
     action_class = head_action if head_action in allowed else ev_action
 
+    # Confidence tracks the CHOSEN action (softmax prob of action_class), so it never
+    # describes a rejected head action when the policy set excludes the argmax.
+    action_confidence = float(proba[list(M.action_classes).index(action_class)])
+
     escalation_probability = float(M.escalation.predict_proba(case)[:, 1][0])
 
     # Per-case anomaly score in [0,1] (higher = more unusual).
@@ -139,10 +144,10 @@ def predict(inp: CaseInput):
     anomaly_score = round(_sigmoid(-4.0 * dec), 4)
 
     return {
-        "recovery_probability": round(per_action[action_class], 4),
+        "recovery_probability": round(per_action[action_class], 4),  # isotonic-CALIBRATED
         "action_class": action_class,
-        "calibrated_confidence": round(head_conf, 4),
-        "escalation_probability": round(escalation_probability, 4),
+        "action_confidence": round(action_confidence, 4),  # uncalibrated action-head softmax
+        "escalation_probability": round(escalation_probability, 4),  # sigmoid-CALIBRATED
         "anomaly_score": anomaly_score,
         "reason_tag": payload["failure_reason"],
         "per_action_recovery": {a: round(v, 4) for a, v in per_action.items()},

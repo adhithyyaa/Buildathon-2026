@@ -20,7 +20,7 @@ export interface DecideResult {
   modelVersion: string | null;
   recoveryProbability: number;
   actionClass: ActionType;
-  calibratedConfidence: number | null;
+  actionConfidence: number | null;
   escalationProbability: number | null;
   anomalyScore: number | null;
   reasonTag: ReasonTag;
@@ -56,11 +56,11 @@ export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs): Prom
       decision: {
         action,
         channel,
-        confidence: ml.calibrated_confidence,
+        confidence: ml.action_confidence,
         requires_human_approval: ml.escalation_probability > 0.6,
         retry_delay_hours: action === 'smart_retry' ? retryDelayHours(reasonTag) : 0,
         incentive_pct: action === 'offer_incentive' ? ctx.policy.maxDiscountPct : 0,
-        reason: `ML chose ${action} (confidence ${(ml.calibrated_confidence * 100).toFixed(0)}%, escalation risk ${(ml.escalation_probability * 100).toFixed(0)}%).`,
+        reason: `ML chose ${action} (confidence ${(ml.action_confidence * 100).toFixed(0)}%, escalation risk ${(ml.escalation_probability * 100).toFixed(0)}%).`,
       },
       message: templateMessage({ merchantName: ctx.merchantName, amountPaise: ctx.amountPaise, customerName: ctx.customer?.name }, action),
     };
@@ -72,7 +72,7 @@ export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs): Prom
       modelVersion: ml.model.version,
       recoveryProbability: ml.recovery_probability,
       actionClass: action,
-      calibratedConfidence: ml.calibrated_confidence,
+      actionConfidence: ml.action_confidence,
       escalationProbability: ml.escalation_probability,
       anomalyScore: ml.anomaly_score,
       reasonTag,
@@ -90,7 +90,7 @@ export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs): Prom
     modelVersion: null,
     recoveryProbability: fb.diagnosis.recovery_probability,
     actionClass: fb.decision.action as ActionType,
-    calibratedConfidence: null,
+    actionConfidence: null,
     escalationProbability: null,
     anomalyScore: null,
     reasonTag: fb.diagnosis.reason_category as ReasonTag,

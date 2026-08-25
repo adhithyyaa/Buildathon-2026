@@ -6,7 +6,7 @@ import { toMessage } from '../lib/errors';
 export interface MlPrediction {
   recovery_probability: number;
   action_class: string;
-  calibrated_confidence: number;
+  action_confidence: number;
   escalation_probability: number;
   anomaly_score: number;
   reason_tag: string;

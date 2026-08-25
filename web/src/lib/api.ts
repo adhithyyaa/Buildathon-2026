@@ -17,11 +17,11 @@ export interface Metrics {
     inProgressPaise: number;
     lostPaise: number;
   };
-  ai: {
+  ml: {
     decisions: number;
-    validCount: number;
-    jsonValidityRatePct: number | null;
+    mlServed: number;
     fallbackCount: number;
+    mlServedRatePct: number | null;
     avgLatencyMs: number | null;
   };
   byState: Record<string, number>;
@@ -110,7 +110,7 @@ export interface Prediction {
   modelVersion: string | null;
   recoveryProbability: number;
   actionClass: string;
-  calibratedConfidence: number | null;
+  actionConfidence: number | null;
   escalationProbability: number | null;
   anomalyScore: number | null;
   reasonTag: string | null;
@@ -177,6 +177,9 @@ export interface MlMetrics {
   recovery: Record<string, { roc_auc: number; f1: number; brier: number } | any> & {
     primary: string;
     calibration_curve: Array<{ bin_mid: number; predicted: number; observed: number; count: number }>;
+    auc_ci: Record<string, [number, number]>;
+    catboost_vs_logreg: { diff_median: number; ci: [number, number]; significant: boolean };
+    primary_rationale: string;
   };
   action: {
     catboost: { accuracy: number; f1_macro: number };
@@ -218,6 +221,10 @@ export const api = {
   caseDetail: (id: string) => get<{ case: CaseDetail }>(`/api/cases/${id}`),
   runCase: (id: string) => post(`/api/cases/${id}/run`),
   approveCase: (id: string) => post(`/api/cases/${id}/approve`),
+  rejectCase: (id: string) => post(`/api/cases/${id}/reject`),
+  killSwitch: () => get<{ paused: boolean; reason: string | null; since: string | null }>('/api/admin/status'),
+  pause: (reason?: string) => post<{ paused: boolean }>('/api/admin/pause', { reason }),
+  resume: () => post<{ paused: boolean }>('/api/admin/resume'),
   seed: (count?: number) => post<{ total: number; created: number; deduped: number }>('/api/demo/seed', { count }),
   process: () => post<{ processed: number }>('/api/demo/process'),
   tick: () => post<{ recovered: number; reQueued: number; expired: number }>('/api/demo/tick?fastForward=true'),

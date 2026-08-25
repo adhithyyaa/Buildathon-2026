@@ -20,9 +20,13 @@ export function ModelPanel() {
   ];
   const maxAuc = Math.max(...recovery.map((r) => r.auc));
   const maxImp = Math.max(1, ...m.action.top_features.map((f) => f.importance));
+  const ci = m.recovery.auc_ci?.catboost_calibrated;
+  const vs = m.recovery.catboost_vs_logreg;
+  const evPct = Math.round((m.action.agreement_with_ev_argmax ?? 0) * 100);
+  const accPct = Math.round(m.action.catboost.accuracy * 100);
 
   return (
-    <Card title="Model" right={<Pill tone="sky">v{m.version} · trained on {m.dataset.rows.toLocaleString()} cases</Pill>}>
+    <Card title="Model" right={<Pill tone="sky">v{m.version} · {m.dataset.rows.toLocaleString()} synthetic cases · time-ordered split</Pill>}>
       <div className="grid gap-6 lg:grid-cols-3">
         <div>
           <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Recovery model — ROC-AUC</div>
@@ -39,8 +43,17 @@ export function ModelPanel() {
               </div>
             ))}
           </div>
+          {ci && vs && (
+            <div className="mt-2 text-[11px] leading-relaxed text-slate-500">
+              Primary 95% CI <b className="tabular-nums text-slate-300">[{ci[0].toFixed(3)}–{ci[1].toFixed(3)}]</b>. Edge over
+              logistic reg. <b className="tabular-nums text-slate-300">+{vs.diff_median.toFixed(3)}</b>{' '}
+              ({vs.significant ? 'significant' : 'n.s.'}, but small) — CatBoost is primary for calibration &amp; native
+              categoricals, not the AUC gap.
+            </div>
+          )}
           <div className="mt-3 text-xs text-slate-500">
-            Action accuracy <b className="text-slate-300">{Math.round(m.action.catboost.accuracy * 100)}%</b> · escalation Brier{' '}
+            Action head agrees with EV-optimal action <b className="text-slate-300">{evPct}%</b>
+            <span className="text-slate-600"> (raw accuracy {accPct}% on noisy labels — a real learning task)</span> · escalation Brier{' '}
             <b className="text-slate-300">{m.escalation.catboost_calibrated.brier}</b>
           </div>
         </div>

@@ -16,8 +16,8 @@ export function MLPanel({ prediction }: { prediction: Prediction | null }) {
       right={<Pill tone={isML ? 'sky' : 'slate'}>{isML ? prediction.model : 'deterministic fallback'}</Pill>}
     >
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Metric label="Recovery probability" value={pct(prediction.recoveryProbability)} tone="emerald" bar={prediction.recoveryProbability} />
-        <Metric label="Confidence (calibrated)" value={pct(prediction.calibratedConfidence)} tone="sky" bar={prediction.calibratedConfidence ?? 0} />
+        <Metric label="Recovery probability (calibrated)" value={pct(prediction.recoveryProbability)} tone="emerald" bar={prediction.recoveryProbability} />
+        <Metric label="Action confidence" value={pct(prediction.actionConfidence)} tone="sky" bar={prediction.actionConfidence ?? 0} />
         <Metric label="Escalation risk" value={pct(prediction.escalationProbability)} tone="amber" bar={prediction.escalationProbability ?? 0} />
         <Metric label="Anomaly score" value={pct(anom)} tone={anom && anom > 0.6 ? 'rose' : 'slate'} bar={anom ?? 0} />
       </div>

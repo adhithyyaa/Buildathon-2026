@@ -28,7 +28,7 @@ async function loadInput(id: string): Promise<CaseNarrateInput | null> {
     method: kase.event.method,
     action: kase.assignedAction ?? p?.actionClass ?? 'no_action',
     recoveryProbability: p?.recoveryProbability ?? kase.recoveryProbability,
-    confidence: p?.calibratedConfidence ?? null,
+    confidence: p?.actionConfidence ?? null,
     escalation: p?.escalationProbability ?? null,
     anomaly: p?.anomalyScore ?? null,
     perAction: (p?.perAction as Record<string, number> | null) ?? null,

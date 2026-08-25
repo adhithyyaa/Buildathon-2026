@@ -20,11 +20,12 @@ export interface Metrics {
     inProgressPaise: number;
     lostPaise: number;
   };
-  ai: {
-    decisions: number;
-    validCount: number;
-    jsonValidityRatePct: number | null;
-    fallbackCount: number;
+  // Decision source: how often the ML model served the decision vs. the deterministic fallback.
+  ml: {
+    decisions: number;            // total decisions recorded
+    mlServed: number;             // decided by the ML model
+    fallbackCount: number;        // deterministic fallback (ML service unreachable)
+    mlServedRatePct: number | null;
     avgLatencyMs: number | null;
   };
   byState: Record<string, number>;
@@ -73,10 +74,13 @@ export async function computeMetrics(merchantId?: string): Promise<Metrics> {
     ? Math.round(recoveryMins.reduce((s, m) => s + m, 0) / recoveryMins.length)
     : null;
 
-  // AI reliability (only over decisions where the AI was actually attempted).
-  const aiDecisions = decisions.filter((d) => d.model !== 'deterministic-fallback');
-  const aiValid = aiDecisions.filter((d) => d.valid).length;
-  const latencies = aiDecisions.map((d) => d.latencyMs).filter((n): n is number => typeof n === 'number' && n > 0);
+  // Decision source: how many decisions the ML model served vs. the deterministic fallback.
+  const mlServed = decisions.filter((d) => !d.usedFallback).length;
+  const fallbackCount = decisions.filter((d) => d.usedFallback).length;
+  const latencies = decisions
+    .filter((d) => !d.usedFallback)
+    .map((d) => d.latencyMs)
+    .filter((n): n is number => typeof n === 'number' && n > 0);
 
   const blockedActionCount = actions.filter((a) => a.status === 'blocked').length;
   const terminalActions = actions.filter((a) => a.status === 'succeeded' || a.status === 'failed');
@@ -101,11 +105,11 @@ export async function computeMetrics(merchantId?: string): Promise<Metrics> {
         .reduce((s, c) => s + c.amount, 0),
       lostPaise: cases.filter((c) => c.state === 'expired').reduce((s, c) => s + c.amount, 0),
     },
-    ai: {
-      decisions: aiDecisions.length,
-      validCount: aiValid,
-      jsonValidityRatePct: aiDecisions.length ? pct(aiValid, aiDecisions.length) : null,
-      fallbackCount: decisions.filter((d) => d.usedFallback).length,
+    ml: {
+      decisions: decisions.length,
+      mlServed,
+      fallbackCount,
+      mlServedRatePct: decisions.length ? pct(mlServed, decisions.length) : null,
       avgLatencyMs: latencies.length ? Math.round(latencies.reduce((s, n) => s + n, 0) / latencies.length) : null,
     },
     byState,

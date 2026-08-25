@@ -55,7 +55,7 @@ export function Dashboard() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <MiniStat label="Escalated to human" value={metrics?.escalatedCount ?? '—'} />
         <MiniStat label="Blocked by policy" value={metrics?.blockedActionCount ?? '—'} />
-        <MiniStat label="AI JSON validity" value={pctText(metrics?.ai.jsonValidityRatePct ?? null)} sub={metrics ? `${metrics.ai.decisions} AI calls · ${metrics.ai.fallbackCount} fallbacks` : ''} />
+        <MiniStat label="ML-served rate" value={pctText(metrics?.ml.mlServedRatePct ?? null)} sub={metrics ? `${metrics.ml.mlServed} model · ${metrics.ml.fallbackCount} fallback` : ''} />
         <MiniStat label="Avg time to recover" value={metrics?.avgTimeToRecoveryMin != null ? `${metrics.avgTimeToRecoveryMin}m` : '—'} />
       </div>
 
