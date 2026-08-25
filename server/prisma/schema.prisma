@@ -78,7 +78,7 @@ enum OutcomeStatus {
 
 model Merchant {
   id        String     @id @default(cuid())
-  name      String
+  name      String     @unique // lets ingest upsert atomically instead of find-then-create (race-free)
   createdAt DateTime   @default(now())
   customers Customer[]
   events    Event[]

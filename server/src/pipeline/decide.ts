@@ -37,6 +37,13 @@ function retryDelayHours(reason: string): number {
   return 4;
 }
 
+/** Smallest useful discount, scaled by how unlikely the case is to recover on its own, capped by policy. */
+function incentiveFor(recoveryProbability: number, maxPct: number): number {
+  if (maxPct <= 0) return 0;
+  const scaled = Math.round((1 - Math.max(0, Math.min(1, recoveryProbability))) * maxPct);
+  return Math.max(1, Math.min(maxPct, scaled));
+}
+
 export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs): Promise<DecideResult> {
   const started = Date.now();
   const ml = await mlPredict(buildFeatures(fargs));
@@ -59,7 +66,11 @@ export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs): Prom
         confidence: ml.action_confidence,
         requires_human_approval: ml.escalation_probability > 0.6,
         retry_delay_hours: action === 'smart_retry' ? retryDelayHours(reasonTag) : 0,
-        incentive_pct: action === 'offer_incentive' ? ctx.policy.maxDiscountPct : 0,
+        // Size the incentive to how much nudging the case actually needs, rather than always
+        // spending the full cap: a customer already likely to recover gets a smaller discount
+        // (less cannibalisation), a marginal one gets more — bounded by the policy cap, which is
+        // now a real ceiling rather than the default. (A discount-elasticity model is the upgrade.)
+        incentive_pct: action === 'offer_incentive' ? incentiveFor(ml.recovery_probability, ctx.policy.maxDiscountPct) : 0,
         reason: `ML chose ${action} (confidence ${(ml.action_confidence * 100).toFixed(0)}%, escalation risk ${(ml.escalation_probability * 100).toFixed(0)}%).`,
       },
       message: templateMessage({ merchantName: ctx.merchantName, amountPaise: ctx.amountPaise, customerName: ctx.customer?.name }, action),

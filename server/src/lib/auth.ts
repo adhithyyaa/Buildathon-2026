@@ -22,8 +22,14 @@ function tokenMatches(provided: string, expected: string): boolean {
 export function requireToken(req: Request, res: Response, next: NextFunction): void {
   const expected = env.RECOUP_ADMIN_TOKEN;
   if (!expected) {
+    // Fail OPEN only in local dev (zero-config demo). Anywhere else, an unset token means the
+    // operator endpoints are locked, not wide open — refusing is the safe default in prod/staging.
+    if (env.NODE_ENV !== 'development') {
+      res.status(503).json({ error: 'operator_auth_unconfigured', message: 'set RECOUP_ADMIN_TOKEN to enable operator endpoints' });
+      return;
+    }
     if (!warned) {
-      logger.warn('auth.disabled', { note: 'RECOUP_ADMIN_TOKEN unset — operator endpoints are UNPROTECTED (dev only)' });
+      logger.warn('auth.disabled', { note: 'RECOUP_ADMIN_TOKEN unset — operator endpoints are open (development only)' });
       warned = true;
     }
     return next();

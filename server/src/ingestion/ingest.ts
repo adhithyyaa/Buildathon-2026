@@ -7,8 +7,8 @@ import type { NormalizedEvent } from './normalize';
 
 async function findOrCreateMerchant(name?: string) {
   const merchantName = name?.trim() || 'Demo Merchant';
-  const existing = await prisma.merchant.findFirst({ where: { name: merchantName } });
-  return existing ?? prisma.merchant.create({ data: { name: merchantName } });
+  // Atomic upsert on the unique name — two concurrent ingests can't create duplicate merchants.
+  return prisma.merchant.upsert({ where: { name: merchantName }, create: { name: merchantName }, update: {} });
 }
 
 async function findOrCreateCustomer(merchantId: string, c: NormalizedEvent['customer']) {

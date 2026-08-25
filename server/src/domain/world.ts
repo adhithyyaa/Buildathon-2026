@@ -29,28 +29,30 @@ function seeded(seed: string): number {
  * The honest, non-simulated measurement lives in ml/eval.py (counterfactual holdout) and in the
  * real signed-webhook path; this function only drives the local live demo.
  */
-// Per-action recovery multiplier: how much an action lifts recovery over the reason's base rate.
-// `no_action` is the natural self-recovery rate (customer pays anyway / bank auto-retries) — the
-// Recovery Lab CONTROL baseline. Actions lift above it; the gap is the incremental effect.
-const ACTION_LIFT: Record<string, number> = {
-  smart_retry: 1.2,
-  send_payment_link: 1.15,
-  send_reminder: 1.0,
-  offer_incentive: 1.25,
-  escalate_to_human: 0.9,
-  no_action: 0.28,
+// A reason × action fit matrix (the same shape as the training world's), NOT a uniform lift with a
+// hardcoded exception. `no_action` is the natural self-recovery rate — the Recovery Lab CONTROL
+// baseline; the gap between an action's fit and no_action is the incremental effect. Some reasons
+// have a genuinely low ceiling (an undiagnosable failure, or a failed-but-debited payment awaiting
+// auto-reversal) where NO action meaningfully beats doing nothing — so the Lab's auto-suppression is
+// a *discovered* property of this matrix, not a value engineered onto one reason.
+const DEFAULT_FIT: Record<string, number> = { smart_retry: 0.9, send_payment_link: 1.0, send_reminder: 0.8, offer_incentive: 1.0, escalate_to_human: 0.7, no_action: 0.25 };
+const REASON_ACTION_FIT: Partial<Record<ReasonTag, Record<string, number>>> = {
+  [ReasonTag.bank_downtime]:        { smart_retry: 1.35, send_payment_link: 0.80, send_reminder: 0.60, offer_incentive: 0.85, escalate_to_human: 0.55, no_action: 0.25 },
+  [ReasonTag.upi_collect_timeout]:  { smart_retry: 1.30, send_payment_link: 0.90, send_reminder: 0.70, offer_incentive: 0.90, escalate_to_human: 0.55, no_action: 0.20 },
+  [ReasonTag.insufficient_funds]:   { smart_retry: 1.15, send_payment_link: 0.90, send_reminder: 0.75, offer_incentive: 1.00, escalate_to_human: 0.55, no_action: 0.20 },
+  [ReasonTag.card_declined]:        { smart_retry: 0.55, send_payment_link: 1.30, send_reminder: 0.80, offer_incentive: 1.15, escalate_to_human: 0.60, no_action: 0.15 },
+  [ReasonTag.expired_card]:         { smart_retry: 0.30, send_payment_link: 1.35, send_reminder: 0.70, offer_incentive: 1.00, escalate_to_human: 0.65, no_action: 0.15 },
+  [ReasonTag.authentication_failed]:{ smart_retry: 0.70, send_payment_link: 1.25, send_reminder: 0.80, offer_incentive: 0.90, escalate_to_human: 0.55, no_action: 0.20 },
+  [ReasonTag.abandoned]:            { smart_retry: 0.40, send_payment_link: 1.00, send_reminder: 1.25, offer_incentive: 1.30, escalate_to_human: 0.45, no_action: 0.25 },
+  [ReasonTag.unknown]:              { smart_retry: 0.34, send_payment_link: 0.36, send_reminder: 0.32, offer_incentive: 0.38, escalate_to_human: 0.55, no_action: 0.30 },
+  [ReasonTag.debited_pending_reversal]: { smart_retry: 0.20, send_payment_link: 0.20, send_reminder: 0.20, offer_incentive: 0.20, escalate_to_human: 0.30, no_action: 0.25 },
 };
 
 /** Ground-truth recovery probability for a (reason, action) — the independent world mechanism. */
 export function recoveryProb(reasonTag: ReasonTag | null, action: string): number {
   const reason = reasonTag ?? ReasonTag.unknown;
-  const base = basePriorRecovery(reason);
-  let lift = ACTION_LIFT[action] ?? 1.0;
-  // "unknown" is a lost cause — you can't recover a failure you can't diagnose, so no recovery
-  // action beats doing nothing. This is exactly what the Recovery Lab is meant to detect and the
-  // closed loop auto-suppresses (stop spending where there is no measurable lift over control).
-  if (reason === ReasonTag.unknown) lift = Math.min(lift, ACTION_LIFT.no_action ?? 0.28);
-  return Math.max(0.01, Math.min(0.95, base * lift));
+  const fit = REASON_ACTION_FIT[reason] ?? DEFAULT_FIT;
+  return Math.max(0.01, Math.min(0.95, basePriorRecovery(reason) * (fit[action] ?? fit.no_action ?? 0.25)));
 }
 
 /** Deterministic Bernoulli outcome draw for (case, action) — reproducible in a replay. */

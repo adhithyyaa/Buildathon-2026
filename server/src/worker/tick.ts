@@ -32,12 +32,27 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
   let reQueued = 0;
   let expired = 0;
 
-  // Single-flight guard: a Postgres advisory lock ensures only ONE tick runs at a time across
-  // ALL processes (the worker, the demo /tick endpoint, or replicas). Without it, overlapping
-  // ticks would double-fire retries — duplicate payment links and over-incremented attempts.
-  const LOCK = 4271;
-  const lockRows = await prisma.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${LOCK}) AS locked`;
-  if (!lockRows[0]?.locked) {
+  // Single-flight guard so only ONE tick runs at a time across ALL processes (the worker, the demo
+  // /tick endpoint, replicas) — otherwise overlapping ticks double-fire retries.
+  //
+  // We do NOT use a *session* advisory lock: Prisma runs each query on a pooled connection, so a
+  // pg_advisory_lock and its pg_advisory_unlock can land on different connections, leaking the lock.
+  // Instead: a DB lease (a Setting row with an expiry), and a *transaction-scoped* advisory lock that
+  // only serializes the tiny read-modify-write and auto-releases on its own connection at COMMIT. The
+  // lease has a TTL, so if a tick crashes mid-run the next tick reclaims it instead of stalling forever.
+  const LEASE_KEY = 'tick_lease';
+  const LEASE_MS = 120_000;
+  const nowMs = now.getTime();
+  const acquired = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(4271)`; // serialize the check; released at COMMIT
+    const s = await tx.setting.findUnique({ where: { key: LEASE_KEY } });
+    const until = s ? Number((JSON.parse(s.value) as { until?: number }).until ?? 0) : 0;
+    if (until > nowMs) return false; // another tick holds a live lease
+    const value = JSON.stringify({ until: nowMs + LEASE_MS });
+    await tx.setting.upsert({ where: { key: LEASE_KEY }, create: { key: LEASE_KEY, value }, update: { value } });
+    return true;
+  });
+  if (!acquired) {
     logger.warn('worker.tick.skipped_locked', {});
     return { dueRetries: 0, recovered: 0, reQueued: 0, expired: 0 };
   }
@@ -99,6 +114,9 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
   logger.info('worker.tick', { due: due.length, recovered, reQueued, expired, fastForward: ff });
   return { dueRetries: due.length, recovered, reQueued, expired };
   } finally {
-    await prisma.$queryRaw`SELECT pg_advisory_unlock(${LOCK})`;
+    // Release the lease so the next tick can run immediately (rather than waiting out the TTL).
+    await prisma.setting
+      .upsert({ where: { key: LEASE_KEY }, create: { key: LEASE_KEY, value: '{"until":0}' }, update: { value: '{"until":0}' } })
+      .catch((e) => logger.warn('tick.lease_release_failed', { error: toMessage(e) }));
   }
 }
