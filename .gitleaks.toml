@@ -1,0 +1,20 @@
+# gitleaks config — scan for committed secrets. Run: gitleaks detect --config .gitleaks.toml
+# Install a pre-commit hook: gitleaks protect --staged --config .gitleaks.toml
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholders and the throwaway local webhook self-test secret are not real secrets."
+paths = [
+  '''\.env\.example$''',
+  '''docs/.*''',
+  '''.*\.md$''',
+]
+regexes = [
+  '''rzp_test_xxx+''',
+  '''sk-ant-xxx+''',
+  '''whsec_xxx+''',
+  '''xxxxxxxx+''',
+  '''whsec_recoup_local_selftest''',   # documented throwaway HMAC key for the offline self-test
+  '''whsec_local_selftest''',
+]

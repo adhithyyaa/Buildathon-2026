@@ -6,13 +6,31 @@ add-ons that light up the "real" paths.
 ## 0. Prerequisites
 
 - Node 20+ and npm
-- (optional) A Razorpay account for test-mode keys, and an Anthropic API key
+- **Python 3.11+** (for the ML decision tier)
+- (optional) A Razorpay account for test-mode keys, and an LLM key (Anthropic or any OpenAI-compatible provider)
 
 ## 1. Install
 
 ```bash
 cd server && npm install
 cd ../web && npm install
+```
+
+### ML tier (the decision models)
+
+The decision is made by tabular models served from a small Python/FastAPI service. Set it up once:
+
+```bash
+cd ml
+python -m venv .venv
+.venv/Scripts/pip install -r requirements.txt   # Windows;  macOS/Linux: .venv/bin/pip install -r requirements.txt
+```
+
+Then (from the repo root) generate data + train — this writes `ml/artifacts/*` and `ml/metrics.json`:
+
+```bash
+ml/.venv/Scripts/python ml/src/worldmodel.py    # 30k-case synthetic "world model"
+ml/.venv/Scripts/python ml/src/train.py         # train + calibrate CatBoost/XGBoost/LogReg + anomaly
 ```
 
 ## 2. Database (zero-setup local Postgres)
@@ -42,22 +60,24 @@ npm run db:seed               # load 120 synthetic cases (optional; the UI can a
 
 | Variable | What it does | Where |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Turns on the real **Claude** decisioner (otherwise deterministic fallback) | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+| `ANTHROPIC_API_KEY` *or* `LLM_API_KEY`/`LLM_BASE_URL` | Turns on the LLM **narrator** (explanations, drafted messages). The **decision is ML** either way; without a key, narration falls back to templates. | [console.anthropic.com](https://console.anthropic.com/settings/keys) or any OpenAI-compatible provider |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Creates **real test-mode payment links** | Razorpay Dashboard → **Test Mode** → Settings → API Keys |
 | `RAZORPAY_WEBHOOK_SECRET` | Verifies inbound webhooks (recovered-money proof) | set when you create the webhook (step 5) |
 
-The API runs on **:8787** (`PORT`), the web app on **:5173**.
+The API runs on **:8787** (`PORT`), the ML service on **:8899**, the web app on **:5173**.
 
 ## 4. Run
 
 ```bash
-cd server && npm run db:local     # terminal 1: database
-cd server && npm run dev          # terminal 2: API on :8787
-cd server && npm run worker       # terminal 3 (optional): retry/expiry worker
-cd web    && npm run dev          # terminal 4: dashboard on http://localhost:5173
+cd server && npm run db:local     # terminal 1: database on :5432
+ml/.venv/Scripts/python -m uvicorn serve:app --app-dir ml/src --port 8899   # terminal 2: ML service on :8899
+cd server && npm run dev          # terminal 3: API on :8787
+cd server && npm run worker       # terminal 4 (optional): retry/expiry worker
+cd web    && npm run dev          # terminal 5: dashboard on http://localhost:5173
 ```
 
-Open http://localhost:5173 → **Seed 120 cases → Run pipeline → Advance retries**.
+Open http://localhost:5173 → **Seed 120 cases → Run pipeline → Advance retries**. The header shows three live
+integrations — **ML** (decision service), **LLM notes** (narrator), and **Razorpay** — so you can see what's wired.
 
 ## 5. Razorpay webhook (for the live recovered-money proof)
 
@@ -81,6 +101,13 @@ Now: open a recovery case → **Open payment link** → pay with a [Razorpay tes
 → the webhook fires → the case flips to **recovered** on the dashboard.
 
 > No tunnel handy? The simulated payment link (`/api/demo/pay/:id`) demonstrates the same flip without Razorpay.
+
+> **Prove the signed-webhook path in one command** (no tunnel, no dashboard) — see [`WEBHOOKS.md`](./WEBHOOKS.md):
+> ```bash
+> cd server
+> RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run dev          # terminal A
+> RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run selftest:webhook   # terminal B → all green
+> ```
 
 ## Troubleshooting
 

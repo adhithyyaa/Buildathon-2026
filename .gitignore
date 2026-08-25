@@ -33,6 +33,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+~$*         # MS Office lock/temp files (e.g. ~$Report.docx)
 
 # Test / coverage
 coverage/
