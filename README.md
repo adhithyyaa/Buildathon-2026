@@ -35,8 +35,8 @@ append-only audit trail — the things none of those products publish. *(Doesn't
 Every recovery tool claims "we recovered ₹X". The number that actually matters — and that neither Razorpay nor the
 vendors publish — is **₹X *more* than would have happened anyway**. Recoup runs an always-on **holdout**: a random 20%
 of cases are a no-action **control** arm, and the dashboard shows the **incremental** recovered ₹ (treatment − control)
-with a **95% bootstrap CI**, sliced per failure reason. In the demo the treatment arm recovers **~48%** vs the control's
-**~16%** — a **+33pp lift, significant**. It doubles as a live A/B / drift signal on the model, and it closes the loop:
+with a **95% bootstrap CI**, sliced per failure reason. In the demo the treatment arm recovers **~48%** vs a much lower
+control — a large, **significant** lift. It doubles as a live A/B / drift signal on the model, and it closes the loop:
 any reason where treatment doesn't beat control is flagged for **auto-suppression** (stop wasting actions there). This
 is the measurement-and-governance layer that turns Razorpay's recovery from "trust us" into "here's the proven, CI-bounded
 incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).

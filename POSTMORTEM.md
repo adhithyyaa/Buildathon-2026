@@ -59,14 +59,14 @@ The numbers moved to where an honest model sits:
 
 | Metric | Before (tautology) | After (noisy labels) |
 |---|---|---|
-| Action-head accuracy | 99.5% | **~70%** (CatBoost 0.7013) |
-| Agreement with EV-optimal action | — | **~84%** (0.8435) |
-| Escalation ROC-AUC | 0.999 | **0.965** (Brier 0.076) |
-| Recovery ROC-AUC (calibrated) | — | **0.764**, 95% CI **[0.752, 0.776]** |
+| Action-head accuracy | 99.5% | **~70%** (CatBoost 0.704) |
+| Agreement with EV-optimal action | — | **~84%** (0.838) |
+| Escalation ROC-AUC | 0.999 | **0.965** (Brier 0.078) |
+| Recovery ROC-AUC (calibrated) | — | **0.751**, 95% CI **[0.739, 0.765]** |
 
 Crucially, the fix also let us tell the truth about model *choice*. A paired-bootstrap test
 (`bootstrap_diff_ci` in `ml/src/train.py`) now **admits** that CatBoost's edge over the logistic-regression
-baseline is only **+0.011** (CI [0.005, 0.018] — excludes zero, but the individual AUC intervals overlap).
+baseline is only **+0.013** (CI [0.006, 0.020] — excludes zero, but the individual AUC intervals overlap).
 So the model card justifies CatBoost on *calibration + native categorical handling*, not a headline AUC gap.
 A 70% number we can defend beats a 99.5% number we can't.
 

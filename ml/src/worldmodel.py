@@ -213,13 +213,17 @@ def generate(n_rows: int = 30000, seed: int = 7, days: int = 60) -> pd.DataFrame
             idx=i,
             prior_payments=int(rng.integers(0, 21)),
             prior_conversions=0,
-            prior_failed=int(rng.integers(0, 5)),
+            prior_failed=0,
             opted_out=bool(rng.random() < 0.08),
         )
         for i in range(4000)
     ]
     for c in customers:
         c.prior_conversions = int(rng.integers(0, c.prior_payments + 1))
+        # prior_failed uses the SAME definition the serving code computes (features.ts:
+        # max(0, priorPayments - priorConversions)) — payments that didn't convert — so the
+        # `prior_failed_attempts` feature has the same meaning at train and serve time (no skew).
+        c.prior_failed = max(0, c.prior_payments - c.prior_conversions)
 
     # Build an event timeline (for incident realism), then sample rows from it.
     reason_w = np.array(REASON_WEIGHTS, dtype=float)

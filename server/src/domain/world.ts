@@ -44,7 +44,11 @@ const REASON_ACTION_FIT: Partial<Record<ReasonTag, Record<string, number>>> = {
   [ReasonTag.expired_card]:         { smart_retry: 0.30, send_payment_link: 1.35, send_reminder: 0.70, offer_incentive: 1.00, escalate_to_human: 0.65, no_action: 0.15 },
   [ReasonTag.authentication_failed]:{ smart_retry: 0.70, send_payment_link: 1.25, send_reminder: 0.80, offer_incentive: 0.90, escalate_to_human: 0.55, no_action: 0.20 },
   [ReasonTag.abandoned]:            { smart_retry: 0.40, send_payment_link: 1.00, send_reminder: 1.25, offer_incentive: 1.30, escalate_to_human: 0.45, no_action: 0.25 },
-  [ReasonTag.unknown]:              { smart_retry: 0.34, send_payment_link: 0.36, send_reminder: 0.32, offer_incentive: 0.38, escalate_to_human: 0.55, no_action: 0.30 },
+  // Undiagnosable failure: acting actively backfires (nudging a customer who was going to pay, or a
+  // risk pattern that contact confirms), so every automated action does WORSE than doing nothing —
+  // a genuine negative-lift row. The Lab discovers this from data (given enough evidence); it is not
+  // a special-cased clamp on the reason.
+  [ReasonTag.unknown]:              { smart_retry: 0.16, send_payment_link: 0.18, send_reminder: 0.15, offer_incentive: 0.18, escalate_to_human: 0.40, no_action: 0.32 },
   [ReasonTag.debited_pending_reversal]: { smart_retry: 0.20, send_payment_link: 0.20, send_reminder: 0.20, offer_incentive: 0.20, escalate_to_human: 0.30, no_action: 0.25 },
 };
 

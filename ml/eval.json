@@ -2,65 +2,65 @@
   "world": "v1",
   "split": "time_ordered_by_day_index (latest ~20% of days)",
   "test_cases": 6000,
-  "at_risk_rupees": 47934286.0,
+  "at_risk_rupees": 48058362.0,
   "ground_truth": "worldmodel.success_prob (independent of the ML model \u2014 no self-grading)",
   "arms": {
     "no_action": {
-      "net_recovered_rupees": 3060437.96,
-      "gross_recovered_rupees": 3060437.96,
-      "recovery_rate": 0.0638,
+      "net_recovered_rupees": 3073866.28,
+      "gross_recovered_rupees": 3073866.28,
+      "recovery_rate": 0.064,
       "action_mix": {
         "no_action": 6000
       },
       "wasted_incentive_rupees": 0.0
     },
     "rules_only": {
-      "net_recovered_rupees": 18355711.52,
-      "gross_recovered_rupees": 18363890.52,
-      "recovery_rate": 0.3831,
+      "net_recovered_rupees": 18370076.65,
+      "gross_recovered_rupees": 18378252.15,
+      "recovery_rate": 0.3824,
       "action_mix": {
-        "send_payment_link": 2225,
-        "send_reminder": 1064,
-        "smart_retry": 2711
+        "send_payment_link": 2227,
+        "send_reminder": 1065,
+        "smart_retry": 2708
       },
       "wasted_incentive_rupees": 0.0
     },
     "ml_head": {
-      "net_recovered_rupees": 18349608.03,
-      "gross_recovered_rupees": 18358188.53,
-      "recovery_rate": 0.383,
+      "net_recovered_rupees": 18359931.85,
+      "gross_recovered_rupees": 18368490.85,
+      "recovery_rate": 0.3822,
       "action_mix": {
-        "no_action": 13,
-        "offer_incentive": 807,
-        "send_payment_link": 2246,
-        "send_reminder": 227,
-        "smart_retry": 2707
+        "no_action": 23,
+        "offer_incentive": 786,
+        "send_payment_link": 2240,
+        "send_reminder": 246,
+        "smart_retry": 2705
       },
       "wasted_incentive_rupees": 0.0
     },
     "ml_ev": {
-      "net_recovered_rupees": 18266328.88,
-      "gross_recovered_rupees": 18274574.38,
-      "recovery_rate": 0.3812,
+      "net_recovered_rupees": 18243732.29,
+      "gross_recovered_rupees": 18252059.29,
+      "recovery_rate": 0.3798,
       "action_mix": {
-        "no_action": 10,
-        "offer_incentive": 444,
-        "send_payment_link": 2128,
-        "send_reminder": 775,
-        "smart_retry": 2643
+        "no_action": 4,
+        "offer_incentive": 714,
+        "send_payment_link": 2177,
+        "send_reminder": 516,
+        "smart_retry": 2589
       },
       "wasted_incentive_rupees": 0.0
     },
     "oracle": {
-      "net_recovered_rupees": 18511615.92,
-      "gross_recovered_rupees": 18520422.92,
-      "recovery_rate": 0.3864,
+      "net_recovered_rupees": 18530573.12,
+      "gross_recovered_rupees": 18539377.62,
+      "recovery_rate": 0.3858,
       "action_mix": {
-        "no_action": 2,
-        "offer_incentive": 740,
-        "send_payment_link": 2059,
-        "send_reminder": 260,
-        "smart_retry": 2939
+        "no_action": 1,
+        "offer_incentive": 736,
+        "send_payment_link": 2078,
+        "send_reminder": 253,
+        "smart_retry": 2932
       },
       "wasted_incentive_rupees": 0.0
     }
@@ -68,21 +68,21 @@
   "primary_arm": "ml_head",
   "incremental_lift_primary": {
     "vs_rules_only": {
-      "net_rupees": -6103.49,
+      "net_rupees": -10144.8,
       "ci95": [
-        -17189.31,
-        3500.96
+        -22775.65,
+        2518.23
       ],
       "significant": false
     },
     "vs_no_action": {
-      "net_rupees": 15289170.07,
+      "net_rupees": 15286065.57,
       "ci95": [
-        14652259.65,
-        16050476.77
+        14618331.7,
+        15976495.38
       ],
       "significant": true
     }
   },
-  "capture_of_oracle_headroom": 0.9895
+  "capture_of_oracle_headroom": 0.989
 }

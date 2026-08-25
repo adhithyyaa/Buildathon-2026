@@ -35,8 +35,8 @@ failure for *this* merchant, stays inside hard guardrails, and shows the recover
 ## 3. What the demo proves in 60 seconds
 
 1. **What revenue is at risk?** — a ranked queue of at-risk cases with a live "at-risk ₹" total.
-2. **What did the model decide, and how sure is it?** — the six ML outputs (recovery probability, chosen action,
-   escalation risk, anomaly score, action confidence, reason) next to the policy checks.
+2. **What did the model decide, and how sure is it?** — the model-service outputs (recovery probability, chosen action,
+   escalation risk, anomaly score, action confidence — five predictions — plus the normalized reason) next to the policy checks.
 3. **What did it actually do?** — a real Razorpay test-mode payment link, a scheduled retry, or a human escalation.
 4. **How much did it recover?** — pay the link with a Razorpay test card → **signed webhook** fires → the case flips to
    `recovered` and the "recovered ₹" counter ticks up. **That round-trip is the thing that's expensive to fake**
@@ -47,17 +47,18 @@ failure for *this* merchant, stays inside hard guardrails, and shows the recover
 This is the question a Razorpay panel will ask first: *"What is the AI actually doing here?"*
 
 **Machine learning owns the decision.** Every at-risk case is scored by a tier of tabular models over a shared
-**21-feature** schema (the recovery head appends the candidate action, so it sees 22 columns). The models produce the
-six outputs the pipeline acts on:
+**21-feature** schema (the recovery head appends the candidate action, so it sees 22 columns). The service returns six
+outputs the pipeline acts on — **five are model predictions; `reason_tag` is a deterministic normalization** (honest
+labelling, so nobody thinks the reason is a trained head):
 
-| Output | Model | Meaning |
+| Output | Source | Meaning |
 |---|---|---|
 | `recovery_probability` | CatBoost → **isotonic-calibrated** | P(this case is recovered) — a *calibrated* probability, safe to threshold and to feed EV math |
 | `action_class` + `per_action_recovery` | CatBoost multiclass | The next-best action, and the modelled recovery odds of each allowed action |
 | `action_confidence` | CatBoost softmax (uncalibrated) | How peaked the action distribution is — a *relative* confidence, **not** a calibrated probability |
 | `escalation_probability` | CatBoost → sigmoid-calibrated | P(this case needs a human) |
 | `anomaly_score` | IsolationForest | How unusual this case is vs. the learned normal |
-| `reason_tag` | CatBoost / taxonomy | The normalized failure reason |
+| `reason_tag` | deterministic taxonomy (not a trained head) | The normalized failure reason, echoed through for convenience |
 
 **The LLM never decides.** It is called only, and only on demand, to:
 
@@ -175,11 +176,10 @@ in on purpose:
 All metrics are on a **time-ordered** held-out split (train on the earlier days, test on the latest ~20% by
 `day_index`), so nothing below is inflated by temporal leakage — see `ml/src/train.py` and `ml/src/eval.py`.
 
-- **Recovery (the number that matters): CatBoost calibrated ROC-AUC ≈ 0.75**, 95% bootstrap CI ≈ [0.735, 0.760].
-  CatBoost's edge over the LogisticRegression baseline is **real but small** (paired-bootstrap median ≈ +0.010, CI
+- **Recovery (the number that matters): CatBoost calibrated ROC-AUC ≈ 0.75**, 95% bootstrap CI ≈ [0.739, 0.765].
+  CatBoost's edge over the LogisticRegression baseline is **real but small** (paired-bootstrap median ≈ +0.013, CI
   excludes 0) — so the model card states plainly that CatBoost is primary for **calibration + native categoricals**,
-  not a headline AUC gap. The reliability curve is plotted predicted-vs-observed. (On a *random* split the AUC reads
-  ≈0.76; the time-ordered split is honestly a hair lower — that gap is the leakage we removed.)
+  not a headline AUC gap. The reliability curve is plotted predicted-vs-observed.
 - **Action head:** raw accuracy ≈ **70%** on *deliberately noisy* labels — i.e. a genuine learning problem, not the
   tautology it would be if labels were the argmax of a clean formula. The meaningful metric is **agreement with the
   EV-optimal action ≈ 84%**; both are shown, with the noisy-label caveat.
@@ -197,10 +197,10 @@ say *when* the ML earns its keep instead of asserting it:
 | Arm (net recovery rate) | World A — reason-dominated (`ml/eval.json`) | World B — context-driven (`ml/eval_v2.json`) |
 |---|---|---|
 | do-nothing | 6.4% | 9.1% |
-| **rules-only** (reason triage) | **38.3%** | **26.8%** |
-| **ML + policy** (deployed) | **38.3%** | **37.3%** |
+| **rules-only** (reason triage) | **38.2%** | **26.8%** |
+| **ML + policy** (deployed) | **38.2%** | **37.3%** |
 | oracle (best action) | 38.6% | 43.1% |
-| **ML lift over rules-only** | **−₹6k · CI crosses 0 · a tie** | **+₹5.49M · CI [5.1M, 5.8M] · significant** |
+| **ML lift over rules-only** | **−₹10k · CI crosses 0 · a tie** | **+₹5.49M · CI [5.1M, 5.8M] · significant** |
 | capture of oracle headroom | ~99% | ~83% |
 
 Read honestly: in **World A** the best action is ~entirely a function of the failure reason, so a rules baseline is
@@ -236,7 +236,7 @@ Each evaluation records which rules passed/failed and a human-readable "why bloc
 
 - **Money is stored as integer paise** everywhere — never floats. (₹1,499.00 → `149900`.)
 - `Event` holds the raw normalized signal; `Case` is the workflow; **`Prediction`** is the append-only record of the
-  six ML outputs per run; `Decision`/`Action`/`Outcome` are the trail of what was chosen, what ran, and what happened;
+  six model-service outputs per run; `Decision`/`Action`/`Outcome` are the trail of what was chosen, what ran, and what happened;
   `AuditLog` records every state transition.
 
 ## 12. Doesn't Razorpay already do recovery? (Agent Studio, the Intelligent Retry Engine, …)
@@ -275,12 +275,13 @@ paid anyway. The number that matters — and that neither Razorpay's agents nor 
 - **Measurement.** `domain/lab.ts` computes, over all resolved cases, `treatment_rate − control_rate` (₹-weighted) with
   a **95% bootstrap CI**, overall and **per failure reason**. That is the true, provable value of the recovery layer —
   and a live **A/B / drift signal** on the model, which fills the "no live shadow eval" production-ML gap. In the demo
-  the treatment arm recovers **~48%** vs the control's **~16%** (a **+33pp lift, significant**, ≈₹5L incremental on a
-  200-case batch).
-- **The efficiency loop.** Any reason where treatment does **not** beat control is wasted effort — the Lab flags it as
-  an **auto-suppress candidate** so the policy can stop acting there until the model improves. This is what makes the
-  layer *make Razorpay more efficient*: it doesn't just recover money, it continuously proves which recovery actions add
-  incremental value and prunes the ones that don't.
+  the treatment arm recovers **~48%** vs a much lower control — a large, **significant** lift.
+- **The efficiency loop.** Any reason where treatment does **not** beat control (with enough evidence) is wasted effort —
+  the policy **auto-suppresses** it (takes no action there) until it re-proves itself via the always-on control. The
+  demo world's outcomes come from a per-reason × action fit matrix (`domain/world.ts`), so which reason has no lift is a
+  **discovered** result: an undiagnosable `unknown` failure, where acting backfires, is found at negative lift and
+  suppressed, while every helping reason keeps running. This is what makes the layer *make Razorpay more efficient*: it
+  continuously proves which recovery actions add incremental value and prunes the ones that don't.
 - **In production** the treatment/control outcomes arrive as real signed `payment.captured` webhooks; in the demo an
   independent world simulates them (`domain/world.ts`), so the eval is never the model grading itself.
 

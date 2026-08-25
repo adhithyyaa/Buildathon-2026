@@ -1,148 +1,148 @@
 {
-  "version": "20260824-1954",
+  "version": "20260825-0942",
   "dataset": {
     "rows": 30000,
     "train": 24000,
     "test": 6000,
-    "recovered_rate": 0.3132,
+    "recovered_rate": 0.3147,
     "split": "time_ordered_by_day_index",
     "synthetic": true
   },
   "recovery": {
     "logistic_regression": {
-      "roc_auc": 0.7374,
-      "pr_auc": 0.5812,
-      "precision": 0.6321,
-      "recall": 0.3577,
-      "f1": 0.4569,
-      "brier": 0.1799
+      "roc_auc": 0.7383,
+      "pr_auc": 0.5841,
+      "precision": 0.6226,
+      "recall": 0.3633,
+      "f1": 0.4589,
+      "brier": 0.1807
     },
     "xgboost": {
-      "roc_auc": 0.7292,
-      "pr_auc": 0.5726,
-      "precision": 0.6227,
-      "recall": 0.3835,
-      "f1": 0.4747,
-      "brier": 0.183
+      "roc_auc": 0.7286,
+      "pr_auc": 0.5752,
+      "precision": 0.606,
+      "recall": 0.3543,
+      "f1": 0.4471,
+      "brier": 0.1844
     },
     "catboost_uncalibrated": {
-      "roc_auc": 0.7488,
-      "pr_auc": 0.5986,
-      "precision": 0.6484,
-      "recall": 0.369,
-      "f1": 0.4703,
-      "brier": 0.1756
+      "roc_auc": 0.7528,
+      "pr_auc": 0.6001,
+      "precision": 0.6486,
+      "recall": 0.3633,
+      "f1": 0.4657,
+      "brier": 0.1763
     },
     "catboost_calibrated": {
-      "roc_auc": 0.7479,
-      "pr_auc": 0.5758,
-      "precision": 0.6391,
-      "recall": 0.3782,
-      "f1": 0.4752,
-      "brier": 0.1767
+      "roc_auc": 0.7511,
+      "pr_auc": 0.5763,
+      "precision": 0.6652,
+      "recall": 0.3287,
+      "f1": 0.44,
+      "brier": 0.1768
     },
     "calibration_curve": [
       {
         "bin_mid": 0.05,
-        "predicted": 0.0602,
-        "observed": 0.0558,
-        "count": 627
+        "predicted": 0.0542,
+        "observed": 0.0583,
+        "count": 686
       },
       {
         "bin_mid": 0.15,
-        "predicted": 0.1435,
-        "observed": 0.1613,
-        "count": 1364
+        "predicted": 0.161,
+        "observed": 0.1522,
+        "count": 1524
       },
       {
         "bin_mid": 0.25,
-        "predicted": 0.2414,
-        "observed": 0.258,
-        "count": 1709
+        "predicted": 0.2616,
+        "observed": 0.2815,
+        "count": 1190
       },
       {
         "bin_mid": 0.35,
-        "predicted": 0.3772,
-        "observed": 0.3092,
-        "count": 346
+        "predicted": 0.3386,
+        "observed": 0.3371,
+        "count": 964
       },
       {
         "bin_mid": 0.45,
-        "predicted": 0.4409,
-        "observed": 0.4133,
-        "count": 854
+        "predicted": 0.4447,
+        "observed": 0.4668,
+        "count": 707
       },
       {
         "bin_mid": 0.55,
-        "predicted": 0.5321,
-        "observed": 0.5,
-        "count": 470
+        "predicted": 0.5872,
+        "observed": 0.5746,
+        "count": 543
       },
       {
         "bin_mid": 0.65,
-        "predicted": 0.6812,
-        "observed": 0.6623,
-        "count": 308
+        "predicted": 0.6787,
+        "observed": 0.719,
+        "count": 121
       },
       {
         "bin_mid": 0.75,
-        "predicted": 0.7541,
-        "observed": 0.7917,
-        "count": 48
+        "predicted": 0.7349,
+        "observed": 1.0,
+        "count": 1
       },
       {
         "bin_mid": 0.85,
-        "predicted": 0.8564,
-        "observed": 0.7921,
-        "count": 202
+        "predicted": 0.8191,
+        "observed": 0.763,
+        "count": 173
       },
       {
         "bin_mid": 0.95,
-        "predicted": 0.9617,
-        "observed": 0.9167,
-        "count": 72
+        "predicted": 0.9488,
+        "observed": 0.9451,
+        "count": 91
       }
     ],
     "primary": "catboost_calibrated",
     "auc_ci": {
       "logistic_regression": [
-        0.7242,
-        0.7503
+        0.725,
+        0.7521
       ],
       "xgboost": [
-        0.7153,
-        0.7421
+        0.7161,
+        0.7431
       ],
       "catboost_calibrated": [
-        0.7347,
-        0.7601
+        0.7387,
+        0.7647
       ]
     },
     "catboost_vs_logreg": {
-      "diff_median": 0.0103,
+      "diff_median": 0.0126,
       "ci": [
-        0.0032,
-        0.0177
+        0.006,
+        0.0196
       ],
       "significant": true
     },
-    "primary_rationale": "CatBoost is deployed for native categorical handling and better calibration; its ROC-AUC edge over logistic regression is small (+0.010 \u2014 the paired-bootstrap CI excludes zero, but the individual AUC intervals overlap), so the choice is justified on those grounds rather than a headline AUC gap."
+    "primary_rationale": "CatBoost is deployed for native categorical handling and better calibration; its ROC-AUC edge over logistic regression is small (+0.013 \u2014 the paired-bootstrap CI excludes zero, but the individual AUC intervals overlap), so the choice is justified on those grounds rather than a headline AUC gap."
   },
   "action": {
     "logistic_regression": {
-      "accuracy": 0.7033,
-      "f1_macro": 0.5699,
-      "f1_weighted": 0.6691
+      "accuracy": 0.7047,
+      "f1_macro": 0.5884,
+      "f1_weighted": 0.6703
     },
     "xgboost": {
-      "accuracy": 0.6848,
-      "f1_macro": 0.5799,
-      "f1_weighted": 0.6578
+      "accuracy": 0.688,
+      "f1_macro": 0.584,
+      "f1_weighted": 0.6615
     },
     "catboost": {
-      "accuracy": 0.6967,
-      "f1_macro": 0.5673,
-      "f1_weighted": 0.6636
+      "accuracy": 0.704,
+      "f1_macro": 0.5927,
+      "f1_weighted": 0.6733
     },
     "primary": "catboost",
     "classes": [
@@ -156,68 +156,68 @@
     "top_features": [
       {
         "feature": "failure_reason",
-        "importance": 37.05
+        "importance": 33.15
       },
       {
         "feature": "opt_out_flag",
-        "importance": 10.37
+        "importance": 12.85
       },
       {
         "feature": "order_value",
-        "importance": 6.48
+        "importance": 6.69
       },
       {
         "feature": "amount",
-        "importance": 6.18
-      },
-      {
-        "feature": "historical_conversion_rate",
-        "importance": 6.1
-      },
-      {
-        "feature": "urgency_score",
-        "importance": 4.05
-      },
-      {
-        "feature": "hour_of_day",
-        "importance": 3.88
+        "importance": 5.78
       },
       {
         "feature": "channel",
-        "importance": 3.74
+        "importance": 5.56
       },
       {
-        "feature": "day_of_week",
-        "importance": 3.08
+        "feature": "historical_conversion_rate",
+        "importance": 5.02
+      },
+      {
+        "feature": "urgency_score",
+        "importance": 3.69
+      },
+      {
+        "feature": "hour_of_day",
+        "importance": 3.57
       },
       {
         "feature": "payment_method",
-        "importance": 2.65
+        "importance": 2.73
       },
       {
         "feature": "prior_failed_attempts",
-        "importance": 2.55
+        "importance": 2.71
       },
       {
-        "feature": "time_since_failure_min",
-        "importance": 2.39
+        "feature": "day_of_week",
+        "importance": 2.65
+      },
+      {
+        "feature": "last_action_outcome",
+        "importance": 2.52
       }
     ],
-    "agreement_with_ev_argmax": 0.8447
+    "agreement_with_ev_argmax": 0.838
   },
   "escalation": {
     "catboost_calibrated": {
-      "roc_auc": 0.9663,
-      "pr_auc": 0.9531,
-      "precision": 0.8753,
-      "recall": 0.8756,
-      "f1": 0.8754,
-      "brier": 0.0734
+      "roc_auc": 0.9646,
+      "pr_auc": 0.9506,
+      "precision": 0.8699,
+      "recall": 0.8642,
+      "f1": 0.867,
+      "brier": 0.0776
     }
   },
   "anomaly": {
     "case": {
-      "flagged_rate_test": 0.0177,
+      "flagged_rate_test": 0.0207,
       "score_note": "anomaly_score = sigmoid(-4*decision_function); >0.5 ~ anomalous"
     },
     "window": {
@@ -227,25 +227,25 @@
       "incident_detection_rate": 0.875,
       "baseline_mean": {
         "abandoned": 14.61,
-        "authentication_failed": 9.03,
-        "bank_downtime": 10.64,
-        "card_declined": 12.74,
-        "expired_card": 4.99,
-        "insufficient_funds": 10.53,
-        "unknown": 4.05,
+        "authentication_failed": 9.04,
+        "bank_downtime": 10.61,
+        "card_declined": 12.76,
+        "expired_card": 4.97,
+        "insufficient_funds": 10.54,
+        "unknown": 4.04,
         "upi_collect_timeout": 16.76
       },
       "baseline_std": {
-        "abandoned": 9.3,
-        "authentication_failed": 5.91,
-        "bank_downtime": 9.47,
-        "card_declined": 9.99,
-        "expired_card": 3.82,
-        "insufficient_funds": 7.1,
-        "unknown": 3.08,
-        "upi_collect_timeout": 12.39
+        "abandoned": 9.28,
+        "authentication_failed": 5.92,
+        "bank_downtime": 9.45,
+        "card_declined": 10.03,
+        "expired_card": 3.81,
+        "insufficient_funds": 7.09,
+        "unknown": 3.07,
+        "upi_collect_timeout": 12.37
       }
     }
   },
-  "train_seconds": 537.2
+  "train_seconds": 183.2
 }
