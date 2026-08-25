@@ -88,6 +88,18 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
     details: { riskScore: scores.riskScore, urgencyScore: scores.urgencyScore, recoveryPrior: scores.recoveryPrior, lane: scores.recommendedLane },
   });
 
+  // Recovery Lab CONTROL arm: this case is a held-out control — the ML takes NO recovery
+  // action, so we can later measure how much the treatment arm recovers OVER this baseline
+  // (incremental lift, not gross). Score it, hold it, and observe its natural outcome.
+  if (kase.arm === 'control') {
+    await prisma.case.update({ where: { id: caseId }, data: { assignedAction: 'no_action' } });
+    await transition(caseId, 'action_selected', { step: 'control_holdout', actor: 'system', details: { arm: 'control', note: 'held-out control — no recovery action taken' } });
+    await transition(caseId, 'action_dispatched', { step: 'control_holdout', actor: 'system', details: { arm: 'control' } });
+    await transition(caseId, 'waiting_for_outcome', { step: 'awaiting_outcome', actor: 'system' });
+    logger.info('pipeline.control', { caseId });
+    return { caseId, ranPipeline: true, action: 'no_action', outcome: 'control', finalState: 'waiting_for_outcome', source: 'fallback' };
+  }
+
   // 2. ML decision (CatBoost) — or deterministic fallback if the ML service is down.
   const ctx: DecisionContext = {
     merchantName: kase.merchant.name,

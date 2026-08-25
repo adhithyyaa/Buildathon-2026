@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, type CaseRow, type Metrics } from '../lib/api';
 import { formatINR, pctText, titleCase } from '../lib/format';
 import { pipelineBuckets, ACTOR_FILL } from '../lib/stages';
@@ -6,6 +6,7 @@ import { Card, Stat, Button, cx } from '../components/ui';
 import { DemoControls } from '../components/DemoControls';
 import { CaseTable } from '../components/CaseTable';
 import { ModelPanel } from '../components/ModelPanel';
+import { RecoveryLab, type RecoveryLabHandle } from '../components/RecoveryLab';
 
 const FILTERS: Array<{ key: string; label: string }> = [
   { key: '', label: 'All' },
@@ -22,6 +23,7 @@ export function Dashboard() {
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const labRef = useRef<RecoveryLabHandle>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -30,6 +32,7 @@ export function Dashboard() {
       const [m, c] = await Promise.all([api.metrics(), api.cases({ state: filter || undefined, limit: 200 })]);
       setMetrics(m);
       setCases(c.cases);
+      labRef.current?.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -60,6 +63,9 @@ export function Dashboard() {
       </div>
 
       {metrics && <RecoveryImpact m={metrics} />}
+
+      {/* The standout: live incremental-lift measurement vs a held-out control. */}
+      <RecoveryLab ref={labRef} />
 
       {metrics && <PipelineFlow byState={metrics.byState} />}
 

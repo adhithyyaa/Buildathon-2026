@@ -36,13 +36,17 @@ export function DemoControls({ onChanged }: { onChanged: () => void }) {
         <Button onClick={() => run('tick', () => api.tick())} disabled={!!busy}>
           {busy === 'tick' ? 'Advancing…' : 'Advance retries'}
         </Button>
+        <Button variant="primary" onClick={() => run('resolve', () => api.labResolve())} disabled={!!busy}>
+          {busy === 'resolve' ? 'Resolving…' : 'Resolve outcomes'}
+        </Button>
         <Button variant="danger" onClick={() => run('reset', () => api.reset())} disabled={!!busy}>
           Reset
         </Button>
       </div>
       <p className="mt-3 text-xs text-slate-500">
-        Seed loads a reproducible synthetic batch. Run pipeline scores, diagnoses, decides and executes every at-risk
-        case. Advance retries fast-forwards the scheduler so smart-retry cases resolve.
+        Seed loads a reproducible synthetic batch. Run pipeline scores, decides and executes every at-risk case (a 20%
+        control arm is held out with no action). Resolve outcomes draws each case's result from the independent world so
+        the Recovery Lab can measure treatment vs. control — the incremental ₹, not gross.
       </p>
     </Card>
   );
@@ -53,6 +57,7 @@ function summarize(label: string, r: unknown): string {
   if (label === 'seed') return `Seeded: ${o.created} new, ${o.deduped} duplicate`;
   if (label === 'process') return `Processed ${o.processed} cases`;
   if (label === 'tick') return `Recovered ${o.recovered}, re-queued ${o.reQueued}, expired ${o.expired}`;
+  if (label === 'resolve') return `Resolved ${o.resolved}: ${o.recovered} recovered, ${o.expired} expired`;
   if (label === 'reset') return 'All data cleared';
   return '';
 }

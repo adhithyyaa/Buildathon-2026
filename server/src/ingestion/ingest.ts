@@ -58,6 +58,19 @@ export interface IngestResult {
   caseId: string;
 }
 
+/** Fraction of at-risk cases held out as a no-action CONTROL arm for the Recovery Lab. */
+const CONTROL_FRACTION = 0.2;
+
+/** Deterministic arm assignment (hash of the dedupe key) so a replay reproduces the same split. */
+function assignArm(seed: string): 'treatment' | 'control' {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) / 4294967296 < CONTROL_FRACTION ? 'control' : 'treatment';
+}
+
 /**
  * Idempotent ingestion of one normalized event:
  *   - dedupe on `dedupeKey` (safe to replay the same batch),
@@ -112,6 +125,7 @@ export async function ingestEvent(n: NormalizedEvent): Promise<IngestResult> {
       amount: n.amountPaise,
       currency: n.currency,
       reasonTag,
+      arm: assignArm(n.dedupeKey),
       state: 'new',
       ...(n.occurredAt ? { createdAt: n.occurredAt } : {}),
     },

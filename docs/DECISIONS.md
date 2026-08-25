@@ -149,3 +149,30 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
   Webhooks are idempotent on `x-razorpay-event-id`. Mapped rule-by-rule in [`COMPLIANCE.md`](COMPLIANCE.md).
 - **Trade-off:** DPDP data-fiduciary controls (PII hashing, retention, erasure) are **not yet** implemented and are
   called out as the top gap — encoded where it matters most, honest about what's left.
+
+### ADR-017 — Measure INCREMENTAL recovery live (the Recovery Lab), not gross *(2026-08-25)*
+- **Context:** Gross "recovered ₹" is the weakest evidence class — some customers pay anyway. The dossier names
+  holdout-measured incremental lift as the one differentiator nobody in India publishes; our counterfactual eval proved
+  it offline, but the *running product* still showed the naive gross number.
+- **Rationale:** Bring the holdout into the product. Each case is assigned `treatment` or a ~20% no-action `control` at
+  ingest; the dashboard's **Recovery Lab** shows `treatment_rate − control_rate` (₹-weighted) with a 95% bootstrap CI,
+  per reason. It is simultaneously the accountability layer (provable incremental value), a live A/B / drift signal on
+  the model (closing a production-ML gap), and a self-optimizing efficiency loop (reasons that don't beat control are
+  flagged for auto-suppression). This is the layer that makes Razorpay's recovery *measurably* more efficient rather
+  than another dunning bot.
+- **Trade-off:** A control arm forgoes recovery on ~20% of cases (the standard cost of a holdout) — worth it for a
+  provable, CI-bounded lift number and continuous model validation. Demo outcomes are world-simulated; production uses
+  real signed webhooks.
+
+### ADR-018 — Hardening from a strict self-audit (train/serve skew + money-path correctness) *(2026-08-25)*
+- **Context:** A 6-agent adversarial audit found real defects behind the polish — the kind that separate "looks
+  production-grade" from "is".
+- **Rationale:** Fixed them rather than hiding them. **Train/serve skew:** `prior_failed_attempts` was being fed the
+  current retry count (now the customer's historical failed count), `urgency_score` and `past_recovery_rate` were
+  computed differently at serve than in training (now mirror `worldmodel.py`), and the windowed anomaly detector queried
+  1-hour counts against a 4-hour-trained baseline (now aligned). **Money-path correctness:** the webhook idempotency row
+  now commits *after* processing (a crash no longer loses the event); the scheduler takes a Postgres advisory lock so
+  overlapping ticks can't double-fire retries; the kill switch is DB-backed so the separate worker process actually
+  observes it; and `/approve` no longer books fictional recovery on a hand-off case.
+- **Trade-off:** Some remaining gaps are documented, not yet built (a real model registry + drift monitoring, endpoint
+  auth, SQL-side aggregation for scale, per-endpoint idempotency outbox) — owned openly as the production roadmap.

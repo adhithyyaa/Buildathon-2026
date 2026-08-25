@@ -29,8 +29,30 @@ function seeded(seed: string): number {
  * The honest, non-simulated measurement lives in ml/eval.py (counterfactual holdout) and in the
  * real signed-webhook path; this function only drives the local live demo.
  */
-export function retrySucceeds(caseId: string, reasonTag: ReasonTag | null, attempts: number): boolean {
+// Per-action recovery multiplier: how much an action lifts recovery over the reason's base rate.
+// `no_action` is the natural self-recovery rate (customer pays anyway / bank auto-retries) — the
+// Recovery Lab CONTROL baseline. Actions lift above it; the gap is the incremental effect.
+const ACTION_LIFT: Record<string, number> = {
+  smart_retry: 1.2,
+  send_payment_link: 1.15,
+  send_reminder: 1.0,
+  offer_incentive: 1.25,
+  escalate_to_human: 0.9,
+  no_action: 0.28,
+};
+
+/** Ground-truth recovery probability for a (reason, action) — the independent world mechanism. */
+export function recoveryProb(reasonTag: ReasonTag | null, action: string): number {
   const base = basePriorRecovery(reasonTag ?? ReasonTag.unknown);
-  const trueRate = base * Math.pow(0.8, Math.max(0, attempts - 1)); // retry fatigue
+  return Math.max(0.01, Math.min(0.95, base * (ACTION_LIFT[action] ?? 1.0)));
+}
+
+/** Deterministic Bernoulli outcome draw for (case, action) — reproducible in a replay. */
+export function recovers(caseId: string, reasonTag: ReasonTag | null, action: string, salt = ''): boolean {
+  return seeded(`${caseId}:${action}:${salt}`) < recoveryProb(reasonTag, action);
+}
+
+export function retrySucceeds(caseId: string, reasonTag: ReasonTag | null, attempts: number): boolean {
+  const trueRate = recoveryProb(reasonTag, 'smart_retry') * Math.pow(0.8, Math.max(0, attempts - 1)); // retry fatigue
   return seeded(`${caseId}:${attempts}`) < trueRate;
 }

@@ -193,6 +193,28 @@ export interface MlMetrics {
   anomaly: { window: { incident_detection_rate: number; flagged: number; windows: number } };
 }
 
+export interface ArmStat {
+  cases: number;
+  recovered: number;
+  atRiskPaise: number;
+  recoveredPaise: number;
+  recoveryRatePct: number | null;
+}
+export interface LiftBlock {
+  treatment: ArmStat;
+  control: ArmStat;
+  liftPct: number;
+  incrementalPaise: number;
+  liftCi95Pct: [number, number];
+  significant: boolean;
+}
+export interface LabReport {
+  overall: LiftBlock;
+  byReason: Array<LiftBlock & { reason: string }>;
+  suppressionCandidates: string[];
+  totalResolved: number;
+}
+
 async function get<T>(url: string): Promise<T> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -229,6 +251,8 @@ export const api = {
   process: () => post<{ processed: number }>('/api/demo/process'),
   tick: () => post<{ recovered: number; reQueued: number; expired: number }>('/api/demo/tick?fastForward=true'),
   reset: () => post('/api/demo/reset'),
+  lab: () => get<LabReport>('/api/lab'),
+  labResolve: () => post<{ resolved: number; recovered: number; expired: number }>('/api/lab/resolve'),
   mlMetrics: () => get<MlMetrics>('/api/ml/metrics'),
   explainCase: (id: string) => post<{ text: string; source: string; llmConfigured: boolean }>(`/api/ai/cases/${id}/explain`),
   draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),

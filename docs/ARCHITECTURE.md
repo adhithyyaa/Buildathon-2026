@@ -263,7 +263,31 @@ Recoup is not a payment gateway or a rival to Agent Studio, and doesn't try to b
 decides how to *use* those recovery tools well and **proves** what they brought back — the measurement, triage and
 governance layer they leave on the table.
 
-## 13. Tech choices (rationale in [`DECISIONS.md`](./DECISIONS.md))
+## 13. The Recovery Lab — live incremental-lift measurement (the standout)
+
+Every recovery product reports **gross** recovered ₹. That number proves nothing: some of those customers would have
+paid anyway. The number that matters — and that neither Razorpay's agents nor the third-party vendors publish — is the
+**incremental** recovery: how much we recovered *over what would have happened with no action*. Recoup measures it live.
+
+- **Holdout.** At ingest, each case is deterministically assigned an `arm`: **treatment** (the ML+policy pipeline acts)
+  or a ~20% **control** (held out, no recovery action). The assignment is a hash of the dedupe key, so a replay
+  reproduces the same split.
+- **Measurement.** `domain/lab.ts` computes, over all resolved cases, `treatment_rate − control_rate` (₹-weighted) with
+  a **95% bootstrap CI**, overall and **per failure reason**. That is the true, provable value of the recovery layer —
+  and a live **A/B / drift signal** on the model, which fills the "no live shadow eval" production-ML gap. In the demo
+  the treatment arm recovers **~48%** vs the control's **~16%** (a **+33pp lift, significant**, ≈₹5L incremental on a
+  200-case batch).
+- **The efficiency loop.** Any reason where treatment does **not** beat control is wasted effort — the Lab flags it as
+  an **auto-suppress candidate** so the policy can stop acting there until the model improves. This is what makes the
+  layer *make Razorpay more efficient*: it doesn't just recover money, it continuously proves which recovery actions add
+  incremental value and prunes the ones that don't.
+- **In production** the treatment/control outcomes arrive as real signed `payment.captured` webhooks; in the demo an
+  independent world simulates them (`domain/world.ts`), so the eval is never the model grading itself.
+
+Surfaced on the dashboard as the **Recovery Lab** panel (incremental ₹ + CI, treatment vs control rates, per-reason
+lift, suppression candidates). See `GET /api/lab` and `POST /api/lab/resolve`.
+
+## 14. Tech choices (rationale in [`DECISIONS.md`](./DECISIONS.md))
 
 TypeScript money path — Node/Express + Prisma + PostgreSQL (embedded, no Docker) · React/Vite/Tailwind dashboard ·
 **Python ML tier — FastAPI + CatBoost + XGBoost + scikit-learn** · Razorpay test-mode (Orders + Payment Links +
