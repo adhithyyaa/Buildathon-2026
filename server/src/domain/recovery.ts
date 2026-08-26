@@ -1,6 +1,32 @@
 import { prisma } from '../lib/prisma';
-import { canTransition, transition } from './state';
+import { canTransition, transition, InvalidTransitionError } from './state';
 import { minutesBetween } from '../lib/time';
+
+/**
+ * Per-case serialization of the recovery moment. Razorpay redelivers webhooks for
+ * 24h with NO ordering guarantee and fresh event ids, so several deliveries for the
+ * same case can be in flight together; they would all pass the check-then-act on
+ * case.state and double-write the append-only audit trail. Chaining concurrent
+ * callers per case makes the flip + audit write exactly-once within this process;
+ * a racer from another process is still downgraded to the idempotent path by the
+ * InvalidTransitionError fallback below.
+ */
+const recoveryChains = new Map<string, Promise<unknown>>();
+
+function serializePerCase<T>(caseId: string, fn: () => Promise<T>): Promise<T> {
+  const tail = recoveryChains.get(caseId) ?? Promise.resolve();
+  const run = tail.then(fn, fn); // always run — a failed predecessor must not block a retry
+  const chained = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  recoveryChains.set(caseId, chained);
+  void chained.then(() => {
+    // Drop the chain once it drains so the map can't grow without bound.
+    if (recoveryChains.get(caseId) === chained) recoveryChains.delete(caseId);
+  });
+  return run;
+}
 
 /**
  * Mark a case as recovered. Called by the Razorpay webhook (real payment) or the
@@ -8,6 +34,13 @@ import { minutesBetween } from '../lib/time';
  * if a case is caught mid-dispatch.
  */
 export async function markRecovered(
+  caseId: string,
+  opts: { recoveredAmountPaise: number; source: 'webhook' | 'demo' | 'human' | 'retry'; paymentRef?: string; now?: Date },
+) {
+  return serializePerCase(caseId, () => markRecoveredSerialized(caseId, opts));
+}
+
+async function markRecoveredSerialized(
   caseId: string,
   opts: { recoveredAmountPaise: number; source: 'webhook' | 'demo' | 'human' | 'retry'; paymentRef?: string; now?: Date },
 ) {
@@ -49,11 +82,24 @@ export async function markRecovered(
     data: { status: 'succeeded', deliveryStatus: 'paid' },
   });
 
-  return transition(caseId, 'recovered', {
-    step: 'recovered',
-    actor,
-    details: { recoveredAmountPaise: opts.recoveredAmountPaise, source: opts.source, paymentRef: opts.paymentRef, recoveryMinutes },
-  });
+  try {
+    return await transition(caseId, 'recovered', {
+      step: 'recovered',
+      actor,
+      details: { recoveredAmountPaise: opts.recoveredAmountPaise, source: opts.source, paymentRef: opts.paymentRef, recoveryMinutes },
+    });
+  } catch (err) {
+    // Concurrent redeliveries (Razorpay retries for 24h with no ordering guarantee)
+    // can race past the state check above together; the losers then fail the
+    // recovered transition once the winner lands. If the case IS recovered now, the
+    // money is safe — take the same idempotent path as the early return instead of
+    // surfacing a 500 (which would make Razorpay redeliver yet again).
+    if (err instanceof InvalidTransitionError) {
+      const current = await prisma.case.findUnique({ where: { id: caseId } });
+      if (current?.state === 'recovered') return current;
+    }
+    throw err;
+  }
 }
 
 /** Mark a case expired (TTL passed with no recovery). */

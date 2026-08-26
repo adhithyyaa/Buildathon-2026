@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run typecheck
-      - run: npm run test # policy property tests — pure functions, no DB / no keys
+      - run: npm run test # policy property tests + money-path integration suite (boots an ephemeral embedded Postgres)
 
   web:
     name: web · typecheck

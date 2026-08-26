@@ -21,6 +21,7 @@ server/prisma/*.db-journal
 
 # Embedded local Postgres data
 server/.pgdata/
+server/.pgdata-test/
 
 # Logs
 logs/
