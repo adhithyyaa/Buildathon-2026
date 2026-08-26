@@ -1,41 +1,44 @@
 import type { ReactNode, ButtonHTMLAttributes } from 'react';
 import { titleCase } from '../lib/format';
+import { Icon } from './icons';
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
 const STATE_TONE: Record<string, string> = {
-  recovered: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30',
-  waiting_for_outcome: 'bg-amber-500/15 text-amber-300 ring-amber-500/30',
-  manual_escalation: 'bg-rose-500/15 text-rose-300 ring-rose-500/30',
-  at_risk: 'bg-orange-500/15 text-orange-300 ring-orange-500/30',
-  analyzed: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
-  action_selected: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
-  action_dispatched: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
-  expired: 'bg-slate-500/15 text-slate-300 ring-slate-500/30',
-  new: 'bg-slate-500/15 text-slate-300 ring-slate-500/30',
+  recovered: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
+  paid: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
+  waiting_for_outcome: 'bg-amber-50 text-amber-700 ring-amber-200/80',
+  manual_escalation: 'bg-rose-50 text-rose-700 ring-rose-200/80',
+  at_risk: 'bg-orange-50 text-orange-700 ring-orange-200/80',
+  unpaid: 'bg-orange-50 text-orange-700 ring-orange-200/80',
+  analyzed: 'bg-sky-50 text-sky-700 ring-sky-200/80',
+  action_selected: 'bg-sky-50 text-sky-700 ring-sky-200/80',
+  action_dispatched: 'bg-sky-50 text-sky-700 ring-sky-200/80',
+  expired: 'bg-slate-100 text-slate-600 ring-slate-200',
+  new: 'bg-slate-100 text-slate-600 ring-slate-200',
 };
 
 export function StateBadge({ state }: { state: string }) {
   return (
-    <span className={cx('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap', STATE_TONE[state] ?? STATE_TONE.new)}>
+    <span className={cx('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap', STATE_TONE[state] ?? STATE_TONE.new)}>
       {titleCase(state)}
     </span>
   );
 }
 
 const ACTION_TONE: Record<string, string> = {
-  smart_retry: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
-  send_payment_link: 'bg-violet-500/15 text-violet-300 ring-violet-500/30',
-  send_reminder: 'bg-teal-500/15 text-teal-300 ring-teal-500/30',
-  offer_incentive: 'bg-fuchsia-500/15 text-fuchsia-300 ring-fuchsia-500/30',
-  escalate_to_human: 'bg-rose-500/15 text-rose-300 ring-rose-500/30',
-  no_action: 'bg-slate-500/15 text-slate-300 ring-slate-500/30',
+  smart_retry: 'bg-sky-50 text-sky-700 ring-sky-200/80',
+  send_payment_link: 'bg-violet-50 text-violet-700 ring-violet-200/80',
+  send_reminder: 'bg-teal-50 text-teal-700 ring-teal-200/80',
+  offer_incentive: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200/80',
+  escalate_to_human: 'bg-rose-50 text-rose-700 ring-rose-200/80',
+  no_action: 'bg-slate-100 text-slate-600 ring-slate-200',
 };
 
 export function ActionBadge({ action }: { action?: string | null }) {
-  if (!action) return <span className="text-slate-500">—</span>;
+  if (!action) return <span className="text-slate-400">—</span>;
   return (
     <span className={cx('inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap', ACTION_TONE[action] ?? ACTION_TONE.no_action)}>
       {titleCase(action)}
@@ -45,21 +48,21 @@ export function ActionBadge({ action }: { action?: string | null }) {
 
 export function Pill({ tone = 'slate', children }: { tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'sky'; children: ReactNode }) {
   const tones: Record<string, string> = {
-    slate: 'bg-slate-500/15 text-slate-300 ring-slate-500/30',
-    emerald: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30',
-    amber: 'bg-amber-500/15 text-amber-300 ring-amber-500/30',
-    rose: 'bg-rose-500/15 text-rose-300 ring-rose-500/30',
-    sky: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
+    slate: 'bg-slate-100 text-slate-700 ring-slate-200',
+    emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
+    amber: 'bg-amber-50 text-amber-700 ring-amber-200/80',
+    rose: 'bg-rose-50 text-rose-700 ring-rose-200/80',
+    sky: 'bg-sky-50 text-sky-700 ring-sky-200/80',
   };
   return <span className={cx('inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset', tones[tone])}>{children}</span>;
 }
 
 export function Card({ title, right, children, className }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div className={cx('animate-rise rounded-2xl border border-slate-800/80 bg-slate-900/50 backdrop-blur', className)}>
+    <div className={cx('animate-rise rounded-2xl border border-slate-200/80 bg-white shadow-xs', className)}>
       {(title || right) && (
-        <div className="flex items-center justify-between border-b border-slate-800/80 px-5 py-3">
-          <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
           {right}
         </div>
       )}
@@ -70,32 +73,52 @@ export function Card({ title, right, children, className }: { title?: ReactNode;
 
 export function Button({ variant = 'default', className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'default' | 'primary' | 'ghost' | 'danger' }) {
   const variants: Record<string, string> = {
-    default: 'bg-slate-800 hover:bg-slate-700 text-slate-100 ring-1 ring-inset ring-slate-700',
-    primary: 'bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-semibold',
-    ghost: 'bg-transparent hover:bg-slate-800 text-slate-300',
-    danger: 'bg-rose-500/90 hover:bg-rose-500 text-white',
+    default: 'bg-white hover:bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200 shadow-xs font-medium',
+    primary: 'bg-slate-900 hover:bg-slate-800 text-white font-medium shadow-xs',
+    ghost: 'bg-transparent hover:bg-slate-100 text-slate-600 font-medium',
+    danger: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-100 font-medium',
   };
   return (
     <button
-      className={cx('inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50', variants[variant], className)}
+      className={cx('inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm transition-all disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer', variants[variant], className)}
       {...props}
     />
   );
 }
 
-export function Stat({ label, value, sub, tone = 'slate' }: { label: string; value: ReactNode; sub?: ReactNode; tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'sky' }) {
+export function Stat({
+  label,
+  value,
+  sub,
+  trend,
+  tone = 'slate',
+}: {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+  /** Optional real trend chip, e.g. "+40pp". Only render one when there's a genuine figure to show. */
+  trend?: string;
+  tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'sky';
+}) {
   const valueTone: Record<string, string> = {
-    slate: 'text-slate-100',
-    emerald: 'text-emerald-300',
-    amber: 'text-amber-300',
-    rose: 'text-rose-300',
-    sky: 'text-sky-300',
+    slate: 'text-slate-900',
+    emerald: 'text-emerald-600',
+    amber: 'text-amber-600',
+    rose: 'text-rose-600',
+    sky: 'text-sky-600',
   };
   return (
-    <div className="animate-rise rounded-2xl border border-slate-800/80 bg-slate-900/50 px-5 py-4 backdrop-blur">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</div>
-      <div className={cx('mt-1 text-2xl font-bold tabular-nums', valueTone[tone])}>{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-slate-500">{sub}</div>}
+    <div className="animate-rise rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all hover:shadow-sm">
+      <div className="text-xs font-medium text-slate-500">{label}</div>
+      <div className={cx('mt-2 text-2xl font-bold tracking-tight tabular-nums', valueTone[tone])}>{value}</div>
+      <div className="mt-2.5 flex items-center justify-between gap-2">
+        <div className="text-xs text-slate-500 truncate">{sub}</div>
+        {trend && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-600 ring-1 ring-inset ring-emerald-200/60 shrink-0">
+            {trend} <Icon name="trendUp" className="h-3 w-3" />
+          </span>
+        )}
+      </div>
     </div>
   );
 }

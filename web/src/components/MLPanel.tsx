@@ -23,24 +23,24 @@ export function MLPanel({ prediction }: { prediction: Prediction | null }) {
       </div>
 
       {per && (
-        <div className="mt-5">
-          <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Recovery odds by action (model)</div>
-          <div className="space-y-2">
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Recovery odds by action (model)</div>
+          <div className="space-y-2.5">
             {Object.entries(per)
               .sort((a, b) => b[1] - a[1])
               .map(([k, v]) => {
                 const chosen = k === prediction.actionClass;
                 return (
                   <div key={k}>
-                    <div className="mb-0.5 flex justify-between text-xs">
-                      <span className={chosen ? 'font-semibold text-sky-300' : 'text-slate-400'}>
+                    <div className="mb-1 flex justify-between text-xs">
+                      <span className={chosen ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}>
                         {titleCase(k)}
                         {chosen && ' · chosen'}
                       </span>
-                      <span className="tabular-nums text-slate-500">{pct(v)}</span>
+                      <span className="tabular-nums font-bold text-slate-700">{pct(v)}</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-slate-800">
-                      <div className={cx('h-1.5 rounded-full', chosen ? 'bg-sky-400' : 'bg-slate-600')} style={{ width: `${v * 100}%` }} />
+                    <div className="h-1.5 rounded-full bg-slate-100">
+                      <div className={cx('h-1.5 rounded-full transition-all duration-500', chosen ? 'bg-sky-500' : 'bg-slate-300')} style={{ width: `${v * 100}%` }} />
                     </div>
                   </div>
                 );
@@ -53,14 +53,14 @@ export function MLPanel({ prediction }: { prediction: Prediction | null }) {
 }
 
 function Metric({ label, value, tone, bar }: { label: string; value: string; tone: 'emerald' | 'sky' | 'amber' | 'rose' | 'slate'; bar: number }) {
-  const barColor = { emerald: 'bg-emerald-400', sky: 'bg-sky-400', amber: 'bg-amber-400', rose: 'bg-rose-400', slate: 'bg-slate-500' }[tone];
-  const txt = { emerald: 'text-emerald-300', sky: 'text-sky-300', amber: 'text-amber-300', rose: 'text-rose-300', slate: 'text-slate-300' }[tone];
+  const barColor = { emerald: 'bg-emerald-500', sky: 'bg-sky-500', amber: 'bg-amber-500', rose: 'bg-rose-500', slate: 'bg-slate-400' }[tone];
+  const txt = { emerald: 'text-emerald-900', sky: 'text-sky-900', amber: 'text-amber-900', rose: 'text-rose-900', slate: 'text-slate-900' }[tone];
   return (
-    <div>
-      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={cx('mt-0.5 text-xl font-bold tabular-nums', txt)}>{value}</div>
-      <div className="mt-1 h-1 rounded-full bg-slate-800">
-        <div className={cx('h-1 rounded-full', barColor)} style={{ width: `${Math.round((bar || 0) * 100)}%` }} />
+    <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 shadow-2xs">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">{label}</div>
+      <div className={cx('mt-1 text-xl font-black tabular-nums', txt)}>{value}</div>
+      <div className="mt-2 h-1 rounded-full bg-slate-200">
+        <div className={cx('h-1 rounded-full transition-all duration-500', barColor)} style={{ width: `${Math.round((bar || 0) * 100)}%` }} />
       </div>
     </div>
   );

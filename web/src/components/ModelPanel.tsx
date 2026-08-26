@@ -11,7 +11,7 @@ export function ModelPanel() {
   }, []);
 
   if (err) return null; // ML service offline → hide the panel
-  if (!m) return <Card title="Model"><div className="h-16 animate-pulse rounded bg-slate-800/60" /></Card>;
+  if (!m) return <Card title="Model"><div className="h-24 animate-pulse rounded-xl bg-slate-100" /></Card>;
 
   const recovery = [
     { name: 'CatBoost (primary)', auc: m.recovery.catboost_calibrated.roc_auc, primary: true },
@@ -29,55 +29,57 @@ export function ModelPanel() {
     <Card title="Model" right={<Pill tone="sky">v{m.version} · {m.dataset.rows.toLocaleString()} synthetic cases · time-ordered split</Pill>}>
       <div className="grid gap-6 lg:grid-cols-3">
         <div>
-          <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Recovery model — ROC-AUC</div>
-          <div className="space-y-2">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Recovery model — ROC-AUC</div>
+          <div className="space-y-2.5">
             {recovery.map((r) => (
               <div key={r.name}>
-                <div className="mb-0.5 flex justify-between text-xs">
-                  <span className={r.primary ? 'font-semibold text-sky-300' : 'text-slate-400'}>{r.name}</span>
-                  <span className="tabular-nums text-slate-500">{r.auc.toFixed(3)}</span>
+                <div className="mb-1 flex justify-between text-xs">
+                  <span className={r.primary ? 'font-bold text-slate-900' : 'text-slate-600 font-medium'}>{r.name}</span>
+                  <span className="tabular-nums font-bold text-slate-700">{r.auc.toFixed(3)}</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-slate-800">
-                  <div className={cx('h-1.5 rounded-full', r.primary ? 'bg-sky-400' : 'bg-slate-600')} style={{ width: `${(r.auc / maxAuc) * 100}%` }} />
+                <div className="h-1.5 rounded-full bg-slate-100">
+                  <div className={cx('h-1.5 rounded-full transition-all duration-500', r.primary ? 'bg-sky-500' : 'bg-slate-300')} style={{ width: `${(r.auc / maxAuc) * 100}%` }} />
                 </div>
               </div>
             ))}
           </div>
           {ci && vs && (
-            <div className="mt-2 text-[11px] leading-relaxed text-slate-500">
-              Primary 95% CI <b className="tabular-nums text-slate-300">[{ci[0].toFixed(3)}–{ci[1].toFixed(3)}]</b>. Edge over
-              logistic reg. <b className="tabular-nums text-slate-300">+{vs.diff_median.toFixed(3)}</b>{' '}
+            <div className="mt-3 text-[11px] leading-relaxed text-slate-500">
+              Primary 95% CI <b className="tabular-nums text-slate-800">[{ci[0].toFixed(3)}–{ci[1].toFixed(3)}]</b>. Edge over
+              logistic reg. <b className="tabular-nums text-slate-800">+{vs.diff_median.toFixed(3)}</b>{' '}
               ({vs.significant ? 'significant' : 'n.s.'}, but small) — CatBoost is primary for calibration &amp; native
               categoricals, not the AUC gap.
             </div>
           )}
           <div className="mt-3 text-xs text-slate-500">
-            Action head agrees with EV-optimal action <b className="text-slate-300">{evPct}%</b>
-            <span className="text-slate-600"> (raw accuracy {accPct}% on noisy labels — a real learning task)</span> · escalation Brier{' '}
-            <b className="text-slate-300">{m.escalation.catboost_calibrated.brier}</b>
+            Action head agrees with EV-optimal action <b className="text-slate-800">{evPct}%</b>
+            <span className="text-slate-400"> (raw accuracy {accPct}% on noisy labels — a real learning task)</span> · escalation Brier{' '}
+            <b className="text-slate-800">{m.escalation.catboost_calibrated.brier}</b>
           </div>
         </div>
 
         <div>
-          <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Calibration — predicted vs actual</div>
-          <Calibration curve={m.recovery.calibration_curve ?? []} />
-          <div className="mt-1 text-[11px] text-slate-500">On the dashed line = perfectly calibrated probabilities.</div>
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Calibration — predicted vs actual</div>
+          <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 flex flex-col items-center">
+            <Calibration curve={m.recovery.calibration_curve ?? []} />
+          </div>
+          <div className="mt-2 text-[11px] text-slate-400">On the dashed line = perfectly calibrated probabilities.</div>
         </div>
 
         <div>
-          <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">What drives the decision</div>
-          <div className="space-y-1.5">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">What drives the decision</div>
+          <div className="space-y-2">
             {m.action.top_features.slice(0, 6).map((f) => (
               <div key={f.feature} className="flex items-center gap-2 text-xs">
-                <span className="w-28 shrink-0 truncate text-slate-400">{f.feature.replace(/_/g, ' ')}</span>
-                <div className="h-1.5 flex-1 rounded-full bg-slate-800">
-                  <div className="h-1.5 rounded-full bg-violet-400" style={{ width: `${(f.importance / maxImp) * 100}%` }} />
+                <span className="w-28 shrink-0 truncate text-slate-600 font-medium">{f.feature.replace(/_/g, ' ')}</span>
+                <div className="h-1.5 flex-1 rounded-full bg-slate-100">
+                  <div className="h-1.5 rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${(f.importance / maxImp) * 100}%` }} />
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-3 text-xs text-slate-500">
-            Failure-spike detection <b className="text-slate-300">{Math.round(m.anomaly.window.incident_detection_rate * 100)}%</b>
+          <div className="mt-4 text-xs text-slate-500">
+            Failure-spike detection <b className="text-slate-800">{Math.round(m.anomaly.window.incident_detection_rate * 100)}%</b>
           </div>
         </div>
       </div>
@@ -90,12 +92,12 @@ function Calibration({ curve }: { curve: MlMetrics['recovery']['calibration_curv
   const H = 120;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[240px]" role="img" aria-label="Calibration curve">
-      <line x1="0" y1={H} x2={W} y2="0" stroke="rgb(71,85,105)" strokeDasharray="3 3" strokeWidth="1" />
+      <line x1="0" y1={H} x2={W} y2="0" stroke="#cbd5e1" strokeDasharray="3 3" strokeWidth="1.5" />
       {curve.length > 1 && (
-        <polyline fill="none" stroke="rgb(52,211,153)" strokeWidth="1.5" points={curve.map((p) => `${p.predicted * W},${H - p.observed * H}`).join(' ')} />
+        <polyline fill="none" stroke="#10b981" strokeWidth="2" points={curve.map((p) => `${p.predicted * W},${H - p.observed * H}`).join(' ')} />
       )}
       {curve.map((p, i) => (
-        <circle key={i} cx={p.predicted * W} cy={H - p.observed * H} r="2.6" fill="rgb(52,211,153)" />
+        <circle key={i} cx={p.predicted * W} cy={H - p.observed * H} r="3" fill="#10b981" />
       ))}
     </svg>
   );

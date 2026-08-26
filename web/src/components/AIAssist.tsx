@@ -36,15 +36,15 @@ export function AIAssist({ caseId }: { caseId: string }) {
         <Button onClick={() => run('summarize')} disabled={!!busy}>{busy === 'summarize' ? 'Summarizing…' : 'Escalation summary'}</Button>
       </div>
       {out && (
-        <div className="mt-3">
-          <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+        <div className="mt-3.5">
+          <div className="mb-1.5 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-400 font-bold">
             {out.title}
             <Pill tone={out.source === 'llm' ? 'emerald' : 'slate'}>{out.source === 'llm' ? 'AI-generated' : out.source === 'template' ? 'template fallback' : out.source}</Pill>
           </div>
-          <pre className="whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm text-slate-300">{out.text}</pre>
+          <pre className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 text-xs text-slate-800 font-mono shadow-2xs leading-relaxed">{out.text}</pre>
         </div>
       )}
-      <p className="mt-2 text-xs text-slate-500">The LLM never decides the action or moves money — it only writes explanations, messages, and summaries on demand.</p>
+      <p className="mt-3 text-xs text-slate-400">The LLM never decides the action or moves money — it only writes explanations, messages, and summaries on demand.</p>
     </Card>
   );
 }

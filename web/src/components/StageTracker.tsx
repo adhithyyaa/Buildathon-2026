@@ -2,18 +2,18 @@ import { JOURNEY, caseStageIndex, caseTerminal, ACTOR_FILL, ACTOR_RING, type Act
 import { cx } from './ui';
 
 const GLOW: Record<Actor, string> = {
-  det: 'ring-slate-400/25',
-  ai: 'ring-sky-400/25',
-  policy: 'ring-violet-400/25',
-  act: 'ring-emerald-400/25',
+  det: 'ring-slate-300',
+  ai: 'ring-sky-300',
+  policy: 'ring-violet-300',
+  act: 'ring-emerald-300',
 };
 
 // Translucent fill for the pulsing ping ring behind the current node.
 const PING: Record<Actor, string> = {
-  det: 'bg-slate-400/40',
-  ai: 'bg-sky-400/50',
-  policy: 'bg-violet-400/50',
-  act: 'bg-emerald-400/50',
+  det: 'bg-slate-300',
+  ai: 'bg-sky-300',
+  policy: 'bg-violet-300',
+  act: 'bg-emerald-300',
 };
 
 /** A horizontal tracker showing where THIS case sits in the recovery journey. */
@@ -26,21 +26,21 @@ export function StageTracker({ state }: { state: string }) {
   const fillPct = (doneThrough / (n - 1)) * (100 - 100 / n);
 
   return (
-    <div className="animate-rise rounded-2xl border border-slate-800/80 bg-slate-900/50 p-5">
+    <div className="animate-rise rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-200">Journey</h3>
+        <h3 className="text-sm font-bold text-slate-900">Recovery Journey</h3>
         {terminal && <TerminalBadge terminal={terminal} />}
       </div>
       <div className="relative pt-1">
         {/* base track */}
-        <div className="absolute top-[9px] h-0.5 rounded-full bg-slate-700" style={{ left: `${railInset}%`, right: `${railInset}%` }} />
+        <div className="absolute top-[9px] h-0.5 rounded-full bg-slate-200" style={{ left: `${railInset}%`, right: `${railInset}%` }} />
         {/* animated fill with a moving sheen */}
         <div
           className="animate-flow absolute top-[9px] h-0.5 rounded-full transition-[width] duration-700 ease-out"
           style={{
             left: `${railInset}%`,
             width: `${fillPct}%`,
-            backgroundImage: 'linear-gradient(90deg, rgba(16,185,129,0.35) 0%, rgba(110,231,183,0.95) 50%, rgba(16,185,129,0.35) 100%)',
+            backgroundImage: 'linear-gradient(90deg, rgba(16,185,129,0.5) 0%, rgba(16,185,129,1) 50%, rgba(16,185,129,0.5) 100%)',
             backgroundSize: '200% 100%',
           }}
         />
@@ -50,14 +50,14 @@ export function StageTracker({ state }: { state: string }) {
             const current = i === active && terminal !== 'recovered';
             return (
               <div key={s.key} className="flex flex-col items-center gap-2 text-center">
-                <span className="relative grid h-[19px] w-[19px] place-items-center">
+                <span className="relative grid h-[20px] w-[20px] place-items-center">
                   {current && <span className={cx('absolute inline-flex h-full w-full animate-ping rounded-full', PING[s.actor])} />}
                   <span
                     className={cx(
-                      'relative grid h-[19px] w-[19px] place-items-center rounded-full border-2 text-[10px] transition-colors duration-300',
-                      done && `${ACTOR_FILL[s.actor]} border-transparent text-slate-950`,
-                      current && `bg-slate-900 ring-4 ${ACTOR_RING[s.actor]} ${GLOW[s.actor]}`,
-                      !done && !current && 'border-slate-700 bg-slate-900',
+                      'relative grid h-[20px] w-[20px] place-items-center rounded-full border-2 text-[10px] font-bold transition-colors duration-300 shadow-2xs',
+                      done && `${ACTOR_FILL[s.actor]} border-transparent text-white`,
+                      current && `bg-white ring-4 ${ACTOR_RING[s.actor]} ${GLOW[s.actor]} border-slate-900 text-slate-900`,
+                      !done && !current && 'border-slate-300 bg-white text-transparent',
                     )}
                   >
                     {done && <span className="animate-pop">✓</span>}
@@ -65,8 +65,8 @@ export function StageTracker({ state }: { state: string }) {
                 </span>
                 <span
                   className={cx(
-                    'text-[11px] leading-tight transition-colors',
-                    current ? 'font-semibold text-slate-200' : done ? 'text-slate-400' : 'text-slate-600',
+                    'text-[11px] leading-tight font-medium transition-colors',
+                    current ? 'font-bold text-slate-900' : done ? 'text-slate-700' : 'text-slate-400',
                   )}
                 >
                   {s.label}
@@ -82,10 +82,10 @@ export function StageTracker({ state }: { state: string }) {
 
 function TerminalBadge({ terminal }: { terminal: 'recovered' | 'escalated' | 'expired' }) {
   const tone = {
-    recovered: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30',
-    escalated: 'bg-rose-500/15 text-rose-300 ring-rose-500/30',
-    expired: 'bg-slate-500/15 text-slate-300 ring-slate-500/30',
+    recovered: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
+    escalated: 'bg-rose-50 text-rose-700 ring-rose-200/80',
+    expired: 'bg-slate-100 text-slate-700 ring-slate-200',
   }[terminal];
   const label = { recovered: 'Recovered', escalated: 'Escalated to human', expired: 'Expired' }[terminal];
-  return <span className={cx('animate-pop rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset', tone)}>{label}</span>;
+  return <span className={cx('animate-pop rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset', tone)}>{label}</span>;
 }

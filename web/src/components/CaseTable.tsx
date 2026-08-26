@@ -4,9 +4,9 @@ import { formatINR, titleCase } from '../lib/format';
 import { ActionBadge, StateBadge, cx } from './ui';
 
 function riskTone(score: number): string {
-  if (score >= 75) return 'bg-rose-500/15 text-rose-300 ring-rose-500/30';
-  if (score >= 50) return 'bg-amber-500/15 text-amber-300 ring-amber-500/30';
-  return 'bg-slate-500/15 text-slate-300 ring-slate-500/30';
+  if (score >= 75) return 'bg-rose-50 text-rose-700 ring-rose-200/80';
+  if (score >= 50) return 'bg-amber-50 text-amber-700 ring-amber-200/80';
+  return 'bg-slate-100 text-slate-600 ring-slate-200';
 }
 
 // Real Razorpay captures carry a pay_ id in the outcome notes (e.g. "Recovered via webhook (pay_…)").
@@ -18,60 +18,59 @@ export function CaseTable({ cases }: { cases: CaseRow[] }) {
   const nav = useNavigate();
 
   if (cases.length === 0) {
-    return <div className="px-5 py-12 text-center text-sm text-slate-500">No cases here yet. Seed a batch and run the pipeline.</div>;
+    return <div className="px-5 py-16 text-center text-sm text-slate-400">No cases in this view. Seed a batch and run the pipeline.</div>;
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-left text-sm">
         <thead>
-          <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500">
-            <th className="px-4 py-2.5 font-medium">Risk</th>
-            <th className="px-4 py-2.5 font-medium">Merchant / Customer</th>
-            <th className="px-4 py-2.5 font-medium text-right">Amount</th>
-            <th className="px-4 py-2.5 font-medium">Reason</th>
-            <th className="px-4 py-2.5 font-medium">Action</th>
-            <th className="px-4 py-2.5 font-medium">State</th>
-            <th className="px-4 py-2.5 font-medium text-right">Recovered</th>
+          <tr className="border-b border-slate-100 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <th className="py-3 pl-6 pr-3 font-medium">Risk</th>
+            <th className="px-3 py-3 font-medium">Merchant / Customer</th>
+            <th className="px-3 py-3 text-right font-medium">Amount</th>
+            <th className="px-3 py-3 font-medium">Reason</th>
+            <th className="px-3 py-3 font-medium">Action</th>
+            <th className="px-3 py-3 font-medium">State</th>
+            <th className="py-3 pl-3 pr-6 text-right font-medium">Recovered</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800/60">
+        <tbody className="divide-y divide-slate-100">
           {cases.map((c) => (
-            <tr key={c.id} onClick={() => nav(`/cases/${c.id}`)} className="cursor-pointer transition-colors hover:bg-slate-800/40">
-              <td className="px-4 py-3">
+            <tr key={c.id} onClick={() => nav(`/cases/${c.id}`)} className="cursor-pointer transition-colors hover:bg-slate-50/70">
+              <td className="py-3.5 pl-6 pr-3">
                 <span className={cx('inline-flex min-w-[2.25rem] justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums ring-1 ring-inset', riskTone(c.riskScore))}>
                   {c.riskScore}
                 </span>
               </td>
-              <td className="px-4 py-3">
-                <div className="font-medium text-slate-200">{c.merchant.name}</div>
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <td className="px-3 py-3.5">
+                <div className="font-semibold text-slate-900">{c.merchant.name}</div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
                   {c.customer?.name ?? 'Guest'}
-                  {c.customer?.optedOut && <span className="text-rose-400">· opted out</span>}
+                  {c.customer?.optedOut && <span className="text-rose-500">· opted out</span>}
                 </div>
               </td>
-              <td className="px-4 py-3 text-right font-medium tabular-nums text-slate-200">{formatINR(c.amount)}</td>
-              <td className="px-4 py-3">
-                <span className="text-slate-300">{titleCase(c.reasonTag)}</span>
-                <div className="text-xs text-slate-500">{c.event.method ?? c.event.eventType}</div>
+              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-slate-900">{formatINR(c.amount)}</td>
+              <td className="px-3 py-3.5">
+                <span className="text-slate-700">{titleCase(c.reasonTag)}</span>
+                <div className="text-xs text-slate-400">{c.event.method ?? c.event.eventType}</div>
               </td>
-              <td className="px-4 py-3"><ActionBadge action={c.assignedAction} /></td>
-              <td className="px-4 py-3"><StateBadge state={c.state} /></td>
-              <td className="px-4 py-3 text-right tabular-nums">
+              <td className="px-3 py-3.5"><ActionBadge action={c.assignedAction} /></td>
+              <td className="px-3 py-3.5"><StateBadge state={c.state} /></td>
+              <td className="py-3.5 pl-3 pr-6 text-right tabular-nums">
                 {c.outcome?.status === 'recovered' ? (
-                  <span className="font-semibold text-emerald-300">{formatINR(c.outcome.recoveredAmount)}</span>
+                  <>
+                    <span className="font-semibold text-emerald-600">{formatINR(c.outcome.recoveredAmount)}</span>
+                    {payRef(c.outcome.notes) && (
+                      <div className="mt-1">
+                        <span title="Real Razorpay capture" className="inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] leading-none text-emerald-700 ring-1 ring-inset ring-emerald-200/80 bg-emerald-50">
+                          {payRef(c.outcome.notes)}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <span className="text-slate-600">—</span>
-                )}
-                {payRef(c.outcome?.notes) && (
-                  <div className="mt-1 flex justify-end">
-                    <span
-                      title="Real Razorpay capture"
-                      className="inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] leading-none text-emerald-300/90 ring-1 ring-inset ring-emerald-500/30 bg-emerald-500/10"
-                    >
-                      {payRef(c.outcome?.notes)}
-                    </span>
-                  </div>
+                  <span className="text-slate-300">—</span>
                 )}
               </td>
             </tr>

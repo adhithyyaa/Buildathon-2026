@@ -39,18 +39,20 @@ export function TokenControl() {
         onClick={() => setOpen((o) => !o)}
         title="Operator token for guarded actions"
         className={cx(
-          'inline-flex items-center justify-center rounded-lg border p-1.5 transition-colors',
-          hasToken ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300' : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:text-slate-200',
+          'grid h-9 w-9 place-items-center rounded-xl border transition-colors cursor-pointer',
+          hasToken
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
         )}
       >
         <Icon name="shield" className="h-4 w-4" />
       </button>
 
       {open && (
-        <div className="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-700/80 bg-slate-900 p-3 shadow-2xl shadow-black/40">
-          <div className="text-xs font-semibold text-slate-200">Operator token</div>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
-            Needed only if the server has <span className="font-mono">RECOUP_ADMIN_TOKEN</span> set. Sent as a bearer token
+        <div className="absolute right-0 z-30 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+          <div className="text-xs font-bold text-slate-900">Operator token</div>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500 font-medium">
+            Needed only if the server has <span className="font-mono text-slate-800 font-bold">RECOUP_ADMIN_TOKEN</span> set. Sent as a bearer token
             on guarded actions. Stored in this browser only.
           </p>
           <input
@@ -59,10 +61,15 @@ export function TokenControl() {
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && save()}
             placeholder="paste token…"
-            className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/60 px-2.5 py-1.5 font-mono text-xs text-slate-200 placeholder:text-slate-600 focus:border-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-700"
+            className="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-1.5 font-mono text-xs text-slate-800 placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none shadow-2xs"
           />
-          <div className="mt-2 flex items-center gap-2">
-            <button onClick={save} className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-emerald-950 hover:bg-emerald-400">Save</button>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={save}
+              className="rounded-xl bg-slate-950 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-slate-800 cursor-pointer transition-colors shadow-2xs"
+            >
+              Save
+            </button>
             <button
               onClick={() => {
                 setValue('');
@@ -71,7 +78,7 @@ export function TokenControl() {
                 toast('Operator token cleared', 'success');
                 setOpen(false);
               }}
-              className="rounded-lg px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200"
+              className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 cursor-pointer transition-colors"
             >
               Clear
             </button>
