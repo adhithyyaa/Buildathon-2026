@@ -4,6 +4,7 @@ import { titleCase } from '../lib/format';
 import { JOURNEY, pipelineBuckets, ACTOR_FILL, ACTOR_TEXT, type Actor } from '../lib/stages';
 import { useRefresh } from '../lib/refresh';
 import { Card, cx } from '../components/ui';
+import { CountUp } from '../components/CountUp';
 
 const ACTOR_LABEL: Record<Actor, string> = { det: 'Deterministic', ai: 'AI (ML + LLM)', policy: 'Policy engine', act: 'Executor' };
 
@@ -27,15 +28,15 @@ export function PipelinePage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
               {buckets.flow.map((b, i) => (
                 <div key={b.key} className="flex flex-1 items-stretch gap-3">
-                  <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                  <div className="animate-rise flex-1 rounded-2xl border border-slate-800 bg-slate-950/40 p-4" style={{ animationDelay: `${i * 80}ms` }}>
                     <div className="flex items-center gap-2">
                       <span className={cx('h-2 w-2 rounded-full', ACTOR_FILL[b.actor])} />
                       <span className="text-[11px] uppercase tracking-wide text-slate-400">{b.label}</span>
                     </div>
-                    <div className="mt-1 text-3xl font-bold tabular-nums text-slate-100">{b.count}</div>
+                    <div className="mt-1 text-3xl font-bold tabular-nums text-slate-100"><CountUp value={b.count} /></div>
                     <div className="mt-0.5 text-[11px] text-slate-500">{ACTOR_LABEL[b.actor]}</div>
                   </div>
-                  {i < buckets.flow.length - 1 && <span className="hidden self-center text-lg text-slate-600 sm:block">→</span>}
+                  {i < buckets.flow.length - 1 && <Connector />}
                 </div>
               ))}
             </div>
@@ -53,7 +54,7 @@ export function PipelinePage() {
       <Card title="How a case is handled" right={<span className="text-xs text-slate-500">ML proposes · policy disposes</span>}>
         <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {JOURNEY.map((s, i) => (
-            <div key={s.key} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+            <div key={s.key} className="animate-rise rounded-xl border border-slate-800 bg-slate-950/40 p-3" style={{ animationDelay: `${i * 60}ms` }}>
               <div className="flex items-center gap-2">
                 <span className={cx('grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold text-slate-950', ACTOR_FILL[s.actor])}>{i + 1}</span>
                 <span className={cx('text-sm font-semibold', ACTOR_TEXT[s.actor])}>{s.label}</span>
@@ -91,6 +92,15 @@ const STAGE_BLURB: Record<string, string> = {
   actioned: 'An allow-listed executor dispatches the approved action only.',
   recovered: 'A signed Razorpay webhook confirms the real capture.',
 };
+
+function Connector() {
+  return (
+    <span className="relative hidden w-6 shrink-0 self-center sm:block" aria-hidden="true">
+      <span className="block h-0.5 w-full rounded-full bg-slate-700/70" />
+      <span className="animate-travel absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
+    </span>
+  );
+}
 
 function BranchChip({ label, count, tone }: { label: string; count: number; tone: 'rose' | 'slate' }) {
   const c = tone === 'rose' ? 'bg-rose-500/15 text-rose-300 ring-rose-500/30' : 'bg-slate-500/15 text-slate-300 ring-slate-500/30';

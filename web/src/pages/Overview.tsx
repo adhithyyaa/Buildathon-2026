@@ -6,6 +6,7 @@ import { pipelineBuckets, ACTOR_FILL } from '../lib/stages';
 import { useRefresh } from '../lib/refresh';
 import { Card, Stat, cx } from '../components/ui';
 import { Icon } from '../components/icons';
+import { CountUp } from '../components/CountUp';
 
 interface Module {
   icon: string;
@@ -44,13 +45,13 @@ export function Overview() {
     <div className="space-y-8">
       {/* Essential KPIs only */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Recovered" tone="emerald" value={metrics ? formatINR(metrics.recoveredPaise) : '—'} sub={metrics ? `${metrics.recoveredCount} of ${metrics.totalCases} cases` : ''} />
-        <Stat label="Recovery rate" value={metrics ? `${metrics.recoveryRatePct}%` : '—'} sub="of at-risk cases" />
-        <Stat label="At-risk exposure" tone="amber" value={metrics ? formatINR(metrics.grossAtRiskPaise) : '—'} sub="gross, this batch" />
+        <Stat label="Recovered" tone="emerald" value={metrics ? <CountUp value={metrics.recoveredPaise} format={(n) => formatINR(n)} /> : '—'} sub={metrics ? `${metrics.recoveredCount} of ${metrics.totalCases} cases` : ''} />
+        <Stat label="Recovery rate" value={metrics ? <CountUp value={metrics.recoveryRatePct} format={(n) => `${Math.round(n)}%`} /> : '—'} sub="of at-risk cases" />
+        <Stat label="At-risk exposure" tone="amber" value={metrics ? <CountUp value={metrics.grossAtRiskPaise} format={(n) => formatINR(n)} /> : '—'} sub="gross, this batch" />
         {lift ? (
-          <Stat label="Incremental ₹" tone="emerald" value={formatINR(lift.incrementalPaise)} sub={`vs control · ${lift.significant ? 'significant' : 'n.s.'}`} />
+          <Stat label="Incremental ₹" tone="emerald" value={<CountUp value={lift.incrementalPaise} format={(n) => formatINR(n)} />} sub={`vs control · ${lift.significant ? 'significant' : 'n.s.'}`} />
         ) : (
-          <Stat label="Active cases" tone="sky" value={metrics ? metrics.activeCount : '—'} sub={metrics ? `${metrics.escalatedCount} escalated` : ''} />
+          <Stat label="Active cases" tone="sky" value={metrics ? <CountUp value={metrics.activeCount} /> : '—'} sub={metrics ? `${metrics.escalatedCount} escalated` : ''} />
         )}
       </div>
 
@@ -60,11 +61,12 @@ export function Overview() {
       <section>
         <SectionHead title="Platform modules" hint="Everything the recovery engine ships" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {modules.map((mod) => (
+          {modules.map((mod, i) => (
             <Link
               key={mod.name}
               to={mod.to}
-              className="group flex flex-col rounded-2xl border border-slate-800/80 bg-slate-900/50 p-4 transition-colors hover:border-slate-700 hover:bg-slate-900"
+              style={{ animationDelay: `${i * 50}ms` }}
+              className="group flex animate-rise flex-col rounded-2xl border border-slate-800/80 bg-slate-900/50 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-slate-700 hover:bg-slate-900"
             >
               <div className="flex items-center gap-2.5">
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-800/80 text-emerald-300 ring-1 ring-inset ring-slate-700/60">
@@ -127,9 +129,9 @@ function ImpactBar({ m }: { m: Metrics }) {
   return (
     <Card title="Recovery impact" right={<span className="text-xs text-slate-500">of {formatINR(m.grossAtRiskPaise)} at risk</span>}>
       <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-800">
-        <div className="bg-emerald-500" style={{ width: seg(m.impact.recoveredPaise) }} title="Recovered" />
-        <div className="bg-amber-500/70" style={{ width: seg(m.impact.inProgressPaise) }} title="In progress" />
-        <div className="bg-rose-500/70" style={{ width: seg(m.impact.lostPaise) }} title="Lost" />
+        <div className="bg-emerald-500 transition-[width] duration-700 ease-out" style={{ width: seg(m.impact.recoveredPaise) }} title="Recovered" />
+        <div className="bg-amber-500/70 transition-[width] duration-700 ease-out" style={{ width: seg(m.impact.inProgressPaise) }} title="In progress" />
+        <div className="bg-rose-500/70 transition-[width] duration-700 ease-out" style={{ width: seg(m.impact.lostPaise) }} title="Lost" />
       </div>
       <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
         <Legend color="bg-emerald-500" label="Recovered" value={formatINR(m.impact.recoveredPaise)} />
@@ -162,7 +164,7 @@ function PipelineSnapshot({ byState }: { byState: Record<string, number> }) {
                 <span className={cx('h-1.5 w-1.5 rounded-full', ACTOR_FILL[b.actor])} />
                 <span className="text-[10px] uppercase tracking-wide text-slate-500">{b.label}</span>
               </div>
-              <div className="mt-0.5 text-lg font-bold tabular-nums text-slate-100">{b.count}</div>
+              <div className="mt-0.5 text-lg font-bold tabular-nums text-slate-100"><CountUp value={b.count} /></div>
             </div>
             {i < flow.length - 1 && <span className="text-slate-600">→</span>}
           </div>

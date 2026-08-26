@@ -56,7 +56,7 @@ export function Pill({ tone = 'slate', children }: { tone?: 'slate' | 'emerald' 
 
 export function Card({ title, right, children, className }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div className={cx('rounded-2xl border border-slate-800/80 bg-slate-900/50 backdrop-blur', className)}>
+    <div className={cx('animate-rise rounded-2xl border border-slate-800/80 bg-slate-900/50 backdrop-blur', className)}>
       {(title || right) && (
         <div className="flex items-center justify-between border-b border-slate-800/80 px-5 py-3">
           <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
@@ -92,7 +92,7 @@ export function Stat({ label, value, sub, tone = 'slate' }: { label: string; val
     sky: 'text-sky-300',
   };
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 px-5 py-4 backdrop-blur">
+    <div className="animate-rise rounded-2xl border border-slate-800/80 bg-slate-900/50 px-5 py-4 backdrop-blur">
       <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</div>
       <div className={cx('mt-1 text-2xl font-bold tabular-nums', valueTone[tone])}>{value}</div>
       {sub && <div className="mt-0.5 text-xs text-slate-500">{sub}</div>}
