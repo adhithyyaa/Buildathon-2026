@@ -1,6 +1,6 @@
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import './index.css';
 import { RefreshProvider } from './lib/refresh';
 import { ToastProvider } from './lib/toast';
@@ -13,9 +13,19 @@ import { LabPage } from './pages/LabPage';
 import { EvidencePage } from './pages/EvidencePage';
 import { CasePage } from './pages/CasePage';
 
+/** Reset scroll to the top on every client-side navigation. */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
+      <ScrollToTop />
       <RefreshProvider>
         <ToastProvider>
           <Layout>
@@ -34,3 +44,7 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 );
+
+// Entrance animations play once on first load; mark the app loaded so client-side navigations
+// don't replay the fade-and-rise on every page (which read as a glitch).
+window.setTimeout(() => document.documentElement.setAttribute('data-loaded', ''), 700);

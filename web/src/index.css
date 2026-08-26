@@ -31,6 +31,12 @@
   100% { left: 100%; opacity: 0; }
 }
 
+/* Entrance animations play once on first load; after that, client-side navigation stays instant
+   (cards don't re-blink their fade-and-rise on every sidebar click). */
+html[data-loaded] .animate-rise {
+  animation: none;
+}
+
 :root {
   color-scheme: light;
 }
