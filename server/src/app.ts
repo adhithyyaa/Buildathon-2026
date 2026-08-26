@@ -13,6 +13,7 @@ import { aiRouter } from './routes/ai';
 import { mlRouter } from './routes/ml';
 import { adminRouter } from './routes/admin';
 import { labRouter } from './routes/lab';
+import { evidenceRouter } from './routes/evidence';
 import { requireToken } from './lib/auth';
 
 export function createApp() {
@@ -49,6 +50,7 @@ export function createApp() {
   app.use('/api/ml', mlRouter);
   app.use('/api/admin', requireToken, adminRouter); // kill switch — operator-only
   app.use('/api/lab', labRouter); // GET is open; POST /resolve is guarded inside the router
+  app.use('/api/evidence', evidenceRouter); // read-only proof of the real Razorpay round-trip
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     const message = toMessage(err);

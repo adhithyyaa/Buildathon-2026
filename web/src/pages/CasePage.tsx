@@ -64,7 +64,7 @@ export function CasePage() {
 
   return (
     <div className="space-y-5">
-      <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+      <Link to="/queue" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
         ← Recovery queue
       </Link>
 

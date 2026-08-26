@@ -215,6 +215,18 @@ export interface LabReport {
   totalResolved: number;
 }
 
+export interface RoundtripCapture {
+  orderId: string;
+  paymentId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  method: string;
+  captured: boolean;
+  capturedAt: number | null;
+  recoveredCase: { id: string; merchant: string; recoveredAt: string | null } | null;
+}
+
 async function get<T>(url: string): Promise<T> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -257,4 +269,5 @@ export const api = {
   explainCase: (id: string) => post<{ text: string; source: string; llmConfigured: boolean }>(`/api/ai/cases/${id}/explain`),
   draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),
   summarizeCase: (id: string) => post<{ text: string; source: string }>(`/api/ai/cases/${id}/summarize`),
+  evidence: () => get<{ captures: RoundtripCapture[] }>('/api/evidence/roundtrip'),
 };
