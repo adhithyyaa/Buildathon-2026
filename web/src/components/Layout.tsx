@@ -4,6 +4,8 @@ import { api, type HealthInfo } from '../lib/api';
 import { NAV, pageForPath } from '../lib/nav';
 import { Icon } from './icons';
 import { DemoMenu } from './DemoMenu';
+import { TokenControl } from './TokenControl';
+import { useRefresh } from '../lib/refresh';
 import { cx } from './ui';
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -11,6 +13,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [paused, setPaused] = useState(false);
   const location = useLocation();
   const page = pageForPath(location.pathname);
+  const { live, setLive } = useRefresh();
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth(null));
@@ -74,6 +77,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <p className="hidden truncate text-xs text-slate-500 sm:block">{page.subtitle}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <LiveToggle live={live} setLive={setLive} />
               <DemoMenu />
               <button
                 onClick={toggleKill}
@@ -88,6 +92,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <Icon name="power" className="h-3.5 w-3.5" />
                 {paused ? 'Resume' : 'Pause'}
               </button>
+              <TokenControl />
             </div>
           </div>
 
@@ -115,6 +120,25 @@ export function Layout({ children }: { children: ReactNode }) {
         <main className="mx-auto max-w-7xl px-5 py-6 lg:px-8">{children}</main>
       </div>
     </div>
+  );
+}
+
+function LiveToggle({ live, setLive }: { live: boolean; setLive: (on: boolean) => void }) {
+  return (
+    <button
+      onClick={() => setLive(!live)}
+      title={live ? 'Live updates on — auto-refreshing every few seconds' : 'Turn on live auto-refresh'}
+      className={cx(
+        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition-colors',
+        live ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300' : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:text-slate-200',
+      )}
+    >
+      <span className="relative flex h-2 w-2">
+        {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />}
+        <span className={cx('relative inline-flex h-2 w-2 rounded-full', live ? 'bg-emerald-400' : 'bg-slate-500')} />
+      </span>
+      Live
+    </button>
   );
 }
 

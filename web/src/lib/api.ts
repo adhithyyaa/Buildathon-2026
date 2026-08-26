@@ -227,6 +227,26 @@ export interface RoundtripCapture {
   recoveredCase: { id: string; merchant: string; recoveredAt: string | null } | null;
 }
 
+// Operator token for the guarded write endpoints (pause, demo, run/approve/reject). Stored locally
+// and sent as `Authorization: Bearer <t>`, matching the server's requireToken middleware. When the
+// server has no RECOUP_ADMIN_TOKEN set (local dev) the endpoints are open and this is simply ignored.
+const ADMIN_TOKEN_KEY = 'recoup_admin_token';
+export function getAdminToken(): string {
+  try {
+    return localStorage.getItem(ADMIN_TOKEN_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+export function setAdminToken(token: string): void {
+  try {
+    if (token) localStorage.setItem(ADMIN_TOKEN_KEY, token);
+    else localStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch {
+    /* storage unavailable — ignore */
+  }
+}
+
 async function get<T>(url: string): Promise<T> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -234,9 +254,12 @@ async function get<T>(url: string): Promise<T> {
 }
 
 async function post<T>(url: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  const token = getAdminToken();
+  if (token) headers['authorization'] = `Bearer ${token}`;
   const r = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);

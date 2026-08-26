@@ -15,7 +15,7 @@ const FILTERS: Array<{ key: string; label: string }> = [
 ];
 
 export function QueuePage() {
-  const { version } = useRefresh();
+  const { version, poll } = useRefresh();
   const [cases, setCases] = useState<CaseRow[] | null>(null);
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -37,7 +37,7 @@ export function QueuePage() {
 
   useEffect(() => {
     void load();
-  }, [load, version]);
+  }, [load, version, poll]);
 
   const loaded = cases ?? [];
   const q = search.trim().toLowerCase();

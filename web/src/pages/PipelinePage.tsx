@@ -9,11 +9,11 @@ import { CountUp } from '../components/CountUp';
 const ACTOR_LABEL: Record<Actor, string> = { det: 'Deterministic', ai: 'AI (ML + LLM)', policy: 'Policy engine', act: 'Executor' };
 
 export function PipelinePage() {
-  const { version } = useRefresh();
+  const { version, poll } = useRefresh();
   const [m, setM] = useState<Metrics | null>(null);
   useEffect(() => {
     api.metrics().then(setM).catch(() => setM(null));
-  }, [version]);
+  }, [version, poll]);
 
   const buckets = m ? pipelineBuckets(m.byState) : null;
 

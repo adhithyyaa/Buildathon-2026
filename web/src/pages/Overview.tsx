@@ -17,7 +17,7 @@ interface Module {
 }
 
 export function Overview() {
-  const { version } = useRefresh();
+  const { version, poll } = useRefresh();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [lab, setLab] = useState<LabReport | null>(null);
   const [recovered, setRecovered] = useState<CaseRow[]>([]);
@@ -26,7 +26,7 @@ export function Overview() {
     api.metrics().then(setMetrics).catch(() => setMetrics(null));
     api.lab().then(setLab).catch(() => setLab(null));
     api.cases({ state: 'recovered', limit: 6 }).then((r) => setRecovered(r.cases)).catch(() => setRecovered([]));
-  }, [version]);
+  }, [version, poll]);
 
   const lift = lab && lab.totalResolved > 0 ? lab.overall : null;
 

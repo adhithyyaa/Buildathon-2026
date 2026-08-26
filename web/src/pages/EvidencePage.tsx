@@ -7,13 +7,13 @@ import { Card, Pill, cx } from '../components/ui';
 import { Icon } from '../components/icons';
 
 export function EvidencePage() {
-  const { version } = useRefresh();
+  const { version, poll } = useRefresh();
   const [captures, setCaptures] = useState<RoundtripCapture[] | null>(null);
   const [err, setErr] = useState(false);
 
   useEffect(() => {
     api.evidence().then((r) => setCaptures(r.captures)).catch(() => setErr(true));
-  }, [version]);
+  }, [version, poll]);
 
   return (
     <div className="space-y-4">

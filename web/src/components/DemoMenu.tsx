@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { useRefresh } from '../lib/refresh';
+import { useToast } from '../lib/toast';
 import { Icon } from './icons';
 import { cx } from './ui';
 
@@ -24,6 +25,7 @@ const ACTIONS: Action[] = [
 /** Operator/demo controls, tucked into the top bar so the app reads as a product, not a toolbox. */
 export function DemoMenu() {
   const { bump } = useRefresh();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string>('');
@@ -43,10 +45,14 @@ export function DemoMenu() {
     setMsg('');
     try {
       const r = (await a.run()) as Record<string, number> & { suppressed?: string[] };
-      setMsg(a.summarize(r));
+      const summary = a.summarize(r);
+      setMsg(summary);
+      toast(summary, 'success');
       bump();
     } catch (e) {
-      setMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
+      const m = e instanceof Error ? e.message : String(e);
+      setMsg(`Error: ${m}`);
+      toast(m.includes('401') || m.includes('unauthorized') ? 'Unauthorized — set the operator token' : `Failed: ${m}`, 'error');
     } finally {
       setBusy(null);
     }

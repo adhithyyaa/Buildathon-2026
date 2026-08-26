@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api, type CaseDetail } from '../lib/api';
 import { formatINR, titleCase, timeAgo } from '../lib/format';
 import { Card, Button, StateBadge, ActionBadge, Pill, cx } from '../components/ui';
+import { useToast } from '../lib/toast';
 import { AuditTimeline } from '../components/AuditTimeline';
 import { StageTracker } from '../components/StageTracker';
 import { MLPanel } from '../components/MLPanel';
@@ -18,6 +19,7 @@ export function CasePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -37,11 +39,15 @@ export function CasePage() {
     void load();
   }, [load]);
 
-  async function act(fn: () => Promise<unknown>) {
+  async function act(fn: () => Promise<unknown>, successMsg: string) {
     setBusy(true);
     try {
       await fn();
+      toast(successMsg, 'success');
       await load();
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      toast(m.includes('401') || m.includes('unauthorized') ? 'Unauthorized — set the operator token' : `Failed: ${m}`, 'error');
     } finally {
       setBusy(false);
     }
@@ -87,16 +93,16 @@ export function CasePage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {data.state === 'at_risk' && (
-            <Button variant="primary" disabled={busy} onClick={() => act(() => api.runCase(id))}>
+            <Button variant="primary" disabled={busy} onClick={() => act(() => api.runCase(id), 'Pipeline run — decision generated')}>
               {busy ? 'Running…' : 'Run pipeline'}
             </Button>
           )}
           {data.state === 'manual_escalation' && (
             <>
-              <Button variant="primary" disabled={busy} onClick={() => act(() => api.approveCase(id))}>
+              <Button variant="primary" disabled={busy} onClick={() => act(() => api.approveCase(id), 'Approved — action dispatched')}>
                 {busy ? 'Dispatching…' : 'Approve & dispatch'}
               </Button>
-              <Button variant="ghost" disabled={busy} onClick={() => act(() => api.rejectCase(id))}>
+              <Button variant="ghost" disabled={busy} onClick={() => act(() => api.rejectCase(id), 'Case rejected — expired')}>
                 {busy ? '…' : 'Reject'}
               </Button>
             </>
