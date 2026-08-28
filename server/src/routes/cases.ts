@@ -10,9 +10,11 @@ import type { RecoveryPlan } from '../ai/schemas';
 
 export const casesRouter = Router();
 
-/** GET /api/cases?state=&merchantId=&limit= — ranked at-risk queue. */
+/** GET /api/cases?state=&merchantId=&limit= — ranked at-risk queue. Guarded: the queue exposes case
+ * + customer data, so an unauthenticated caller can't read it (open in local dev, locked in prod). */
 casesRouter.get(
   '/',
+  requireToken,
   ah(async (req, res) => {
     const state = req.query.state as string | undefined;
     const merchantId = req.query.merchantId as string | undefined;
@@ -38,9 +40,11 @@ casesRouter.get(
   }),
 );
 
-/** GET /api/cases/:id — full case detail with the decision + action + audit trail. */
+/** GET /api/cases/:id — full case detail (customer PII, decisions, audit). Guarded so a raw case id
+ * can't be dereferenced by an unauthenticated caller (was a bare findUnique-by-id → an IDOR). */
 casesRouter.get(
   '/:id',
+  requireToken,
   ah(async (req, res) => {
     const kase = await prisma.case.findUnique({
       where: { id: req.params.id! },

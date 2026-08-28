@@ -248,7 +248,11 @@ export function setAdminToken(token: string): void {
 }
 
 async function get<T>(url: string): Promise<T> {
-  const r = await fetch(url);
+  // Some reads (the case queue + detail) are guarded operator-only; send the token when one is set.
+  const headers: Record<string, string> = {};
+  const token = getAdminToken();
+  if (token) headers['authorization'] = `Bearer ${token}`;
+  const r = await fetch(url, { headers });
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
   return r.json() as Promise<T>;
 }
