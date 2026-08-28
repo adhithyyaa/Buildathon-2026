@@ -16,7 +16,7 @@ import { mlAnomalyWindow } from '../ml/client';
 // IsolationForest baseline mean/std are over 4h counts). Counting a shorter window would
 // deflate the live z-scores and the detector would under-fire.
 const DETECT_WINDOW_MIN = 240; // 4-hour window, matching train-time bucketing
-const ACTIVE_WINDOW_MIN = 60; // a flag counts as an active incident for this long
+export const ACTIVE_WINDOW_MIN = 60; // a flag counts as an active incident for this long
 
 export async function detectFailureSpikes(now: Date = new Date()): Promise<{ anomaly: boolean; reasons: string[] }> {
   const since = new Date(now.getTime() - DETECT_WINDOW_MIN * 60_000);

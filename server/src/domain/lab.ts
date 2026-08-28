@@ -125,6 +125,91 @@ export async function computeLift() {
   return { overall: block(norm), byReason, suppressionCandidates, totalResolved: norm.length };
 }
 
+export interface ImpactPoint {
+  t: string; // bucket end (ISO)
+  actualPaise: number; // cumulative ₹ actually recovered (treatment arm)
+  baselinePaise: number; // cumulative ₹ the measured control rate says would have come back anyway
+}
+
+export interface ImpactEvent {
+  t: string;
+  type: 'incident' | 'model';
+  label: string;
+}
+
+/**
+ * The counterfactual impact series behind the Overview's flagship chart: cumulative recovered-₹
+ * over the failure-cohort timeline (cases ordered by when they failed), with a dotted baseline =
+ * the CONTROL arm's measured ₹-weighted recovery rate applied to the same treatment failures.
+ * Stripe/Checkout.com estimate this line; ours is measured from the live randomized holdout.
+ */
+export async function computeImpactSeries(buckets = 36) {
+  const rows = await prisma.case.findMany({
+    where: { outcome: { is: { status: { in: ['recovered', 'expired'] } } } },
+    select: { arm: true, amount: true, createdAt: true, outcome: { select: { status: true, recoveredAmount: true } } },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  // COUNT-based control rate — the same statistic the Lab's headline lift uses, so the chart's
+  // endpoint gap and the official incremental-₹ figure share one methodology. (A ₹-weighted rate
+  // is unstable at holdout size: one large natural recovery in ~24 control cases swings it wildly.)
+  const control = rows.filter((r) => r.arm === 'control');
+  const controlRecoveredCount = control.filter((r) => r.outcome?.status === 'recovered').length;
+  const controlRate = control.length > 0 ? controlRecoveredCount / control.length : 0;
+
+  const treatment = rows.filter((r) => r.arm === 'treatment');
+  if (treatment.length === 0) {
+    return { series: [] as ImpactPoint[], events: [] as ImpactEvent[], controlRatePct: control.length > 0 ? Number((controlRate * 100).toFixed(1)) : null, incrementalPaise: 0, resolvedCases: rows.length };
+  }
+
+  const start = treatment[0]!.createdAt.getTime();
+  const end = Math.max(treatment[treatment.length - 1]!.createdAt.getTime(), start + 1);
+  const width = (end - start) / buckets;
+
+  const series: ImpactPoint[] = [];
+  let actual = 0;
+  let baseline = 0;
+  let i = 0;
+  for (let b = 1; b <= buckets; b++) {
+    const edge = start + width * b;
+    while (i < treatment.length && treatment[i]!.createdAt.getTime() <= edge) {
+      const r = treatment[i]!;
+      if (r.outcome?.status === 'recovered') actual += r.outcome.recoveredAmount || r.amount;
+      baseline += r.amount * controlRate;
+      i++;
+    }
+    series.push({ t: new Date(edge).toISOString(), actualPaise: Math.round(actual), baselinePaise: Math.round(baseline) });
+  }
+
+  // Annotations: detected failure-spike incidents + model loads that fall inside the timeline.
+  const [flags, models] = await Promise.all([
+    prisma.anomalyFlag.findMany({ orderBy: { createdAt: 'desc' }, take: 40, select: { windowKey: true, reason: true, createdAt: true } }),
+    prisma.modelRun.findMany({ orderBy: { loadedAt: 'desc' }, take: 3, select: { version: true, loadedAt: true } }),
+  ]);
+  const seen = new Set<string>();
+  const events: ImpactEvent[] = [];
+  for (const f of flags) {
+    const key = `${f.windowKey}:${f.reason ?? ''}`;
+    if (seen.has(key)) continue; // one marker per window+reason, not one per flag row
+    seen.add(key);
+    if (f.createdAt.getTime() >= start) {
+      events.push({ t: f.createdAt.toISOString(), type: 'incident', label: `Failure spike: ${(f.reason ?? 'unknown').replace(/_/g, ' ')}` });
+    }
+  }
+  for (const m of models) {
+    if (m.loadedAt.getTime() >= start) events.push({ t: m.loadedAt.toISOString(), type: 'model', label: `Model ${m.version} loaded` });
+  }
+  events.sort((a, b) => a.t.localeCompare(b.t));
+
+  return {
+    series,
+    events: events.slice(0, 12),
+    controlRatePct: control.length > 0 ? Number((controlRate * 100).toFixed(1)) : null,
+    incrementalPaise: Math.round(actual - baseline),
+    resolvedCases: rows.length,
+  };
+}
+
 const SUPPRESS_KEY = 'lab_suppressed_reasons';
 
 /** Recompute the Lab report and persist the auto-suppressed reason set (the "learn" step). */

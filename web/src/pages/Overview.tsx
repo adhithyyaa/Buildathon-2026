@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, type CaseRow, type LabReport, type Metrics } from '../lib/api';
+import { api, type CaseRow, type Funnel, type ImpactSeries, type LabReport, type Metrics, type ReasonBreakdownRow } from '../lib/api';
 import { formatINR, titleCase } from '../lib/format';
-import { pipelineBuckets, ACTOR_FILL } from '../lib/stages';
 import { useRefresh } from '../lib/refresh';
 import { Card, Stat, cx } from '../components/ui';
 import { Icon } from '../components/icons';
 import { CountUp } from '../components/CountUp';
+import { ImpactChart } from '../components/ImpactChart';
 
 interface Module {
   icon: string;
@@ -20,11 +20,13 @@ export function Overview() {
   const { version, poll } = useRefresh();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [lab, setLab] = useState<LabReport | null>(null);
+  const [impact, setImpact] = useState<ImpactSeries | null>(null);
   const [recovered, setRecovered] = useState<CaseRow[]>([]);
 
   useEffect(() => {
     api.metrics().then(setMetrics).catch(() => setMetrics(null));
     api.lab().then(setLab).catch(() => setLab(null));
+    api.impact().then(setImpact).catch(() => setImpact(null));
     api.cases({ state: 'recovered', limit: 6 }).then((r) => setRecovered(r.cases)).catch(() => setRecovered([]));
   }, [version, poll]);
 
@@ -80,7 +82,44 @@ export function Overview() {
         )}
       </div>
 
-      {metrics && <ImpactBar m={metrics} />}
+      {/* Flagship: measured counterfactual impact */}
+      {impact && impact.series.length >= 2 ? (
+        <Card
+          title="Measured impact — with Recoup vs without"
+          right={
+            <span className="flex items-center gap-4 text-[11px] font-semibold">
+              <span className="flex items-center gap-1.5 text-slate-600"><span className="h-0.5 w-5 rounded bg-emerald-500" /> Recovered (actual)</span>
+              <span className="flex items-center gap-1.5 text-slate-500"><span className="h-0 w-5 border-t-2 border-dashed border-slate-500" /> Without Recoup (control-measured)</span>
+            </span>
+          }
+        >
+          <ImpactChart data={impact} />
+          <p className="mt-2 text-[11px] font-medium leading-relaxed text-slate-400">
+            Cash actually banked across the failure timeline, vs the control arm's <b className="text-slate-600">measured</b>{' '}
+            {impact.controlRatePct != null ? `${impact.controlRatePct}% ` : ''}recovery rate applied to the same failures — a randomized holdout, not an estimate.
+            The Incremental ₹ Lift KPI projects this lift over the full at-risk book; this chart counts only recovered cash.
+            {impact.events.length > 0 && (
+              <>
+                {' '}Markers: <span className="text-amber-600 font-semibold">● failure-spike incidents</span> · <span className="text-violet-600 font-semibold">● model loads</span>.
+              </>
+            )}
+          </p>
+        </Card>
+      ) : (
+        metrics && metrics.totalCases > 0 && (
+          <Card title="Measured impact — with Recoup vs without">
+            <p className="py-6 text-center text-sm text-slate-400">
+              Resolve outcomes (Demo menu → Resolve outcomes) to draw the measured counterfactual — cumulative recovered ₹ vs the control baseline.
+            </p>
+          </Card>
+        )
+      )}
+
+      {/* Funnel + failure-reason intelligence */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {metrics && <RecoveryFunnel funnel={metrics.funnel} />}
+        {metrics && metrics.reasons.length > 0 && <FailureReasons rows={metrics.reasons} />}
+      </div>
 
       {/* Modules showcase */}
       <section>
@@ -111,30 +150,27 @@ export function Overview() {
         </div>
       </section>
 
-      {/* Pipeline snapshot + recent recoveries */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {metrics && <PipelineSnapshot byState={metrics.byState} />}
-        <Card
-          title="Recent recoveries"
-          right={<Link to="/app/queue" className="text-xs font-semibold text-slate-500 hover:text-slate-900">View all →</Link>}
-        >
-          {recovered.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">No recoveries yet — run the pipeline from the Demo menu.</p>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {recovered.map((c) => (
-                <Link key={c.id} to={`/app/cases/${c.id}`} className="flex items-center justify-between gap-3 py-3 text-sm hover:opacity-80 transition-opacity">
-                  <div className="min-w-0">
-                    <span className="block truncate font-semibold text-slate-900">{c.merchant.name}</span>
-                    <span className="block truncate text-xs text-slate-400">{titleCase(c.reasonTag) || 'Subscription recovery'}</span>
-                  </div>
-                  <span className="shrink-0 font-bold tabular-nums text-emerald-600">{formatINR(c.outcome?.recoveredAmount ?? c.amount)}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
+      {/* Recent recoveries */}
+      <Card
+        title="Recent recoveries"
+        right={<Link to="/app/queue" className="text-xs font-semibold text-slate-500 hover:text-slate-900">View all →</Link>}
+      >
+        {recovered.length === 0 ? (
+          <p className="text-sm text-slate-400 py-4 text-center">No recoveries yet — run the pipeline from the Demo menu.</p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {recovered.map((c) => (
+              <Link key={c.id} to={`/app/cases/${c.id}`} className="flex items-center justify-between gap-3 py-3 text-sm hover:opacity-80 transition-opacity">
+                <div className="min-w-0">
+                  <span className="block truncate font-semibold text-slate-900">{c.merchant.name}</span>
+                  <span className="block truncate text-xs text-slate-400">{titleCase(c.reasonTag) || 'Subscription recovery'}</span>
+                </div>
+                <span className="shrink-0 font-bold tabular-nums text-emerald-600">{formatINR(c.outcome?.recoveredAmount ?? c.amount)}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
@@ -148,53 +184,117 @@ function SectionHead({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
-function ImpactBar({ m }: { m: Metrics }) {
-  const total = Math.max(1, m.grossAtRiskPaise);
-  const seg = (v: number) => `${(v / total) * 100}%`;
+/**
+ * Cumulative recovery funnel (Stripe-style tri-state tail): each stage counts cases that ever
+ * reached it; the terminal row splits Attempted into In recovery / Recovered / Lost.
+ */
+function RecoveryFunnel({ funnel }: { funnel: Funnel }) {
+  const stages = [
+    { key: 'detected', label: 'Detected', stage: funnel.detected, tone: 'bg-slate-700' },
+    { key: 'decided', label: 'Decided', stage: funnel.decided, tone: 'bg-violet-500' },
+    { key: 'attempted', label: 'Attempted', stage: funnel.attempted, tone: 'bg-sky-500' },
+    { key: 'recovered', label: 'Recovered', stage: funnel.recovered, tone: 'bg-emerald-500' },
+  ];
+  const max = Math.max(1, funnel.detected.count);
+  const dropAfter = (i: number): string | null => {
+    if (i === 0) {
+      const d = funnel.detected.count - funnel.decided.count;
+      if (d <= 0) return null;
+      return `−${d} · incl. ${funnel.controlHeld.count} control-held (the experiment)`;
+    }
+    if (i === 1) {
+      const d = funnel.decided.count - funnel.attempted.count;
+      if (d <= 0) return null;
+      return `−${d} · policy-blocked, no-action or escalated`;
+    }
+    if (i === 2) {
+      const d = funnel.attempted.count - funnel.recovered.count - funnel.inRecovery.count;
+      if (d <= 0) return null;
+      return `−${d} · expired after attempts`;
+    }
+    return null;
+  };
+
   return (
-    <Card title="Recovery impact" right={<span className="text-xs font-medium text-slate-400">of {formatINR(m.grossAtRiskPaise)} at risk</span>}>
-      <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
-        <div className="bg-emerald-500 transition-[width] duration-700 ease-out" style={{ width: seg(m.impact.recoveredPaise) }} title="Recovered" />
-        <div className="bg-amber-400 transition-[width] duration-700 ease-out" style={{ width: seg(m.impact.inProgressPaise) }} title="In progress" />
-        <div className="bg-rose-400 transition-[width] duration-700 ease-out" style={{ width: seg(m.impact.lostPaise) }} title="Lost" />
+    <Card
+      title="Recovery funnel"
+      right={<Link to="/app/pipeline" className="text-xs font-semibold text-slate-500 hover:text-slate-900">View pipeline →</Link>}
+    >
+      <div className="space-y-1">
+        {stages.map((s, i) => (
+          <div key={s.key}>
+            <div className="flex items-center gap-3">
+              <span className="w-20 shrink-0 text-[11px] font-bold uppercase tracking-wide text-slate-500">{s.label}</span>
+              <div className="relative h-7 flex-1 overflow-hidden rounded-lg bg-slate-100">
+                <div
+                  className={cx('h-full rounded-lg transition-[width] duration-700 ease-out', s.tone)}
+                  style={{ width: `${Math.max(2.5, (s.stage.count / max) * 100)}%` }}
+                />
+                <span className="absolute inset-y-0 left-2.5 flex items-center gap-2 text-[11px] font-bold text-white mix-blend-luminosity drop-shadow-sm">
+                  <CountUp value={s.stage.count} />
+                </span>
+              </div>
+              <span className="w-20 shrink-0 text-right text-[11px] font-bold tabular-nums text-slate-700">{formatINR(s.stage.paise)}</span>
+            </div>
+            {dropAfter(i) && (
+              <div className="ml-24 py-0.5 text-[10.5px] font-medium text-slate-400">↓ {dropAfter(i)}</div>
+            )}
+          </div>
+        ))}
       </div>
-      <div className="mt-3.5 flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
-        <Legend color="bg-emerald-500" label="Recovered" value={formatINR(m.impact.recoveredPaise)} />
-        <Legend color="bg-amber-400" label="In progress" value={formatINR(m.impact.inProgressPaise)} />
-        <Legend color="bg-rose-400" label="Lost (expired)" value={formatINR(m.impact.lostPaise)} />
+      {/* Terminal tri-state of attempted work */}
+      <div className="mt-3.5 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-slate-100 pt-3 text-[11px] font-semibold">
+        <span className="flex items-center gap-1.5 text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Recovered {funnel.recovered.count}</span>
+        <span className="flex items-center gap-1.5 text-amber-700"><span className="h-2 w-2 rounded-full bg-amber-400" /> In recovery {funnel.inRecovery.count}</span>
+        <span className="flex items-center gap-1.5 text-rose-700"><span className="h-2 w-2 rounded-full bg-rose-400" /> Lost {funnel.lost.count} ({formatINR(funnel.lost.paise)})</span>
+        <Link to="/app/lab" className="ml-auto text-[10.5px] font-medium text-slate-400 hover:text-slate-600">control outcomes → Recovery Lab</Link>
       </div>
     </Card>
   );
 }
 
-function Legend({ color, label, value }: { color: string; label: string; value: string }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={cx('h-2.5 w-2.5 rounded-sm', color)} />
-      <span className="text-slate-500 font-medium">{label}</span>
-      <span className="font-bold tabular-nums text-slate-800">{value}</span>
-    </span>
-  );
-}
+const FAULT_TONES: Record<ReasonBreakdownRow['faultOwner'], string> = {
+  customer: 'bg-sky-50 text-sky-700 ring-sky-200/60',
+  bank: 'bg-violet-50 text-violet-700 ring-violet-200/60',
+  business: 'bg-amber-50 text-amber-700 ring-amber-200/60',
+  other: 'bg-slate-100 text-slate-600 ring-slate-200/60',
+};
 
-function PipelineSnapshot({ byState }: { byState: Record<string, number> }) {
-  const { flow } = pipelineBuckets(byState);
+const PATH_META: Record<ReasonBreakdownRow['path'], { label: string; tone: string }> = {
+  auto_retry: { label: 'auto-retry', tone: 'bg-emerald-50 text-emerald-700 ring-emerald-200/60' },
+  fresh_link: { label: 'fresh link', tone: 'bg-sky-50 text-sky-700 ring-sky-200/60' },
+  do_not_touch: { label: 'RBI TAT — no action', tone: 'bg-rose-50 text-rose-700 ring-rose-200/60' },
+};
+
+/** Failure reasons in Razorpay's fault taxonomy, each tagged with the recovery path policy allows. */
+function FailureReasons({ rows }: { rows: ReasonBreakdownRow[] }) {
+  const top = rows.slice(0, 6);
   return (
-    <Card title="Pipeline" right={<Link to="/app/pipeline" className="text-xs font-semibold text-slate-500 hover:text-slate-900">View pipeline →</Link>}>
-      <div className="flex items-center justify-between gap-1.5">
-        {flow.map((b, i) => (
-          <div key={b.key} className="flex flex-1 items-center gap-1.5">
-            <div className="flex-1 rounded-xl border border-slate-100 bg-slate-50/60 px-2.5 py-2.5 text-center shadow-2xs">
-              <div className="flex items-center justify-center gap-1.5">
-                <span className={cx('h-1.5 w-1.5 rounded-full', ACTOR_FILL[b.actor])} />
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">{b.label}</span>
+    <Card title="Failure reasons" right={<span className="text-xs font-medium text-slate-400">fault owner · recovery path</span>}>
+      <div className="space-y-3">
+        {top.map((r) => {
+          const rate = r.atRiskPaise > 0 ? (r.recoveredPaise / r.atRiskPaise) * 100 : 0;
+          return (
+            <div key={r.reason}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-800">{titleCase(r.reason)}</span>
+                <span className={cx('rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset', FAULT_TONES[r.faultOwner])}>{r.faultOwner}</span>
+                <span className={cx('rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset', PATH_META[r.path].tone)}>{PATH_META[r.path].label}</span>
+                <span className="ml-auto text-[11px] font-bold tabular-nums text-slate-600">
+                  {r.recoveredCases}/{r.cases} · {formatINR(r.recoveredPaise)}
+                </span>
               </div>
-              <div className="mt-1 text-lg font-bold tabular-nums text-slate-900"><CountUp value={b.count} /></div>
+              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100" title={`${Math.round(rate)}% of ${formatINR(r.atRiskPaise)} recovered`}>
+                <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-700 ease-out" style={{ width: `${Math.min(100, rate)}%` }} />
+              </div>
             </div>
-            {i < flow.length - 1 && <span className="text-slate-300 font-bold">→</span>}
-          </div>
-        ))}
+          );
+        })}
       </div>
+      <p className="mt-3 border-t border-slate-100 pt-2.5 text-[10.5px] font-medium leading-relaxed text-slate-400">
+        Taxonomy follows Razorpay SR analytics (customer / bank / business / other). The path tag is what the policy engine allows — a
+        debited-pending-reversal is never re-charged (RBI TAT auto-reversal).
+      </p>
     </Card>
   );
 }

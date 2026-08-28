@@ -67,6 +67,52 @@ function pickAmountPaise(rng: () => number): number {
 }
 
 /**
+ * A concentrated burst of ONE failure reason, aged inside the detector's live 4h window —
+ * used by the demo "trigger failure spike" control to light up the IsolationForest incident
+ * path (detect → flag → policy defers retries) on stage.
+ */
+export function generateSpikeBurst(
+  reason: 'upi_collect_timeout' | 'bank_downtime',
+  count = 40,
+  nonce = 0,
+): AtRiskInput[] {
+  const spec: ReasonSpec =
+    reason === 'bank_downtime'
+      ? { eventType: 'payment_failed', method: 'netbanking', failureReason: 'Bank is experiencing downtime', failureCode: 'GATEWAY_ERROR', channel: 'checkout', weight: 1 }
+      : { eventType: 'payment_failed', method: 'upi', failureReason: 'UPI collect request timed out', failureCode: 'BAD_REQUEST_ERROR', channel: 'checkout', weight: 1 };
+  const rng = mulberry32(nonce >>> 0 || 1);
+  const out: AtRiskInput[] = [];
+  for (let i = 0; i < count; i++) {
+    const merchant = MERCHANTS[Math.floor(rng() * MERCHANTS.length)]!;
+    const first = FIRST[Math.floor(rng() * FIRST.length)]!;
+    const last = LAST[Math.floor(rng() * LAST.length)]!;
+    out.push({
+      eventType: spec.eventType,
+      merchantName: merchant,
+      customerExternalId: `spike_cust_${nonce}_${i}`,
+      customerName: `${first} ${last}`,
+      customerEmail: `${first}.${last}.spike${i}@example.com`.toLowerCase(),
+      customerPhone: `+9197${String(10000000 + Math.floor(rng() * 89999999))}`,
+      optedOut: false,
+      priorPayments: Math.floor(rng() * 12),
+      priorConversions: Math.floor(rng() * 6),
+      orderId: `order_spike_${nonce}_${i}`,
+      paymentId: `pay_spike_${nonce}_${i}`,
+      amountPaise: (300 + Math.floor(rng() * 4500)) * 100,
+      currency: 'INR',
+      method: spec.method,
+      failureReason: spec.failureReason,
+      failureCode: spec.failureCode,
+      channel: spec.channel,
+      retryCount: 0,
+      dedupeKey: `spike:${nonce}:${i}`,
+      ageMinutes: Math.floor(rng() * 45), // inside the detector's 4h live window
+    });
+  }
+  return out;
+}
+
+/**
  * Build a reproducible batch of synthetic at-risk cases with a realistic mix of
  * reasons, amounts, customer histories, opt-outs, and abandoned checkouts — so the
  * demo shows the system handling reality, not just the happy path.

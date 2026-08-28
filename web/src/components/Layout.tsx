@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, Outlet } from 'react-router-dom';
-import { api, type HealthInfo } from '../lib/api';
+import { api, type HealthInfo, type IncidentStatus } from '../lib/api';
 import { NAV_SECTIONS, pageForPath } from '../lib/nav';
 import { Icon } from './icons';
 import { Logo } from './Logo';
@@ -13,14 +13,21 @@ import { cx } from './ui';
 export function Layout() {
   const [health, setHealth] = useState<HealthInfo | null>(null);
   const [paused, setPaused] = useState(false);
+  const [incidents, setIncidents] = useState<IncidentStatus | null>(null);
   const location = useLocation();
   const page = pageForPath(location.pathname);
-  const { live, setLive } = useRefresh();
+  const { live, setLive, version, poll } = useRefresh();
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth(null));
     api.killSwitch().then((s) => setPaused(s.paused)).catch(() => {});
   }, []);
+
+  // Live failure-spike awareness — refreshed with the rest of the app so the strip appears
+  // the moment the IsolationForest flags an incident and clears when the window passes.
+  useEffect(() => {
+    api.incidents().then(setIncidents).catch(() => setIncidents(null));
+  }, [version, poll]);
 
   const toggleKill = async () => {
     const s = paused ? await api.resume() : await api.pause('operator paused from dashboard');
@@ -158,8 +165,41 @@ export function Layout() {
           </nav>
         </header>
 
+        {/* Live incident strip — visible on every page while a failure spike is active */}
+        {incidents && incidents.active.length > 0 && <IncidentStrip incidents={incidents} />}
+
         {/* Content Area */}
         <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8"><Outlet /></main>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * F9: the IsolationForest's live output, in the idiom of Razorpay's downtime feed. While a
+ * reason is flagged, the policy engine is deferring its retries instead of adding to the storm.
+ */
+function IncidentStrip({ incidents }: { incidents: IncidentStatus }) {
+  const pretty = (r: string) => r.replace(/_/g, ' ');
+  return (
+    <div className="border-b border-amber-200/80 bg-amber-50/90">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 sm:px-6 lg:px-8">
+        <span className="relative flex h-2 w-2 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+        </span>
+        <span className="text-xs font-bold text-amber-900">Failure spike active</span>
+        {incidents.active.map((a) => (
+          <span key={a.reason} className="rounded-md bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-300/70">
+            {pretty(a.reason)} · z-flagged
+          </span>
+        ))}
+        <span className="text-[11px] font-medium text-amber-700">
+          Automatic retries for {incidents.active.length === 1 ? 'this reason are' : 'these reasons are'} deferred — the engine won't retry into an outage.
+        </span>
+        <span className="ml-auto hidden text-[10.5px] font-medium text-amber-600/80 sm:block">
+          IsolationForest · clears after {incidents.windowMinutes} min quiet
+        </span>
       </div>
     </div>
   );

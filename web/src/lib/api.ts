@@ -27,6 +27,59 @@ export interface Metrics {
   byState: Record<string, number>;
   byReason: Record<string, number>;
   byAction: Record<string, number>;
+  funnel: Funnel;
+  reasons: ReasonBreakdownRow[];
+}
+
+export interface FunnelStage {
+  count: number;
+  paise: number;
+}
+
+export interface Funnel {
+  detected: FunnelStage;
+  decided: FunnelStage;
+  attempted: FunnelStage;
+  inRecovery: FunnelStage;
+  recovered: FunnelStage;
+  lost: FunnelStage;
+  controlHeld: FunnelStage;
+}
+
+export interface ReasonBreakdownRow {
+  reason: string;
+  cases: number;
+  atRiskPaise: number;
+  recoveredCases: number;
+  recoveredPaise: number;
+  faultOwner: 'customer' | 'bank' | 'business' | 'other';
+  path: 'auto_retry' | 'fresh_link' | 'do_not_touch';
+}
+
+export interface ImpactPoint {
+  t: string;
+  actualPaise: number;
+  baselinePaise: number;
+}
+
+export interface ImpactEvent {
+  t: string;
+  type: 'incident' | 'model';
+  label: string;
+}
+
+export interface ImpactSeries {
+  series: ImpactPoint[];
+  events: ImpactEvent[];
+  controlRatePct: number | null;
+  incrementalPaise: number;
+  resolvedCases: number;
+}
+
+export interface IncidentStatus {
+  active: { reason: string; lastAt: string; score: number; count: number }[];
+  windowMinutes: number;
+  recent: { reason: string | null; score: number; at: string }[];
 }
 
 export interface CaseRow {
@@ -292,6 +345,10 @@ export const api = {
   reset: () => post('/api/demo/reset'),
   lab: () => get<LabReport>('/api/lab'),
   labResolve: () => post<{ resolved: number; recovered: number; expired: number }>('/api/lab/resolve'),
+  impact: () => get<ImpactSeries>('/api/lab/impact'),
+  incidents: () => get<IncidentStatus>('/api/incidents'),
+  spike: (reason?: 'upi_collect_timeout' | 'bank_downtime') =>
+    post<{ created: number; deduped: number; anomaly: boolean; reasons: string[] }>('/api/demo/spike', { reason }),
   mlMetrics: () => get<MlMetrics>('/api/ml/metrics'),
   explainCase: (id: string) => post<{ text: string; source: string; llmConfigured: boolean }>(`/api/ai/cases/${id}/explain`),
   draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),

@@ -10,7 +10,7 @@ interface Action {
   label: string;
   hint: string;
   run: () => Promise<unknown>;
-  summarize: (r: Record<string, number> & { suppressed?: string[] }) => string;
+  summarize: (r: Record<string, number> & { suppressed?: string[]; reasons?: string[]; anomaly?: boolean }) => string;
   danger?: boolean;
 }
 
@@ -18,6 +18,7 @@ const ACTIONS: Action[] = [
   { key: 'seed', label: 'Seed 120 cases', hint: 'Load a reproducible synthetic batch', run: () => api.seed(120), summarize: (o) => `Seeded ${o.created} new · ${o.deduped} duplicate` },
   { key: 'process', label: 'Run pipeline', hint: 'Score, decide and act on every at-risk case', run: () => api.process(), summarize: (o) => `Processed ${o.processed} cases` },
   { key: 'tick', label: 'Advance retries', hint: 'Fast-forward scheduled retries', run: () => api.tick(), summarize: (o) => `Recovered ${o.recovered} · re-queued ${o.reQueued} · expired ${o.expired}` },
+  { key: 'spike', label: 'Trigger failure spike', hint: 'Burst UPI timeouts through the anomaly detector', run: () => api.spike(), summarize: (o) => (o.anomaly ? `Spike detected — retries deferred (${(o.reasons ?? []).join(', ').replace(/_/g, ' ')})` : `Burst ingested (${o.created}) — no anomaly flagged`) },
   { key: 'resolve', label: 'Resolve outcomes', hint: 'Draw treatment vs control results for the Lab', run: () => api.labResolve(), summarize: (o) => `Resolved ${o.resolved}: ${o.recovered} recovered${o.suppressed?.length ? ` · suppressed ${o.suppressed.join(', ')}` : ''}` },
   { key: 'reset', label: 'Reset all data', hint: 'Clear every case and start clean', run: () => api.reset(), summarize: () => 'All data cleared', danger: true },
 ];

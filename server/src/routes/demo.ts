@@ -3,10 +3,11 @@ import { prisma } from '../lib/prisma';
 import { ah } from '../lib/asyncHandler';
 import { runCase } from '../pipeline/runCase';
 import { markRecovered, markExpired } from '../domain/recovery';
-import { generateSyntheticCases } from '../seed/dataset';
+import { generateSyntheticCases, generateSpikeBurst } from '../seed/dataset';
 import { normalizeAtRiskInput } from '../ingestion/normalize';
 import { ingestEvent } from '../ingestion/ingest';
 import { tick } from '../worker/tick';
+import { detectFailureSpikes } from '../domain/incidents';
 import { formatINR } from '../lib/money';
 import { logger } from '../lib/logger';
 import { toMessage } from '../lib/errors';
@@ -57,6 +58,30 @@ demoRouter.post(
       }
     }
     res.json({ processed, failed });
+  }),
+);
+
+/**
+ * POST /api/demo/spike { reason?, count? } — ingest a concentrated burst of one failure reason
+ * and run the IsolationForest detector, so the live incident path (detect → flag → policy defers
+ * retries) can be demonstrated on demand.
+ */
+demoRouter.post(
+  '/spike',
+  ah(async (req, res) => {
+    const reason = req.body?.reason === 'bank_downtime' ? 'bank_downtime' : 'upi_collect_timeout';
+    // 60 clears the detector's z≥2.5 bar over the trained 4h baseline (mean ~17, σ ~12) with margin.
+    const count = Math.min(Number(req.body?.count) || 60, 120);
+    const rows = generateSpikeBurst(reason, count, Date.now() % 1_000_000_000);
+    let created = 0;
+    let deduped = 0;
+    for (const row of rows) {
+      const n = normalizeAtRiskInput(row, 'demo');
+      const r = await ingestEvent(n);
+      r.deduped ? deduped++ : created++;
+    }
+    const det = await detectFailureSpikes();
+    res.json({ created, deduped, anomaly: det.anomaly, reasons: det.reasons });
   }),
 );
 
