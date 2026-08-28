@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { api, type HealthInfo } from '../lib/api';
 import { NAV_SECTIONS, pageForPath } from '../lib/nav';
 import { Icon } from './icons';
+import { Logo } from './Logo';
 import { DemoMenu } from './DemoMenu';
 import { TokenControl } from './TokenControl';
 import { useRefresh } from '../lib/refresh';
@@ -35,7 +36,7 @@ export function Layout({ children }: { children: ReactNode }) {
             to="/"
             className="flex items-center gap-3 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xs hover:border-slate-300 transition-colors"
           >
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500 text-base font-black text-emerald-950 shadow-2xs">₹</div>
+            <Logo className="h-9 w-9 shrink-0" />
             <div className="text-left">
               <div className="text-sm font-bold text-slate-900 leading-none">Recoup</div>
               <div className="mt-1 text-[11px] text-slate-500 leading-none font-medium">Revenue Recovery Engine</div>
@@ -99,7 +100,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between gap-4 px-5 py-3.5 lg:px-8">
             {/* Left: Breadcrumbs & Page title */}
             <div className="flex items-center gap-3">
-              <Link to="/" className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500 text-base font-black text-emerald-950 lg:hidden">₹</Link>
+              <Link to="/" className="lg:hidden"><Logo className="h-8 w-8" /></Link>
               <div>
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                   <span>Recoup</span>
