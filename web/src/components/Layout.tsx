@@ -58,12 +58,12 @@ export function Layout({ children }: { children: ReactNode }) {
                     end={item.path === '/'}
                     className={({ isActive }) =>
                       cx(
-                        // constant 1px border in both states (transparent when inactive) so the active
-                        // border never adds width — otherwise the box grows 1px and the row flickers.
-                        'group relative flex items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+                        // Every item carries a simple black border (same width in both states, so the
+                        // active state never adds width and the row can't flicker). Active = filled white.
+                        'group relative flex items-center justify-between rounded-xl border border-slate-900 px-3 py-2 text-sm font-medium transition-colors',
                         isActive
-                          ? 'border-slate-200/90 bg-white text-slate-900 shadow-xs font-semibold'
-                          : 'border-transparent text-slate-600 hover:bg-slate-100/70 hover:text-slate-900',
+                          ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                          : 'bg-transparent text-slate-700 hover:bg-slate-100',
                       )
                     }
                   >
