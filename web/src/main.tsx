@@ -5,6 +5,8 @@ import './index.css';
 import { RefreshProvider } from './lib/refresh';
 import { ToastProvider } from './lib/toast';
 import { Layout } from './components/Layout';
+import { Landing } from './pages/Landing';
+import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
 import { QueuePage } from './pages/QueuePage';
 import { PipelinePage } from './pages/PipelinePage';
@@ -28,17 +30,21 @@ createRoot(document.getElementById('root')!).render(
       <ScrollToTop />
       <RefreshProvider>
         <ToastProvider>
-          <Layout>
-            <Routes>
-            <Route path="/" element={<Overview />} />
-            <Route path="/queue" element={<QueuePage />} />
-            <Route path="/pipeline" element={<PipelinePage />} />
-            <Route path="/model" element={<ModelPage />} />
-            <Route path="/lab" element={<LabPage />} />
-            <Route path="/evidence" element={<EvidencePage />} />
-              <Route path="/cases/:id" element={<CasePage />} />
-            </Routes>
-          </Layout>
+          <Routes>
+            {/* Marketing */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            {/* App — the dashboard lives under /app behind the sidebar shell */}
+            <Route path="/app" element={<Layout />}>
+              <Route index element={<Overview />} />
+              <Route path="queue" element={<QueuePage />} />
+              <Route path="pipeline" element={<PipelinePage />} />
+              <Route path="model" element={<ModelPage />} />
+              <Route path="lab" element={<LabPage />} />
+              <Route path="evidence" element={<EvidencePage />} />
+              <Route path="cases/:id" element={<CasePage />} />
+            </Route>
+          </Routes>
         </ToastProvider>
       </RefreshProvider>
     </BrowserRouter>

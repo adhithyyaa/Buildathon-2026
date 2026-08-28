@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useLocation, Outlet } from 'react-router-dom';
 import { api, type HealthInfo } from '../lib/api';
 import { NAV_SECTIONS, pageForPath } from '../lib/nav';
 import { Icon } from './icons';
@@ -9,7 +9,7 @@ import { TokenControl } from './TokenControl';
 import { useRefresh } from '../lib/refresh';
 import { cx } from './ui';
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout() {
   const [health, setHealth] = useState<HealthInfo | null>(null);
   const [paused, setPaused] = useState(false);
   const location = useLocation();
@@ -33,7 +33,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {/* Brand */}
         <div className="p-4">
           <Link
-            to="/"
+            to="/app"
             className="flex items-center gap-3 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xs hover:border-slate-300 transition-colors"
           >
             <Logo className="h-9 w-9 shrink-0" />
@@ -56,7 +56,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   <NavLink
                     key={`${section.title}-${item.path}-${item.label}`}
                     to={item.path}
-                    end={item.path === '/'}
+                    end={item.path === '/app'}
                     className={({ isActive }) =>
                       cx(
                         // Only the active tab shows a black border; inactive items keep a same-width
@@ -100,7 +100,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between gap-4 px-5 py-3.5 lg:px-8">
             {/* Left: Breadcrumbs & Page title */}
             <div className="flex items-center gap-3">
-              <Link to="/" className="lg:hidden"><Logo className="h-8 w-8" /></Link>
+              <Link to="/app" className="lg:hidden"><Logo className="h-8 w-8" /></Link>
               <div>
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                   <span>Recoup</span>
@@ -140,7 +140,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <NavLink
                 key={`mobile-${item.path}-${item.label}`}
                 to={item.path}
-                end={item.path === '/'}
+                end={item.path === '/app'}
                 className={({ isActive }) =>
                   cx(
                     'flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium',
@@ -156,7 +156,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Content Area */}
-        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8"><Outlet /></main>
       </div>
     </div>
   );

@@ -31,14 +31,14 @@ export function Overview() {
   const lift = lab && lab.totalResolved > 0 ? lab.overall : null;
 
   const modules: Module[] = [
-    { icon: 'bolt', name: 'ML Decisioning', blurb: 'CatBoost scores every case, benchmarked vs XGBoost & Logistic Reg.', stat: metrics ? `${metrics.ml.mlServedRatePct ?? 0}% model-served` : 'CatBoost', to: '/model' },
-    { icon: 'shield', name: 'Bounded Policy Engine', blurb: 'ML proposes, a deterministic policy disposes — an allow-listed executor acts.', stat: metrics ? `${metrics.blockedActionCount} blocked` : 'India rules', to: '/pipeline' },
-    { icon: 'lab', name: 'Recovery Lab', blurb: 'Incremental ₹ recovered vs a 20% control holdout, with bootstrap CIs.', stat: lift ? `+${lift.liftPct}pp lift` : '20% control', to: '/lab' },
-    { icon: 'link', name: 'Signed Webhooks', blurb: 'HMAC-verified deliveries, exactly-once recovery on the money path.', stat: 'exactly-once', to: '/evidence' },
-    { icon: 'signal', name: 'Anomaly Detection', blurb: 'Isolation-forest failure-spike detection on live traffic windows.', stat: '~88% detect', to: '/model' },
-    { icon: 'receipt', name: 'Real Razorpay Round-trip', blurb: 'A real test-mode capture recovers a case through the production path.', stat: 'verified', to: '/evidence' },
-    { icon: 'transfer', name: 'Cross-world Transfer', blurb: 'A frozen model still ranks an independently designed world it never saw.', stat: '~0.68 AUC', to: '/model' },
-    { icon: 'audit', name: 'Full Audit Trail', blurb: 'Every state transition is logged: before → after, actor, details.', stat: 'bounded', to: '/queue' },
+    { icon: 'bolt', name: 'ML Decisioning', blurb: 'CatBoost scores every case, benchmarked vs XGBoost & Logistic Reg.', stat: metrics ? `${metrics.ml.mlServedRatePct ?? 0}% model-served` : 'CatBoost', to: '/app/model' },
+    { icon: 'shield', name: 'Bounded Policy Engine', blurb: 'ML proposes, a deterministic policy disposes — an allow-listed executor acts.', stat: metrics ? `${metrics.blockedActionCount} blocked` : 'India rules', to: '/app/pipeline' },
+    { icon: 'lab', name: 'Recovery Lab', blurb: 'Incremental ₹ recovered vs a 20% control holdout, with bootstrap CIs.', stat: lift ? `+${lift.liftPct}pp lift` : '20% control', to: '/app/lab' },
+    { icon: 'link', name: 'Signed Webhooks', blurb: 'HMAC-verified deliveries, exactly-once recovery on the money path.', stat: 'exactly-once', to: '/app/evidence' },
+    { icon: 'signal', name: 'Anomaly Detection', blurb: 'Isolation-forest failure-spike detection on live traffic windows.', stat: '~88% detect', to: '/app/model' },
+    { icon: 'receipt', name: 'Real Razorpay Round-trip', blurb: 'A real test-mode capture recovers a case through the production path.', stat: 'verified', to: '/app/evidence' },
+    { icon: 'transfer', name: 'Cross-world Transfer', blurb: 'A frozen model still ranks an independently designed world it never saw.', stat: '~0.68 AUC', to: '/app/model' },
+    { icon: 'audit', name: 'Full Audit Trail', blurb: 'Every state transition is logged: before → after, actor, details.', stat: 'bounded', to: '/app/queue' },
   ];
 
   return (
@@ -116,14 +116,14 @@ export function Overview() {
         {metrics && <PipelineSnapshot byState={metrics.byState} />}
         <Card
           title="Recent recoveries"
-          right={<Link to="/queue" className="text-xs font-semibold text-slate-500 hover:text-slate-900">View all →</Link>}
+          right={<Link to="/app/queue" className="text-xs font-semibold text-slate-500 hover:text-slate-900">View all →</Link>}
         >
           {recovered.length === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center">No recoveries yet — run the pipeline from the Demo menu.</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {recovered.map((c) => (
-                <Link key={c.id} to={`/cases/${c.id}`} className="flex items-center justify-between gap-3 py-3 text-sm hover:opacity-80 transition-opacity">
+                <Link key={c.id} to={`/app/cases/${c.id}`} className="flex items-center justify-between gap-3 py-3 text-sm hover:opacity-80 transition-opacity">
                   <div className="min-w-0">
                     <span className="block truncate font-semibold text-slate-900">{c.merchant.name}</span>
                     <span className="block truncate text-xs text-slate-400">{titleCase(c.reasonTag) || 'Subscription recovery'}</span>
@@ -180,7 +180,7 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
 function PipelineSnapshot({ byState }: { byState: Record<string, number> }) {
   const { flow } = pipelineBuckets(byState);
   return (
-    <Card title="Pipeline" right={<Link to="/pipeline" className="text-xs font-semibold text-slate-500 hover:text-slate-900">View pipeline →</Link>}>
+    <Card title="Pipeline" right={<Link to="/app/pipeline" className="text-xs font-semibold text-slate-500 hover:text-slate-900">View pipeline →</Link>}>
       <div className="flex items-center justify-between gap-1.5">
         {flow.map((b, i) => (
           <div key={b.key} className="flex flex-1 items-center gap-1.5">

@@ -37,7 +37,7 @@ export function CaseTable({ cases }: { cases: CaseRow[] }) {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {cases.map((c) => (
-            <tr key={c.id} onClick={() => nav(`/cases/${c.id}`)} className="cursor-pointer transition-colors hover:bg-slate-50/70">
+            <tr key={c.id} onClick={() => nav(`/app/cases/${c.id}`)} className="cursor-pointer transition-colors hover:bg-slate-50/70">
               <td className="py-3.5 pl-6 pr-3">
                 <span className={cx('inline-flex min-w-[2.25rem] justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums ring-1 ring-inset', riskTone(c.riskScore))}>
                   {c.riskScore}

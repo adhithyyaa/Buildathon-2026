@@ -70,7 +70,7 @@ export function CasePage() {
 
   return (
     <div className="space-y-6">
-      <Link to="/queue" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors">
+      <Link to="/app/queue" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors">
         ← Recovery queue
       </Link>
 
