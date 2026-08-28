@@ -53,7 +53,7 @@ export function CasePage() {
     }
   }
 
-  if (loading && !data) return <div className="py-16 text-center text-slate-400">Loading invoice detail…</div>;
+  if (loading && !data) return <div className="py-16 text-center text-slate-400">Loading case…</div>;
   if (error) return <div className="py-16 text-center text-rose-600 font-medium">Error: {error}</div>;
   if (!data || !id) return null;
 
@@ -230,7 +230,7 @@ export function CasePage() {
             </Card>
           )}
 
-          <Card title="Invoice facts">
+          <Card title="Case facts">
             <dl className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
               <KeyVal k="Reason" v={titleCase(data.reasonTag)} />
               <KeyVal k="Method" v={data.event.method ?? '—'} />

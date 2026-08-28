@@ -51,7 +51,7 @@ export function PipelinePage() {
       </Card>
 
       {/* The bounded-agent design: who does what, in order */}
-      <Card title="How an invoice is handled" right={<span className="text-xs font-medium text-slate-400">ML proposes · policy disposes</span>}>
+      <Card title="How a case is handled" right={<span className="text-xs font-medium text-slate-400">ML proposes · policy disposes</span>}>
         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {JOURNEY.map((s, i) => (
             <div key={s.key} className="animate-rise rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 shadow-2xs" style={{ animationDelay: `${i * 50}ms` }}>

@@ -91,10 +91,10 @@ function CaptureCard({ c }: { c: RoundtripCapture }) {
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
           {c.recoveredCase ? (
             <Link to={`/cases/${c.recoveredCase.id}`} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/60 hover:bg-emerald-100 transition-colors">
-              <Icon name="arrow" className="h-3.5 w-3.5" /> Recovered invoice · {c.recoveredCase.merchant}
+              <Icon name="arrow" className="h-3.5 w-3.5" /> Recovered case · {c.recoveredCase.merchant}
             </Link>
           ) : (
-            <span className="text-xs text-slate-400">No linked invoice in this dataset</span>
+            <span className="text-xs text-slate-400">No linked case in this dataset</span>
           )}
           <a
             href={`https://dashboard.razorpay.com/app/payments/${c.paymentId}`}
