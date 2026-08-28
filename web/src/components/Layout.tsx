@@ -6,6 +6,7 @@ import { Icon } from './icons';
 import { Logo } from './Logo';
 import { DemoMenu } from './DemoMenu';
 import { TokenControl } from './TokenControl';
+import { UserMenu } from './UserMenu';
 import { useRefresh } from '../lib/refresh';
 import { cx } from './ui';
 
@@ -131,6 +132,8 @@ export function Layout() {
                 {paused ? 'Resume' : 'Pause'}
               </button>
               <TokenControl />
+              <div className="mx-0.5 h-6 w-px bg-slate-200" />
+              <UserMenu />
             </div>
           </div>
 

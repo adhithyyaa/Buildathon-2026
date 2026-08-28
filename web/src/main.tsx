@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import './index.css';
 import { RefreshProvider } from './lib/refresh';
 import { ToastProvider } from './lib/toast';
+import { AuthProvider } from './lib/auth';
+import { RequireAuth } from './components/RequireAuth';
 import { Layout } from './components/Layout';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
@@ -28,25 +30,29 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ScrollToTop />
-      <RefreshProvider>
-        <ToastProvider>
-          <Routes>
-            {/* Marketing */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            {/* App — the dashboard lives under /app behind the sidebar shell */}
-            <Route path="/app" element={<Layout />}>
-              <Route index element={<Overview />} />
-              <Route path="queue" element={<QueuePage />} />
-              <Route path="pipeline" element={<PipelinePage />} />
-              <Route path="model" element={<ModelPage />} />
-              <Route path="lab" element={<LabPage />} />
-              <Route path="evidence" element={<EvidencePage />} />
-              <Route path="cases/:id" element={<CasePage />} />
-            </Route>
-          </Routes>
-        </ToastProvider>
-      </RefreshProvider>
+      <AuthProvider>
+        <RefreshProvider>
+          <ToastProvider>
+            <Routes>
+              {/* Marketing */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              {/* App — the dashboard lives under /app, gated by sign-in, behind the sidebar shell */}
+              <Route element={<RequireAuth />}>
+                <Route path="/app" element={<Layout />}>
+                  <Route index element={<Overview />} />
+                  <Route path="queue" element={<QueuePage />} />
+                  <Route path="pipeline" element={<PipelinePage />} />
+                  <Route path="model" element={<ModelPage />} />
+                  <Route path="lab" element={<LabPage />} />
+                  <Route path="evidence" element={<EvidencePage />} />
+                  <Route path="cases/:id" element={<CasePage />} />
+                </Route>
+              </Route>
+            </Routes>
+          </ToastProvider>
+        </RefreshProvider>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 );
