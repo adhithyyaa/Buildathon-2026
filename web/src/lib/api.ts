@@ -82,6 +82,27 @@ export interface IncidentStatus {
   recent: { reason: string | null; score: number; at: string }[];
 }
 
+export interface UpliftRanking {
+  auuc_model: number;
+  auuc_optimal: number;
+  auuc_random: number;
+  qini_coefficient: number;
+  uplift_at_30pct: number;
+}
+
+export interface UpliftReport {
+  version: string;
+  method: string;
+  dataset: { observational_train: number; randomised_train: number; test: number; split: string; synthetic: boolean };
+  best_treatment_ranking: { s_learner: UpliftRanking; t_learner: UpliftRanking };
+  primary_learner: 's_learner' | 't_learner';
+  per_action: Record<string, { s_learner: { uplift_mae: number; qini_coefficient: number }; t_learner: { uplift_mae: number; qini_coefficient: number }; true_mean_uplift: number }>;
+  calibration: { ece: number; brier: number; roc_auc: number };
+  policy_value_incremental_inr: Record<string, number>;
+  policy_value_note: string;
+  train_seconds: number;
+}
+
 export interface CaseRow {
   id: string;
   state: string;
@@ -350,6 +371,7 @@ export const api = {
   spike: (reason?: 'upi_collect_timeout' | 'bank_downtime') =>
     post<{ created: number; deduped: number; anomaly: boolean; reasons: string[] }>('/api/demo/spike', { reason }),
   mlMetrics: () => get<MlMetrics>('/api/ml/metrics'),
+  mlUplift: () => get<UpliftReport>('/api/ml/uplift'),
   explainCase: (id: string) => post<{ text: string; source: string; llmConfigured: boolean }>(`/api/ai/cases/${id}/explain`),
   draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),
   summarizeCase: (id: string) => post<{ text: string; source: string }>(`/api/ai/cases/${id}/summarize`),
