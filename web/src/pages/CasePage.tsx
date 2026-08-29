@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type CaseDetail } from '../lib/api';
+import { api, type CaseDetail, type ChainVerdict } from '../lib/api';
 import { formatINR, titleCase, timeAgo } from '../lib/format';
 import { Card, Button, StateBadge, ActionBadge, Pill, cx } from '../components/ui';
 import { useToast } from '../lib/toast';
@@ -17,6 +17,7 @@ function last<T>(arr: T[]): T | undefined {
 export function CasePage() {
   const { id } = useParams();
   const [data, setData] = useState<CaseDetail | null>(null);
+  const [integrity, setIntegrity] = useState<ChainVerdict | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,6 +30,7 @@ export function CasePage() {
     try {
       const r = await api.caseDetail(id);
       setData(r.case);
+      setIntegrity(r.auditIntegrity ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -260,7 +262,16 @@ export function CasePage() {
             )}
           </Card>
 
-          <Card title="Audit trail">
+          <Card
+            title="Audit trail"
+            right={
+              integrity ? (
+                <Pill tone={integrity.valid ? 'emerald' : 'rose'}>
+                  {integrity.valid ? `chain verified ✓ ${integrity.verified}` : 'chain broken ✗'}
+                </Pill>
+              ) : null
+            }
+          >
             <AuditTimeline logs={data.auditLogs} />
           </Card>
         </div>

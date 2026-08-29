@@ -7,6 +7,7 @@ import { logAudit } from '../domain/audit';
 import { runCase } from '../pipeline/runCase';
 import { buildFeatures } from '../ml/features';
 import { mlExplain } from '../ml/client';
+import { verifyCaseChain } from '../domain/audit';
 import { minutesBetween } from '../lib/time';
 import type { PolicyDecision } from '../domain/policy';
 import type { RecoveryPlan } from '../ai/schemas';
@@ -66,7 +67,9 @@ casesRouter.get(
       res.status(404).json({ error: 'not_found' });
       return;
     }
-    res.json({ case: kase });
+    // Re-walk this case's audit hash chain so the UI can show the ledger is untampered.
+    const auditIntegrity = await verifyCaseChain(kase.id);
+    res.json({ case: kase, auditIntegrity });
   }),
 );
 

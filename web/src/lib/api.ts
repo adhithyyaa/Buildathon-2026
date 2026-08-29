@@ -100,6 +100,13 @@ export interface CaseExplanation {
   factors: ReasonFactor[];
 }
 
+export interface ChainVerdict {
+  valid: boolean;
+  total: number;
+  verified: number;
+  brokenAt: string | null;
+}
+
 export interface UpliftRanking {
   auuc_model: number;
   auuc_optimal: number;
@@ -371,7 +378,7 @@ export const api = {
     if (params.limit) q.set('limit', String(params.limit));
     return get<{ cases: CaseRow[] }>(`/api/cases?${q.toString()}`);
   },
-  caseDetail: (id: string) => get<{ case: CaseDetail }>(`/api/cases/${id}`),
+  caseDetail: (id: string) => get<{ case: CaseDetail; auditIntegrity: ChainVerdict }>(`/api/cases/${id}`),
   caseReasonCodes: (id: string) => get<CaseExplanation>(`/api/cases/${id}/explain`),
   runCase: (id: string) => post(`/api/cases/${id}/run`),
   approveCase: (id: string) => post(`/api/cases/${id}/approve`),

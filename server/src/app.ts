@@ -15,6 +15,7 @@ import { adminRouter } from './routes/admin';
 import { labRouter } from './routes/lab';
 import { evidenceRouter } from './routes/evidence';
 import { incidentsRouter } from './routes/incidents';
+import { auditRouter } from './routes/audit';
 import { requireToken } from './lib/auth';
 
 export function createApp() {
@@ -53,6 +54,7 @@ export function createApp() {
   app.use('/api/lab', labRouter); // GET is open; POST /resolve is guarded inside the router
   app.use('/api/evidence', evidenceRouter); // read-only proof of the real Razorpay round-trip
   app.use('/api/incidents', incidentsRouter); // read-only live failure-spike status
+  app.use('/api/audit', auditRouter); // tamper-evident ledger verification
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     const message = toMessage(err);

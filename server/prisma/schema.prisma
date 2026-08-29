@@ -290,7 +290,11 @@ model ProcessedWebhook {
   @@index([createdAt])
 }
 
-/// Append-only log of every meaningful state transition.
+/// Append-only log of every meaningful state transition. Tamper-EVIDENT: each row carries a
+/// SHA-256 `hash` over its content chained to the previous row's hash for the same case
+/// (`prevHash`), so any edit, deletion, or reorder of the trail is detectable by re-walking the
+/// chain (see domain/audit.ts:verifyCaseChain). A row keeps the money-path honest — it is proof,
+/// after the fact, of exactly what happened.
 model AuditLog {
   id          String   @id @default(cuid())
   caseId      String
@@ -300,6 +304,8 @@ model AuditLog {
   beforeState String?
   afterState  String?
   details     Json?
+  hash        String? // SHA-256 over prevHash + this row's canonical content
+  prevHash    String? // the hash of the previous audit row for this case (chain link)
   createdAt   DateTime @default(now())
 
   @@index([caseId])
