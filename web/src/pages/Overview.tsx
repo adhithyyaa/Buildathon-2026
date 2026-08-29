@@ -244,9 +244,9 @@ function RecoveryFunnel({ funnel }: { funnel: Funnel }) {
       </div>
       {/* Terminal tri-state of attempted work */}
       <div className="mt-3.5 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-slate-100 pt-3 text-[11px] font-semibold">
-        <span className="flex items-center gap-1.5 text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Recovered {funnel.recovered.count}</span>
+        <Link to="/app/queue?state=recovered" className="flex items-center gap-1.5 text-emerald-700 hover:opacity-80"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Recovered {funnel.recovered.count}</Link>
         <span className="flex items-center gap-1.5 text-amber-700"><span className="h-2 w-2 rounded-full bg-amber-400" /> In recovery {funnel.inRecovery.count}</span>
-        <span className="flex items-center gap-1.5 text-rose-700"><span className="h-2 w-2 rounded-full bg-rose-400" /> Lost {funnel.lost.count} ({formatINR(funnel.lost.paise)})</span>
+        <Link to="/app/queue?state=expired" className="flex items-center gap-1.5 text-rose-700 hover:opacity-80"><span className="h-2 w-2 rounded-full bg-rose-400" /> Lost {funnel.lost.count} ({formatINR(funnel.lost.paise)})</Link>
         <Link to="/app/lab" className="ml-auto text-[10.5px] font-medium text-slate-400 hover:text-slate-600">control outcomes → Recovery Lab</Link>
       </div>
     </Card>
@@ -275,7 +275,7 @@ function FailureReasons({ rows }: { rows: ReasonBreakdownRow[] }) {
         {top.map((r) => {
           const rate = r.atRiskPaise > 0 ? (r.recoveredPaise / r.atRiskPaise) * 100 : 0;
           return (
-            <div key={r.reason}>
+            <Link key={r.reason} to={`/app/queue?reason=${r.reason}`} className="block rounded-lg transition-opacity hover:opacity-80" title={`View ${titleCase(r.reason)} cases`}>
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs font-bold text-slate-800">{titleCase(r.reason)}</span>
                 <span className={cx('rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset', FAULT_TONES[r.faultOwner])}>{r.faultOwner}</span>
@@ -287,7 +287,7 @@ function FailureReasons({ rows }: { rows: ReasonBreakdownRow[] }) {
               <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100" title={`${Math.round(rate)}% of ${formatINR(r.atRiskPaise)} recovered`}>
                 <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-700 ease-out" style={{ width: `${Math.min(100, rate)}%` }} />
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

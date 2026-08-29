@@ -1,0 +1,100 @@
+{
+  "version": "20260829-1652",
+  "method": "contextual Thompson sampling (Beta posterior per reason\u00d7action), online \u2014 no pre-training",
+  "cases": 8000,
+  "value_per_case_inr": {
+    "thompson_online": 3104.6,
+    "rules_only": 3276.3,
+    "random": 1893.3,
+    "oracle": 3324.9
+  },
+  "ts_pct_of_oracle_final": 93.4,
+  "convergence": [
+    {
+      "n": 400,
+      "ts_pct_of_oracle": 92.7
+    },
+    {
+      "n": 800,
+      "ts_pct_of_oracle": 88.6
+    },
+    {
+      "n": 1200,
+      "ts_pct_of_oracle": 90.3
+    },
+    {
+      "n": 1600,
+      "ts_pct_of_oracle": 84.1
+    },
+    {
+      "n": 2000,
+      "ts_pct_of_oracle": 83.9
+    },
+    {
+      "n": 2400,
+      "ts_pct_of_oracle": 86.7
+    },
+    {
+      "n": 2800,
+      "ts_pct_of_oracle": 87.8
+    },
+    {
+      "n": 3200,
+      "ts_pct_of_oracle": 89.3
+    },
+    {
+      "n": 3600,
+      "ts_pct_of_oracle": 88.2
+    },
+    {
+      "n": 4000,
+      "ts_pct_of_oracle": 87.8
+    },
+    {
+      "n": 4400,
+      "ts_pct_of_oracle": 87.7
+    },
+    {
+      "n": 4800,
+      "ts_pct_of_oracle": 90.8
+    },
+    {
+      "n": 5200,
+      "ts_pct_of_oracle": 91.1
+    },
+    {
+      "n": 5600,
+      "ts_pct_of_oracle": 91.9
+    },
+    {
+      "n": 6000,
+      "ts_pct_of_oracle": 91.8
+    },
+    {
+      "n": 6400,
+      "ts_pct_of_oracle": 92.3
+    },
+    {
+      "n": 6800,
+      "ts_pct_of_oracle": 93.4
+    },
+    {
+      "n": 7200,
+      "ts_pct_of_oracle": 92.3
+    },
+    {
+      "n": 7600,
+      "ts_pct_of_oracle": 92.3
+    },
+    {
+      "n": 8000,
+      "ts_pct_of_oracle": 93.4
+    }
+  ],
+  "learned_best_action_accuracy": {
+    "correct": 6,
+    "total": 8
+  },
+  "note": "value is expected net \u20b9 per case on a held-out synthetic stream; TS starts from a uniform prior and learns online",
+  "train_seconds": 3.9
+}

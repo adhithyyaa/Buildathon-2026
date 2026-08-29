@@ -7,9 +7,20 @@ import { computeModelHealth } from '../domain/modelHealth';
 
 export const mlRouter = Router();
 
-// The uplift report is a git-tracked training artifact (ml/uplift.json), like ml/metrics.json.
-// Resolve it relative to wherever the server was launched (cwd is usually server/).
+// Git-tracked training artifacts (like ml/metrics.json). Resolved relative to the launch cwd (server/).
 const UPLIFT_CANDIDATES = ['../ml/uplift.json', 'ml/uplift.json', '../../ml/uplift.json'];
+const EXPLORE_CANDIDATES = ['../ml/explore.json', 'ml/explore.json', '../../ml/explore.json'];
+
+async function readFirst(candidates: string[]): Promise<unknown | null> {
+  for (const rel of candidates) {
+    try {
+      return JSON.parse(await readFile(path.resolve(process.cwd(), rel), 'utf8')) as unknown;
+    } catch {
+      /* try the next candidate path */
+    }
+  }
+  return null;
+}
 
 /** GET /api/ml/metrics — the training/validation report (model comparison, calibration, features). */
 mlRouter.get(
@@ -21,19 +32,23 @@ mlRouter.get(
   }),
 );
 
-/** GET /api/ml/uplift — the causal uplift report (Qini, ECE, per-action uplift, policy-value comparison). */
+/** GET /api/ml/uplift — the causal uplift report (Qini, ECE, per-action uplift, policy-value, DR-OPE). */
 mlRouter.get(
   '/uplift',
   ah(async (_req, res) => {
-    for (const rel of UPLIFT_CANDIDATES) {
-      try {
-        const raw = await readFile(path.resolve(process.cwd(), rel), 'utf8');
-        return void res.json(JSON.parse(raw));
-      } catch {
-        /* try the next candidate path */
-      }
-    }
-    res.status(404).json({ error: 'uplift_report_unavailable' });
+    const report = await readFirst(UPLIFT_CANDIDATES);
+    if (!report) return void res.status(404).json({ error: 'uplift_report_unavailable' });
+    res.json(report);
+  }),
+);
+
+/** GET /api/ml/explore — the online contextual Thompson-sampling exploration report. */
+mlRouter.get(
+  '/explore',
+  ah(async (_req, res) => {
+    const report = await readFirst(EXPLORE_CANDIDATES);
+    if (!report) return void res.status(404).json({ error: 'explore_report_unavailable' });
+    res.json(report);
   }),
 );
 

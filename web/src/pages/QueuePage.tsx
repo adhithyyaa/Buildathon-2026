@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, type CaseRow } from '../lib/api';
 import { useRefresh } from '../lib/refresh';
 import { Button, cx } from '../components/ui';
 import { Icon } from '../components/icons';
 import { CaseTable } from '../components/CaseTable';
+import { titleCase } from '../lib/format';
 
 const FILTERS: Array<{ key: string; label: string }> = [
   { key: '', label: 'All' },
@@ -14,11 +16,34 @@ const FILTERS: Array<{ key: string; label: string }> = [
   { key: 'expired', label: 'Expired' },
 ];
 
+/** Build a CSV of the shown cases and hand it to the browser as a download. */
+function exportCsv(rows: CaseRow[]) {
+  const headers = ['id', 'merchant', 'customer', 'reason', 'state', 'method', 'amount_paise', 'recovered_paise', 'created_at'];
+  const esc = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [
+    headers.join(','),
+    ...rows.map((c) => [c.id, c.merchant.name, c.customer?.name ?? '', c.reasonTag ?? '', c.state, c.event.method ?? '', c.amount, c.outcome?.recoveredAmount ?? '', c.createdAt].map(esc).join(',')),
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `recoup-cases-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function QueuePage() {
   const { version, poll } = useRefresh();
+  const [sp, setSp] = useSearchParams();
   const [cases, setCases] = useState<CaseRow[] | null>(null);
-  const [filter, setFilter] = useState('');
-  const [search, setSearch] = useState('');
+  // Initialize filters from the URL so drill-downs from the Overview land pre-filtered.
+  const [filter, setFilter] = useState(() => sp.get('state') ?? '');
+  const [reason, setReason] = useState(() => sp.get('reason') ?? '');
+  const [search, setSearch] = useState(() => sp.get('q') ?? '');
   const [showFilter, setShowFilter] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +66,15 @@ export function QueuePage() {
     void load();
   }, [load, version, poll]);
 
+  // Keep the URL in sync so the filtered view is shareable / bookmarkable.
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    if (filter) next.state = filter;
+    if (reason) next.reason = reason;
+    if (search.trim()) next.q = search.trim();
+    setSp(next, { replace: true });
+  }, [filter, reason, search, setSp]);
+
   useEffect(() => {
     if (!showFilter) return;
     const onDown = (e: MouseEvent) => {
@@ -52,9 +86,11 @@ export function QueuePage() {
 
   const loaded = cases ?? [];
   const q = search.trim().toLowerCase();
-  const shown = q
-    ? loaded.filter((c) => [c.merchant.name, c.customer?.name, c.reasonTag, c.id, c.outcome?.notes].some((f) => f?.toLowerCase().includes(q)))
-    : loaded;
+  const shown = loaded.filter((c) => {
+    if (reason && (c.reasonTag ?? '') !== reason) return false;
+    if (q && ![c.merchant.name, c.customer?.name, c.reasonTag, c.id, c.outcome?.notes].some((f) => f?.toLowerCase().includes(q))) return false;
+    return true;
+  });
   const activeFilter = FILTERS.find((f) => f.key === filter)?.label ?? 'All';
 
   if (error) {
@@ -72,7 +108,17 @@ export function QueuePage() {
         <div>
           <h2 className="text-base font-bold text-slate-900">Recovery queue</h2>
           {loaded.length > 0 && (
-            <p className="text-xs text-slate-400">{shown.length} of {loaded.length} cases · {activeFilter}</p>
+            <p className="flex items-center gap-1.5 text-xs text-slate-400">
+              {shown.length} of {loaded.length} cases · {activeFilter}
+              {reason && (
+                <button
+                  onClick={() => setReason('')}
+                  className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200/60 hover:bg-violet-100"
+                >
+                  reason: {titleCase(reason)} ✕
+                </button>
+              )}
+            </p>
           )}
         </div>
 
@@ -123,6 +169,16 @@ export function QueuePage() {
               </div>
             )}
           </div>
+
+          <button
+            onClick={() => exportCsv(shown)}
+            disabled={shown.length === 0}
+            title="Export the shown cases as CSV"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+          >
+            <Icon name="external" className="h-3.5 w-3.5" />
+            CSV
+          </button>
         </div>
       </div>
 

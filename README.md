@@ -52,6 +52,14 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
   Because the synthetic world exposes its ground-truth mechanism, uplift is checked against **known truth**: **Qini
   ≈ 0.93**, **ECE ≈ 0.008**, and an uplift-optimal policy that captures **~99% of the oracle's incremental ₹** (beating
   a rules-only baseline +5.4%, always-retry +39%). See [`docs/ROADMAP.md`](docs/ROADMAP.md) and `ml/src/uplift.py`.
+- **Proven from the log alone (doubly-robust off-policy eval).** Beyond the ground-truth check, the deployed policy's
+  value is estimated the way you'd have to in production — from the historical log, with **IPS** (reweight by the
+  behaviour propensity) and a **doubly-robust** estimator (adds a reward-model control variate to cut variance). DR
+  estimates **₹3,276/case vs the logging policy's ₹2,442**, and — because ground truth is available here — lands within
+  **~6%** of it. Stronger than a raw treatment−control mean (`ml/src/uplift.py`).
+- **Production model-health monitoring.** A live drift panel answers *"does the model still work on live traffic?"* —
+  per-feature **PSI** vs training (0.1 watch / 0.25 shift), the score distribution, and real inference latency (p95 ≈ 85ms).
+  Trigger a failure spike and the reason PSI visibly moves watch → shift; it's a live instrument, not a green light.
 - **ML that actually decides.** Every case is scored by CatBoost (benchmarked vs XGBoost + a LogReg baseline) over a
   shared 21-feature schema, producing six outputs: **calibrated** recovery probability, chosen action + per-action odds, escalation
   risk, anomaly score, action confidence, and reason. The dashboard shows a model card with the reliability curve.
@@ -69,7 +77,14 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
   (`npm run selftest:webhook`) — see [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md).
 - **Controlled AI.** No model touches money. The LLM only explains a decision, drafts the message, and summarizes
   escalations — off the money path, with template fallback.
-- **Full audit trail.** Every state transition is logged (`before → after`, actor, details).
+- **Tamper-evident audit ledger.** Every state transition is logged (`before → after`, actor, details) *and*
+  **SHA-256 hash-chained** per case, so any edit, reorder, or deletion is detectable by re-walking the chain
+  (`/api/audit/verify`; a "chain verified ✓" badge on each case). A ledger that could be rewritten would defeat its own
+  purpose.
+- **Tested where it matters.** The money path (exactly-once recovery under concurrent webhook redelivery), the policy
+  guardrails as **property-based invariants** (fast-check — opt-out never contacted, RBI-TAT always held, retry cap
+  respected, decisions deterministic, over thousands of randomised inputs), the incremental-lift estimator's **A/A null
+  test**, and the audit chain's tamper detection — **39 tests**.
 
 ### Real captured round-trip (not just a self-test)
 
@@ -117,10 +132,16 @@ A single role-scoped React console, built to read as a real product:
   allows (auto-retry / fresh link / RBI-TAT no-action).
 - **Live incident strip** — the IsolationForest's failure-spike detector, surfaced: while a reason is spiking, retries
   for it are deferred (don't retry into an outage), in the idiom of Razorpay's own downtime feed.
-- **ML Model** — the **causal uplift engine** (Qini, ECE, per-action uplift, and a strategy comparison vs oracle), plus
-  the recovery model card (AUC benchmark, calibration curve, feature importances).
+- **ML Model** — the **causal uplift engine** (Qini, ECE, per-action uplift, a strategy comparison vs oracle, and the
+  **doubly-robust off-policy** estimate); a **model-health** panel (PSI drift, score distribution, latency); the recovery
+  model card (AUC benchmark, calibration curve, feature importances); and an **online-exploration** panel (contextual
+  Thompson sampling reaching ~93% of oracle, learned online).
+- **Case detail** — the decision story with **per-case SHAP reason codes** (which factors pushed the recovery probability
+  up or down) and the case's tamper-evident audit chain.
 - **Recovery Lab** — incremental ₹ vs the control holdout, with bootstrap CIs sliced per reason.
 - **Evidence** — the real Razorpay test-mode round-trip, HMAC-verified and replayable.
+- **Everywhere** — a ⌘K command palette (jump to any page, fire demo actions), drill-down from any KPI/reason into the
+  pre-filtered queue, and CSV export.
 
 ## Tech
 
@@ -150,7 +171,8 @@ cd ml && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt &
 # 1. Train the models (writes ml/artifacts + ml/metrics.json)
 ml/.venv/Scripts/python ml/src/worldmodel.py
 ml/.venv/Scripts/python ml/src/train.py
-ml/.venv/Scripts/python ml/src/uplift.py    # causal uplift engine → ml/uplift.json (Qini, ECE, policy value)
+ml/.venv/Scripts/python ml/src/uplift.py    # causal uplift engine → ml/uplift.json (Qini, ECE, policy value, DR-OPE)
+ml/.venv/Scripts/python ml/src/explore.py   # online Thompson-sampling exploration → ml/explore.json
 
 # 2. Run everything (separate terminals)
 cd server && npm run db:local                                            # DB  :5432

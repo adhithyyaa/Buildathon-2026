@@ -2,6 +2,7 @@ import { useRefresh } from '../lib/refresh';
 import { ModelPanel } from '../components/ModelPanel';
 import { UpliftPanel } from '../components/UpliftPanel';
 import { ModelHealthPanel } from '../components/ModelHealthPanel';
+import { ExplorationPanel } from '../components/ExplorationPanel';
 
 export function ModelPage() {
   const { version } = useRefresh();
@@ -11,6 +12,7 @@ export function ModelPage() {
       <UpliftPanel />
       <ModelHealthPanel />
       <ModelPanel />
+      <ExplorationPanel />
     </div>
   );
 }

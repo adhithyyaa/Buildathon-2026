@@ -7,6 +7,7 @@ import { Logo } from './Logo';
 import { DemoMenu } from './DemoMenu';
 import { TokenControl } from './TokenControl';
 import { UserMenu } from './UserMenu';
+import { CommandPalette } from './CommandPalette';
 import { useRefresh } from '../lib/refresh';
 import { cx } from './ui';
 
@@ -36,6 +37,7 @@ export function Layout() {
 
   return (
     <div className="min-h-full bg-[#f8fafc]">
+      <CommandPalette />
       {/* Sidebar (desktop) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200/80 bg-white lg:flex">
         {/* Brand */}

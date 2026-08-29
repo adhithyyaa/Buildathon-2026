@@ -115,6 +115,17 @@ export interface UpliftRanking {
   uplift_at_30pct: number;
 }
 
+export interface ExploreReport {
+  version: string;
+  method: string;
+  cases: number;
+  value_per_case_inr: Record<string, number>;
+  ts_pct_of_oracle_final: number;
+  convergence: { n: number; ts_pct_of_oracle: number }[];
+  learned_best_action_accuracy: { correct: number; total: number };
+  note: string;
+}
+
 export type DriftStatus = 'stable' | 'watch' | 'shift';
 
 export interface ModelHealth {
@@ -419,6 +430,7 @@ export const api = {
   mlMetrics: () => get<MlMetrics>('/api/ml/metrics'),
   mlUplift: () => get<UpliftReport>('/api/ml/uplift'),
   modelHealth: () => get<ModelHealth>('/api/ml/monitor'),
+  mlExplore: () => get<ExploreReport>('/api/ml/explore'),
   explainCase: (id: string) => post<{ text: string; source: string; llmConfigured: boolean }>(`/api/ai/cases/${id}/explain`),
   draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),
   summarizeCase: (id: string) => post<{ text: string; source: string }>(`/api/ai/cases/${id}/summarize`),
