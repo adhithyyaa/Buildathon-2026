@@ -135,6 +135,16 @@ export interface UpliftReport {
   calibration: { ece: number; brier: number; roc_auc: number };
   policy_value_incremental_inr: Record<string, number>;
   policy_value_note: string;
+  off_policy?: {
+    target_policy: string;
+    dr_value_inr_per_case: number;
+    dr_ci95_inr: [number, number];
+    ips_value_inr_per_case: number;
+    ground_truth_inr_per_case: number;
+    logging_policy_inr_per_case: number;
+    dr_error_vs_truth_pct: number | null;
+    match_rate: number;
+  };
   train_seconds: number;
 }
 

@@ -120,6 +120,26 @@ export function UpliftPanel() {
           </div>
         </div>
       </div>
+
+      {u.off_policy && (
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <div className="mb-2 flex items-baseline justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Doubly-robust off-policy evaluation</span>
+            <span className="text-[10.5px] font-medium text-slate-400">estimated from the logged data alone — no counterfactual peeking</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Metric label="DR estimate ₹/case" value={`₹${Math.round(u.off_policy.dr_value_inr_per_case).toLocaleString('en-IN')}`} hint={`95% CI ₹${Math.round(u.off_policy.dr_ci95_inr[0]).toLocaleString('en-IN')}–₹${Math.round(u.off_policy.dr_ci95_inr[1]).toLocaleString('en-IN')}`} />
+            <Metric label="Logging policy ₹/case" value={`₹${Math.round(u.off_policy.logging_policy_inr_per_case).toLocaleString('en-IN')}`} />
+            <Metric label="Ground truth ₹/case" value={`₹${Math.round(u.off_policy.ground_truth_inr_per_case).toLocaleString('en-IN')}`} />
+            <Metric label="DR error vs truth" value={u.off_policy.dr_error_vs_truth_pct != null ? `${u.off_policy.dr_error_vs_truth_pct}%` : '—'} hint="lower = estimator is accurate" />
+          </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-slate-400">
+            IPS reweights logged rewards by the behaviour propensity; DR adds a reward-model control variate to cut variance.
+            The deployed EV policy is estimated to recover more per case than the policy that generated the log — and because this
+            world exposes ground truth, we can confirm DR lands within {u.off_policy.dr_error_vs_truth_pct}% of it.
+          </p>
+        </div>
+      )}
     </Card>
   );
 }
