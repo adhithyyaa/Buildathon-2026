@@ -1,0 +1,130 @@
+{
+  "version": "20260829-1034",
+  "method": "causal uplift (CATE) \u2014 S-learner vs T-learner, evaluated against world ground truth",
+  "dataset": {
+    "observational_train": 24000,
+    "randomised_train": 24026,
+    "test": 6000,
+    "split": "time_ordered_by_day_index",
+    "synthetic": true
+  },
+  "best_treatment_ranking": {
+    "s_learner": {
+      "auuc_model": 0.21399,
+      "auuc_optimal": 0.21698,
+      "auuc_random": 0.17103,
+      "qini_coefficient": 0.9349,
+      "uplift_at_30pct": 0.1948
+    },
+    "t_learner": {
+      "auuc_model": 0.21052,
+      "auuc_optimal": 0.21698,
+      "auuc_random": 0.17103,
+      "qini_coefficient": 0.8593,
+      "uplift_at_30pct": 0.1763
+    }
+  },
+  "primary_learner": "s_learner",
+  "per_action": {
+    "smart_retry": {
+      "s_learner": {
+        "uplift_mae": 0.0476,
+        "auuc_model": 0.17089,
+        "auuc_optimal": 0.1731,
+        "auuc_random": 0.11704,
+        "qini_coefficient": 0.9605
+      },
+      "t_learner": {
+        "uplift_mae": 0.0692,
+        "auuc_model": 0.16804,
+        "auuc_optimal": 0.1731,
+        "auuc_random": 0.11704,
+        "qini_coefficient": 0.9096
+      },
+      "true_mean_uplift": 0.2341
+    },
+    "send_payment_link": {
+      "s_learner": {
+        "uplift_mae": 0.0472,
+        "auuc_model": 0.14656,
+        "auuc_optimal": 0.15121,
+        "auuc_random": 0.11674,
+        "qini_coefficient": 0.8649
+      },
+      "t_learner": {
+        "uplift_mae": 0.0702,
+        "auuc_model": 0.14449,
+        "auuc_optimal": 0.15121,
+        "auuc_random": 0.11674,
+        "qini_coefficient": 0.805
+      },
+      "true_mean_uplift": 0.2335
+    },
+    "send_reminder": {
+      "s_learner": {
+        "uplift_mae": 0.0422,
+        "auuc_model": 0.10992,
+        "auuc_optimal": 0.11432,
+        "auuc_random": 0.08649,
+        "qini_coefficient": 0.8422
+      },
+      "t_learner": {
+        "uplift_mae": 0.0664,
+        "auuc_model": 0.1082,
+        "auuc_optimal": 0.11432,
+        "auuc_random": 0.08649,
+        "qini_coefficient": 0.7804
+      },
+      "true_mean_uplift": 0.173
+    },
+    "offer_incentive": {
+      "s_learner": {
+        "uplift_mae": 0.0437,
+        "auuc_model": 0.1601,
+        "auuc_optimal": 0.16422,
+        "auuc_random": 0.12719,
+        "qini_coefficient": 0.8886
+      },
+      "t_learner": {
+        "uplift_mae": 0.0768,
+        "auuc_model": 0.15546,
+        "auuc_optimal": 0.16422,
+        "auuc_random": 0.12719,
+        "qini_coefficient": 0.7633
+      },
+      "true_mean_uplift": 0.2544
+    },
+    "escalate_to_human": {
+      "s_learner": {
+        "uplift_mae": 0.0321,
+        "auuc_model": 0.0673,
+        "auuc_optimal": 0.07076,
+        "auuc_random": 0.05578,
+        "qini_coefficient": 0.7693
+      },
+      "t_learner": {
+        "uplift_mae": 0.0588,
+        "auuc_model": 0.06368,
+        "auuc_optimal": 0.07076,
+        "auuc_random": 0.05578,
+        "qini_coefficient": 0.5271
+      },
+      "true_mean_uplift": 0.1116
+    }
+  },
+  "calibration": {
+    "ece": 0.0079,
+    "brier": 0.1764,
+    "roc_auc": 0.7526
+  },
+  "policy_value_incremental_inr": {
+    "uplift_policy": 15541066.3,
+    "rules_only": 14741471.6,
+    "always_retry": 11160435.0,
+    "random": 9057587.7,
+    "oracle": 15689550.6,
+    "no_action": 0.0
+  },
+  "policy_value_note": "realised TRUE incremental rupees on the test set, net of action cost; oracle is the achievable ceiling, no_action the floor",
+  "train_seconds": 125.7
+}
