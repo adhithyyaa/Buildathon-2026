@@ -115,6 +115,16 @@ export interface UpliftRanking {
   uplift_at_30pct: number;
 }
 
+export type DriftStatus = 'stable' | 'watch' | 'shift';
+
+export interface ModelHealth {
+  cases: number;
+  overallStatus: DriftStatus;
+  features: { feature: string; psi: number; status: DriftStatus }[];
+  scoreDistribution: { bins: number[]; mean: number; count: number };
+  latency: { count: number; avgMs: number; p50Ms: number; p95Ms: number; maxMs: number };
+}
+
 export interface UpliftReport {
   version: string;
   method: string;
@@ -398,6 +408,7 @@ export const api = {
     post<{ created: number; deduped: number; anomaly: boolean; reasons: string[] }>('/api/demo/spike', { reason }),
   mlMetrics: () => get<MlMetrics>('/api/ml/metrics'),
   mlUplift: () => get<UpliftReport>('/api/ml/uplift'),
+  modelHealth: () => get<ModelHealth>('/api/ml/monitor'),
   explainCase: (id: string) => post<{ text: string; source: string; llmConfigured: boolean }>(`/api/ai/cases/${id}/explain`),
   draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),
   summarizeCase: (id: string) => post<{ text: string; source: string }>(`/api/ai/cases/${id}/summarize`),

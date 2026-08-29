@@ -3,6 +3,7 @@ import path from 'node:path';
 import { Router } from 'express';
 import { ah } from '../lib/asyncHandler';
 import { mlMetrics, mlHealth } from '../ml/client';
+import { computeModelHealth } from '../domain/modelHealth';
 
 export const mlRouter = Router();
 
@@ -33,6 +34,14 @@ mlRouter.get(
       }
     }
     res.status(404).json({ error: 'uplift_report_unavailable' });
+  }),
+);
+
+/** GET /api/ml/monitor — production model-health: per-feature PSI drift, score distribution, latency. */
+mlRouter.get(
+  '/monitor',
+  ah(async (_req, res) => {
+    res.json(await computeModelHealth());
   }),
 );
 
