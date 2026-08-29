@@ -37,12 +37,21 @@ vendors publish — is **₹X *more* than would have happened anyway**. Recoup r
 of cases are a no-action **control** arm, and the dashboard shows the **incremental** recovered ₹ (treatment − control)
 with a **95% bootstrap CI**, sliced per failure reason. In the demo the treatment arm recovers **~48%** vs a much lower
 control — a large, **significant** lift. It doubles as a live A/B / drift signal on the model, and it closes the loop:
-any reason where treatment doesn't beat control is flagged for **auto-suppression** (stop wasting actions there). This
+any reason where treatment doesn't beat control is flagged for **auto-suppression** (stop wasting actions there). The
+lift estimator itself is **A/A-tested** — on two statistically identical arms it must read ~0 lift with a CI spanning
+zero (`server/src/domain/__tests__/lab.aa.test.ts`), so the headline number can't be an artifact of the estimator. This
 is the measurement-and-governance layer that turns Razorpay's recovery from "trust us" into "here's the proven, CI-bounded
 incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
 
 ## What makes it credible (not just a demo)
 
+- **Causal uplift, not just propensity.** The field predicts *whether* a payment recovers. Recoup models the
+  **uplift** — `τ_a(x) = P(recover | do action a) − P(recover | do nothing)` — the *incremental* recovery each action
+  **causes**, which is exactly the ₹ our thesis claims and which no competitor models. An S-learner (action-as-feature
+  CatBoost) is benchmarked against a T-learner (per-action CatBoost on a randomised RCT arm) and selected by Qini.
+  Because the synthetic world exposes its ground-truth mechanism, uplift is checked against **known truth**: **Qini
+  ≈ 0.93**, **ECE ≈ 0.008**, and an uplift-optimal policy that captures **~99% of the oracle's incremental ₹** (beating
+  a rules-only baseline +5.4%, always-retry +39%). See [`docs/ROADMAP.md`](docs/ROADMAP.md) and `ml/src/uplift.py`.
 - **ML that actually decides.** Every case is scored by CatBoost (benchmarked vs XGBoost + a LogReg baseline) over a
   shared 21-feature schema, producing six outputs: **calibrated** recovery probability, chosen action + per-action odds, escalation
   risk, anomaly score, action confidence, and reason. The dashboard shows a model card with the reliability curve.
@@ -86,7 +95,7 @@ Full write-up: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md).
 ```
 Razorpay webhook / CSV / demo panel
     → normalize → deterministic risk-score → 21-feature build
-    → ML SERVICE (CatBoost · XGBoost · IsolationForest · calibration)  → decision + calibrated probabilities
+    → ML SERVICE (CatBoost · XGBoost · Uplift/CATE · IsolationForest · calibration)  → decision + per-action uplift + calibrated probabilities
     → POLICY ENGINE (deterministic, can override) → executor (real payment link / smart retry / message / escalate)
     → outcome tracker (signed payment.captured webhook) → metrics + model card + audit dashboard
                          └── LLM narrator (explain / draft / summarize) — on demand, off the money path
@@ -94,7 +103,24 @@ Razorpay webhook / CSV / demo panel
 
 Full write-up (panel-prep): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
 Decisions & trade-offs: [`docs/DECISIONS.md`](docs/DECISIONS.md) ·
-Webhook proof: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md)
+Webhook proof: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md) ·
+ML v2 design & roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
+
+## What the dashboard shows
+
+A single role-scoped React console, built to read as a real product:
+
+- **Overview** — recovered ₹, recovery rate, at-risk exposure, and the incremental-₹ lift; a **measured-impact chart**
+  (cumulative recovered ₹ vs a dotted "without Recoup" baseline computed from the control arm — *measured*, not
+  estimated like Stripe/Checkout.com); a **recovery funnel** (Detected → Decided → Attempted → tri-state tail); and
+  **failure reasons** in Razorpay's own Customer/Bank/Business/Other taxonomy, each tagged with the recovery path policy
+  allows (auto-retry / fresh link / RBI-TAT no-action).
+- **Live incident strip** — the IsolationForest's failure-spike detector, surfaced: while a reason is spiking, retries
+  for it are deferred (don't retry into an outage), in the idiom of Razorpay's own downtime feed.
+- **ML Model** — the **causal uplift engine** (Qini, ECE, per-action uplift, and a strategy comparison vs oracle), plus
+  the recovery model card (AUC benchmark, calibration curve, feature importances).
+- **Recovery Lab** — incremental ₹ vs the control holdout, with bootstrap CIs sliced per reason.
+- **Evidence** — the real Razorpay test-mode round-trip, HMAC-verified and replayable.
 
 ## Tech
 
@@ -107,7 +133,7 @@ Tailwind dashboard · **Python ML tier — FastAPI + CatBoost + XGBoost + scikit
 ```
 server/   Node + Express API, Prisma schema, the recovery pipeline, retry worker, seed data, webhook self-test
 web/      React dashboard (at-risk queue, case detail, ML model card, metrics, audit trail)
-ml/       Python ML tier — feature schema, synthetic world model, training, FastAPI serving, metrics.json
+ml/       Python ML tier — feature schema, synthetic world model, training, uplift engine (uplift.py), FastAPI serving, metrics
 docs/     ARCHITECTURE.md · DECISIONS.md · SETUP.md · WEBHOOKS.md
 ```
 
@@ -124,6 +150,7 @@ cd ml && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt &
 # 1. Train the models (writes ml/artifacts + ml/metrics.json)
 ml/.venv/Scripts/python ml/src/worldmodel.py
 ml/.venv/Scripts/python ml/src/train.py
+ml/.venv/Scripts/python ml/src/uplift.py    # causal uplift engine → ml/uplift.json (Qini, ECE, policy value)
 
 # 2. Run everything (separate terminals)
 cd server && npm run db:local                                            # DB  :5432
