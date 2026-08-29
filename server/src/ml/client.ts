@@ -41,6 +41,29 @@ export function mlPredict(features: Record<string, unknown>): Promise<MlPredicti
   return post<MlPrediction>('/predict', features);
 }
 
+export interface ReasonFactor {
+  feature: string;
+  label: string;
+  category: string;
+  value: string | number | null;
+  impact: number;
+  direction: 'increases' | 'decreases';
+  weight: number;
+}
+
+export interface ExplainResult {
+  available: boolean;
+  action?: string;
+  recovery_probability?: number;
+  base_rate?: number;
+  factors: ReasonFactor[];
+}
+
+/** Per-case SHAP reason codes for the recovery decision (explanatory; null if ML is unreachable). */
+export function mlExplain(features: Record<string, unknown>, action?: string | null): Promise<ExplainResult | null> {
+  return post<ExplainResult>('/explain', action ? { ...features, action } : features);
+}
+
 export interface WindowAnomaly {
   anomaly: boolean;
   score: number;

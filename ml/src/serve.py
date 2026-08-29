@@ -22,13 +22,40 @@ from typing import Optional
 
 import joblib
 import numpy as np
+from catboost import Pool
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from features import ACTIONS, case_frame, with_action
+from features import ACTIONS, RECOVERY_CATEGORICAL, case_frame, with_action
 
 ART = os.environ.get("RECOUP_MODELS", "ml/artifacts")
 AUTOMATED = [a for a in ACTIONS if a not in ("escalate_to_human", "no_action")]
+
+# Human-readable label + category for each model feature, for the per-case reason codes (F5).
+FEATURE_META = {
+    "action": ("Recommended action", "action"),
+    "failure_reason": ("Failure reason", "payment"),
+    "payment_method": ("Payment method", "payment"),
+    "order_value": ("Order value", "payment"),
+    "amount": ("Order value (log)", "payment"),
+    "currency": ("Currency", "payment"),
+    "channel": ("Channel", "payment"),
+    "retry_count": ("Retry count", "timing"),
+    "time_since_failure_min": ("Time since failure", "timing"),
+    "case_age_min": ("Case age", "timing"),
+    "hour_of_day": ("Hour of day", "timing"),
+    "day_of_week": ("Day of week", "timing"),
+    "urgency_score": ("Urgency score", "timing"),
+    "customer_segment": ("Customer segment", "customer"),
+    "historical_conversion_rate": ("Customer conversion history", "customer"),
+    "past_recovery_rate": ("Merchant recovery rate", "merchant"),
+    "merchant_type": ("Merchant type", "merchant"),
+    "prior_failed_attempts": ("Prior failed attempts", "customer"),
+    "opt_out_flag": ("Opt-out status", "customer"),
+    "previous_contact_attempts": ("Previous contact attempts", "customer"),
+    "last_action_type": ("Last action", "customer"),
+    "last_action_outcome": ("Last action outcome", "customer"),
+}
 
 # ---- action economics (mirror worldmodel EV so the service's pick is decision-aware) ----
 ACTION_COST = {"smart_retry": 3.0, "send_payment_link": 6.0, "send_reminder": 4.0, "offer_incentive": 6.0, "escalate_to_human": 50.0, "no_action": 0.0}
@@ -55,6 +82,19 @@ class Models:
         with open(os.path.join(ART, "metrics.json")) as f:
             self.metrics = json.load(f)
         self.version = self.metrics.get("version", "unknown")
+        # Unwrap the raw (uncalibrated) CatBoost from the calibrated recovery model so we can
+        # compute native per-case SHAP values for the reason-code explanations. Degrade gracefully
+        # if the sklearn wrapper layout changes — SHAP is explanatory, never on the money path.
+        self.recovery_raw = None
+        self.recovery_feature_names = None
+        try:
+            cc = self.recovery.calibrated_classifiers_[0]
+            raw = getattr(getattr(cc, "estimator", None), "estimator", None)
+            if raw is not None and hasattr(raw, "get_feature_importance"):
+                self.recovery_raw = raw
+                self.recovery_feature_names = list(raw.feature_names_)
+        except Exception as exc:  # noqa: BLE001 — explanations are best-effort
+            print(f"[ml] SHAP unwrap unavailable: {exc}")
 
 
 M: Optional[Models] = None
@@ -156,6 +196,71 @@ def predict(inp: CaseInput):
         "head_action": head_action,
         "model": {"recovery": "catboost_isotonic", "action": "catboost_multiclass", "escalation": "catboost_sigmoid", "version": M.version},
     }
+
+
+class ExplainInput(CaseInput):
+    action: Optional[str] = None  # explain this action; default = the recommended (EV-optimal allowed) action
+
+
+def _fmt_value(name: str, raw, action: str):
+    """A human-readable display value for a feature in a reason code."""
+    if name == "action":
+        return action.replace("_", " ")
+    if raw is None:
+        return None
+    if name == "order_value":
+        return f"₹{float(raw):,.0f}"
+    if name == "opt_out_flag":
+        return "opted out" if raw else "not opted out"
+    if isinstance(raw, float):
+        return round(raw, 2)
+    if isinstance(raw, str):
+        return raw.replace("_", " ")
+    return raw
+
+
+@app.post("/explain")
+def explain(inp: ExplainInput):
+    """Per-case reason codes (F5): native CatBoost SHAP on the recovery head for the chosen action,
+    returned as the top signed factors (which features pushed this case's recovery probability up or
+    down, and by how much). Explanatory only — off the money path."""
+    if M is None:
+        raise HTTPException(503, "models not loaded")
+    if M.recovery_raw is None or M.recovery_feature_names is None:
+        return {"available": False, "factors": []}
+    payload = inp.model_dump()
+    case = case_frame(payload)
+
+    action = inp.action if inp.action in ACTIONS else None
+    if action is None:
+        order_value = float(payload["order_value"])
+        per_action = {a: float(M.recovery.predict_proba(with_action(case, a))[:, 1][0]) for a in ACTIONS}
+        allowed = [a for a in (inp.allowed_actions or ACTIONS) if a in ACTIONS] or ACTIONS
+        action = max(allowed, key=lambda a: per_action[a] * (order_value * (INCENTIVE_COLLECT if a == "offer_incentive" else 1.0)) - ACTION_COST[a])
+
+    X = with_action(case, action)[M.recovery_feature_names]
+    cats = [c for c in RECOVERY_CATEGORICAL if c in M.recovery_feature_names]
+    sv = M.recovery_raw.get_feature_importance(Pool(X, cat_features=cats), type="ShapValues")[0]
+    base, contribs = float(sv[-1]), sv[:-1]
+    prob = float(M.recovery.predict_proba(X)[:, 1][0])
+
+    ranked = sorted(zip(M.recovery_feature_names, contribs), key=lambda kv: -abs(kv[1]))[:6]
+    factors = []
+    for name, impact in ranked:
+        label, category = FEATURE_META.get(name, (name.replace("_", " "), "other"))
+        factors.append({
+            "feature": name,
+            "label": label,
+            "category": category,
+            "value": _fmt_value(name, payload.get(name), action),
+            "impact": round(float(impact), 4),
+            "direction": "increases" if impact >= 0 else "decreases",
+        })
+    total = sum(abs(f["impact"]) for f in factors) or 1.0
+    for f in factors:
+        f["weight"] = round(abs(f["impact"]) / total, 3)
+
+    return {"available": True, "action": action, "recovery_probability": round(prob, 4), "base_rate": round(_sigmoid(base), 4), "factors": factors}
 
 
 class WindowInput(BaseModel):

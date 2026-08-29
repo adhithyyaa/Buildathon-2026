@@ -5,6 +5,9 @@ import { ah } from '../lib/asyncHandler';
 import { requireToken } from '../lib/auth';
 import { logAudit } from '../domain/audit';
 import { runCase } from '../pipeline/runCase';
+import { buildFeatures } from '../ml/features';
+import { mlExplain } from '../ml/client';
+import { minutesBetween } from '../lib/time';
 import type { PolicyDecision } from '../domain/policy';
 import type { RecoveryPlan } from '../ai/schemas';
 
@@ -64,6 +67,49 @@ casesRouter.get(
       return;
     }
     res.json({ case: kase });
+  }),
+);
+
+/**
+ * GET /api/cases/:id/explain — per-case reason codes (F5): SHAP factors that pushed this case's
+ * recovery probability up or down, for the action the engine chose. Guarded (reads case features).
+ */
+casesRouter.get(
+  '/:id/explain',
+  requireToken,
+  ah(async (req, res) => {
+    const kase = await prisma.case.findUnique({
+      where: { id: req.params.id! },
+      include: { customer: true, merchant: true, event: true, actions: { orderBy: { createdAt: 'desc' }, take: 5 } },
+    });
+    if (!kase) return void res.status(404).json({ error: 'not_found' });
+
+    const now = new Date();
+    const priorActions = kase.actions;
+    const lastAction = priorActions[0];
+    const features = buildFeatures({
+      amountPaise: kase.amount,
+      currency: kase.currency,
+      reasonTag: kase.reasonTag ?? 'unknown',
+      method: kase.event.method,
+      channel: kase.event.channel,
+      attempts: kase.attempts,
+      ageMinutes: minutesBetween(kase.createdAt, now),
+      now,
+      merchantName: kase.merchant.name,
+      customer: kase.customer
+        ? { priorPayments: kase.customer.priorPayments, priorConversions: kase.customer.priorConversions, optedOut: kase.customer.optedOut }
+        : null,
+      urgencyScore: kase.urgencyScore,
+      previousContactAttempts: priorActions.filter((a) => a.channel !== 'none').length,
+      lastActionType: lastAction ? lastAction.actionType : 'none',
+      lastActionOutcome: lastAction ? (lastAction.deliveryStatus ?? lastAction.status) : 'none',
+      allowedActions: [],
+    });
+
+    const explanation = await mlExplain(features, kase.assignedAction);
+    if (!explanation) return void res.status(503).json({ error: 'ml_unavailable' });
+    res.json(explanation);
   }),
 );
 

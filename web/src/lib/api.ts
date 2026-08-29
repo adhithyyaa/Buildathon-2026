@@ -82,6 +82,24 @@ export interface IncidentStatus {
   recent: { reason: string | null; score: number; at: string }[];
 }
 
+export interface ReasonFactor {
+  feature: string;
+  label: string;
+  category: string;
+  value: string | number | null;
+  impact: number;
+  direction: 'increases' | 'decreases';
+  weight: number;
+}
+
+export interface CaseExplanation {
+  available: boolean;
+  action?: string;
+  recovery_probability?: number;
+  base_rate?: number;
+  factors: ReasonFactor[];
+}
+
 export interface UpliftRanking {
   auuc_model: number;
   auuc_optimal: number;
@@ -354,6 +372,7 @@ export const api = {
     return get<{ cases: CaseRow[] }>(`/api/cases?${q.toString()}`);
   },
   caseDetail: (id: string) => get<{ case: CaseDetail }>(`/api/cases/${id}`),
+  caseReasonCodes: (id: string) => get<CaseExplanation>(`/api/cases/${id}/explain`),
   runCase: (id: string) => post(`/api/cases/${id}/run`),
   approveCase: (id: string) => post(`/api/cases/${id}/approve`),
   rejectCase: (id: string) => post(`/api/cases/${id}/reject`),

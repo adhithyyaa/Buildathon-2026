@@ -7,6 +7,7 @@ import { useToast } from '../lib/toast';
 import { AuditTimeline } from '../components/AuditTimeline';
 import { StageTracker } from '../components/StageTracker';
 import { MLPanel } from '../components/MLPanel';
+import { ReasonCodes } from '../components/ReasonCodes';
 import { AIAssist } from '../components/AIAssist';
 
 function last<T>(arr: T[]): T | undefined {
@@ -117,6 +118,8 @@ export function CasePage() {
       <StageTracker state={data.state} />
 
       <MLPanel prediction={prediction} />
+
+      {(prediction || decision) && <ReasonCodes caseId={id} />}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left: the decision story */}
