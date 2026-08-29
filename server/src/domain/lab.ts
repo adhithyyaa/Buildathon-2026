@@ -74,6 +74,44 @@ function bootstrapDiffCI(t: number[], c: number[], B = 600, seed = 7): { lo: num
 }
 
 /** Compute the incremental-lift report over all resolved cases — overall and per reason. */
+export interface LiftEstimate {
+  treatment: ArmStat;
+  control: ArmStat;
+  liftPct: number;
+  incrementalPaise: number;
+  liftCi95Pct: [number, number];
+  significant: boolean;
+}
+
+/**
+ * Pure incremental-lift estimator: the treatment−control recovery-rate difference with a 95%
+ * bootstrap CI, applied to the treatment arm's at-risk ₹. Exported so the A/A null test can prove
+ * it is unbiased — it must read ~0 lift (CI spanning 0, `significant: false`) when the two arms are
+ * drawn from the same distribution. If that test fails, no lift number this project reports is safe.
+ */
+export function estimateLift(subset: { arm: string; amount: number; recovered: boolean }[]): LiftEstimate {
+  const t = subset.filter((r) => r.arm === 'treatment');
+  const c = subset.filter((r) => r.arm === 'control');
+  const ts = armStat(t);
+  const cs = armStat(c);
+  const rateT = ts.recoveryRatePct ?? 0;
+  const rateC = cs.recoveryRatePct ?? 0;
+  const liftPct = Number((rateT - rateC).toFixed(1));
+  // ₹ incremental lift = (rate_t − rate_c) applied to the treatment arm's at-risk ₹.
+  const incrementalPaise = Math.round(((rateT - rateC) / 100) * ts.atRiskPaise);
+  const tb = t.map((r) => (r.recovered ? 1 : 0));
+  const cb = c.map((r) => (r.recovered ? 1 : 0));
+  const ci = bootstrapDiffCI(tb, cb);
+  return {
+    treatment: ts,
+    control: cs,
+    liftPct,
+    incrementalPaise,
+    liftCi95Pct: [Number((ci.lo * 100).toFixed(1)), Number((ci.hi * 100).toFixed(1))] as [number, number],
+    significant: ci.lo > 0 || ci.hi < 0,
+  };
+}
+
 export async function computeLift() {
   const rows = await prisma.case.findMany({
     where: { outcome: { is: { status: { in: ['recovered', 'expired'] } } } },
@@ -81,32 +119,9 @@ export async function computeLift() {
   });
   const norm = rows.map((r) => ({ arm: r.arm, amount: r.amount, reason: r.reasonTag ?? 'unknown', recovered: r.outcome?.status === 'recovered' }));
 
-  function block(subset: typeof norm) {
-    const t = subset.filter((r) => r.arm === 'treatment');
-    const c = subset.filter((r) => r.arm === 'control');
-    const ts = armStat(t);
-    const cs = armStat(c);
-    const rateT = ts.recoveryRatePct ?? 0;
-    const rateC = cs.recoveryRatePct ?? 0;
-    const liftPct = Number((rateT - rateC).toFixed(1));
-    // ₹ incremental lift = (rate_t − rate_c) applied to the treatment arm's at-risk ₹.
-    const incrementalPaise = Math.round(((rateT - rateC) / 100) * ts.atRiskPaise);
-    const tb = t.map((r) => (r.recovered ? 1 : 0));
-    const cb = c.map((r) => (r.recovered ? 1 : 0));
-    const ci = bootstrapDiffCI(tb, cb);
-    return {
-      treatment: ts,
-      control: cs,
-      liftPct,
-      incrementalPaise,
-      liftCi95Pct: [Number((ci.lo * 100).toFixed(1)), Number((ci.hi * 100).toFixed(1))] as [number, number],
-      significant: ci.lo > 0 || ci.hi < 0,
-    };
-  }
-
   const reasons = Array.from(new Set(norm.map((r) => r.reason)));
   const byReason = reasons
-    .map((reason) => ({ reason, ...block(norm.filter((r) => r.reason === reason)) }))
+    .map((reason) => ({ reason, ...estimateLift(norm.filter((r) => r.reason === reason)) }))
     .filter((r) => r.treatment.cases + r.control.cases >= 5)
     .sort((a, b) => b.incrementalPaise - a.incrementalPaise);
 
@@ -122,7 +137,7 @@ export async function computeLift() {
     .filter((r) => r.treatment.cases >= 15 && r.control.cases >= 4 && r.liftPct <= 2)
     .map((r) => r.reason);
 
-  return { overall: block(norm), byReason, suppressionCandidates, totalResolved: norm.length };
+  return { overall: estimateLift(norm), byReason, suppressionCandidates, totalResolved: norm.length };
 }
 
 export interface ImpactPoint {
