@@ -172,6 +172,50 @@ def _collectable(action: str, amount: float) -> float:
     return amount * (0.95 if action == "offer_incentive" else 1.0)
 
 
+def bootstrap_uncertainty(obs_tr: pd.DataFrame, case_test: pd.DataFrame, treat_actions: list[str], k: int = 30, seed: int = RS) -> dict:
+    """Per-case uplift UNCERTAINTY via a bootstrap ensemble. We resample the training log k times, fit
+    a fast LogReg S-learner each time, and for every test case take the best-treatment uplift across
+    the ensemble → a standard error and a 95% lower-confidence-bound (LCB). Reports the mean SE and
+    the share of cases whose uplift is CONFIDENTLY positive (LCB > 0) — we don't just point-estimate
+    the effect, we bound it per case (matches the strongest competitor's causal rigor)."""
+    from sklearn.compose import ColumnTransformer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+    rng = np.random.default_rng(seed)
+    rec_cat = RECOVERY_CATEGORICAL
+    rec_num = [c for c in CASE_FEATURES if c not in CATEGORICAL]
+    Xtr_full = recovery_frame(obs_tr)
+    ytr_full = obs_tr["recovered"].values
+    n = len(Xtr_full)
+
+    def best_uplift(model) -> np.ndarray:
+        p0 = model.predict_proba(with_action(case_test, NO_ACTION))[:, 1]
+        cols = [model.predict_proba(with_action(case_test, a))[:, 1] - p0 for a in treat_actions]
+        return np.max(np.column_stack(cols), axis=1)
+
+    ensemble = np.zeros((k, len(case_test)))
+    for b in range(k):
+        idx = rng.integers(0, n, n)
+        pipe = Pipeline([
+            ("pre", ColumnTransformer([("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), rec_cat), ("num", StandardScaler(), rec_num)])),
+            ("clf", LogisticRegression(max_iter=1000, random_state=RS)),
+        ])
+        pipe.fit(Xtr_full.iloc[idx], ytr_full[idx])
+        ensemble[b] = best_uplift(pipe)
+
+    mean = ensemble.mean(axis=0)
+    se = ensemble.std(axis=0, ddof=1)
+    lcb = mean - 1.96 * se
+    return {
+        "method": "bootstrap ensemble (30x LogReg S-learner) — per-case best-treatment uplift LCB",
+        "mean_se": round(float(se.mean()), 4),
+        "pct_confident_positive": round(float((lcb > 0).mean() * 100), 1),
+        "mean_uplift": round(float(mean.mean()), 4),
+    }
+
+
 def off_policy_eval(s_model, test: pd.DataFrame, amounts: np.ndarray, seed: int = RS) -> dict:
     """Doubly-robust off-policy evaluation of the deployed EV policy from the LOGGED data only.
 
@@ -315,6 +359,9 @@ def main(out_dir: str, rows: int) -> None:
     print("uplift: doubly-robust off-policy evaluation...")
     ope = off_policy_eval(s_model, test, amounts)
 
+    print("uplift: bootstrap per-case uncertainty (LCB)...")
+    uncertainty = bootstrap_uncertainty(obs_tr, case_test, treat_actions)
+
     report = {
         "version": version,
         "method": "causal uplift (CATE) — S-learner vs T-learner, evaluated against world ground truth",
@@ -326,6 +373,7 @@ def main(out_dir: str, rows: int) -> None:
         "policy_value_incremental_inr": values,
         "policy_value_note": "realised TRUE incremental rupees on the test set, net of action cost; oracle is the achievable ceiling, no_action the floor",
         "off_policy": ope,
+        "uncertainty": uncertainty,
         "train_seconds": round(time.time() - t0, 1),
     }
 

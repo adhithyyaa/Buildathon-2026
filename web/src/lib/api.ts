@@ -156,6 +156,12 @@ export interface UpliftReport {
     dr_error_vs_truth_pct: number | null;
     match_rate: number;
   };
+  uncertainty?: {
+    method: string;
+    mean_se: number;
+    pct_confident_positive: number;
+    mean_uplift: number;
+  };
   train_seconds: number;
 }
 

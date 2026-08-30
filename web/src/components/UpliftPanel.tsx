@@ -138,6 +138,13 @@ export function UpliftPanel() {
             The deployed EV policy is estimated to recover more per case than the policy that generated the log — and because this
             world exposes ground truth, we can confirm DR lands within {u.off_policy.dr_error_vs_truth_pct}% of it.
           </p>
+          {u.uncertainty && (
+            <p className="mt-2 text-[10.5px] leading-relaxed text-slate-400">
+              <b className="text-slate-600">Per-case uncertainty:</b> a 30× bootstrap ensemble bounds each case's uplift — mean SE{' '}
+              {(u.uncertainty.mean_se * 100).toFixed(1)}pp, and <b className="text-slate-600">{u.uncertainty.pct_confident_positive}%</b> of cases
+              are confidently positive (95% lower bound &gt; 0). We bound the effect per case, not just point-estimate it.
+            </p>
+          )}
         </div>
       )}
     </Card>

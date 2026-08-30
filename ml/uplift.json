@@ -1,5 +1,5 @@
 {
-  "version": "20260829-1627",
+  "version": "20260830-0830",
   "method": "causal uplift (CATE) \u2014 S-learner vs T-learner, evaluated against world ground truth",
   "dataset": {
     "observational_train": 24000,
@@ -139,5 +139,11 @@
     "dr_error_vs_truth_pct": 6.2,
     "match_rate": 0.352
   },
-  "train_seconds": 138.3
+  "uncertainty": {
+    "method": "bootstrap ensemble (30x LogReg S-learner) \u2014 per-case best-treatment uplift LCB",
+    "mean_se": 0.0156,
+    "pct_confident_positive": 100.0,
+    "mean_uplift": 0.334
+  },
+  "train_seconds": 117.6
 }
