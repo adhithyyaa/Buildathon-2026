@@ -5,6 +5,7 @@ import { formatINR, titleCase } from '../lib/format';
 import { useRefresh } from '../lib/refresh';
 import { Card, Pill, cx } from '../components/ui';
 import { Icon } from '../components/icons';
+import { ForensicsPanel } from '../components/ForensicsPanel';
 
 export function EvidencePage() {
   const { version, poll } = useRefresh();
@@ -51,6 +52,9 @@ export function EvidencePage() {
           ))}
         </div>
       )}
+
+      {/* Tamper-evidence forensics */}
+      <ForensicsPanel />
 
       {/* Reproduce it */}
       <Card title="Reproduce it — no keys required">

@@ -55,26 +55,46 @@ export function chainHash(prevHash: string, content: string): string {
   return createHash('sha256').update(prevHash).update('␟').update(content).digest('hex');
 }
 
+/**
+ * How a broken chain was broken — the forensic distinction:
+ *  • content_altered — a row's stored hash no longer matches its own content: a field was edited (or
+ *    the hash itself was) without re-chaining. The tamper is IN this row.
+ *  • chain_relinked — the row's content and hash are internally consistent, but its prevHash does not
+ *    link to the actual previous row: a row was inserted, deleted, reordered, or an UPSTREAM row was
+ *    edited and re-hashed without propagating downstream. The break surfaces AT the link.
+ */
+export type TamperKind = 'content_altered' | 'chain_relinked';
+
 export interface ChainVerdict {
   valid: boolean;
   total: number;
   verified: number;
   brokenAt: string | null;
+  tamper: TamperKind | null;
+  detail: string | null;
 }
 
-/** Pure verifier: re-walk an ordered array of chained rows and confirm every link. */
+/** Pure verifier: re-walk an ordered array of chained rows, confirm every link, and — if one breaks —
+ *  classify HOW it broke (content vs linkage) and exactly where. */
 export function verifyRows(rows: ChainRow[]): ChainVerdict {
   let prev = GENESIS;
   let verified = 0;
   for (const r of rows) {
-    const expected = chainHash(r.prevHash ?? GENESIS, rowContent(r));
-    if ((r.prevHash ?? GENESIS) !== prev || r.hash !== expected) {
-      return { valid: false, total: rows.length, verified, brokenAt: r.id };
+    const rowPrev = r.prevHash ?? GENESIS;
+    const contentOk = r.hash === chainHash(rowPrev, rowContent(r)); // row's own content ↔ hash consistent?
+    const linkOk = rowPrev === prev; // row linked to the ACTUAL previous row?
+    if (!contentOk || !linkOk) {
+      const tamper: TamperKind = !contentOk ? 'content_altered' : 'chain_relinked';
+      const at = `row ${verified + 1}/${rows.length} (${r.step})`;
+      const detail = !contentOk
+        ? `${at}: content does not match its stored hash — a field was edited without re-chaining.`
+        : `${at}: row is self-consistent but its prevHash does not link to the previous row — a row was inserted, removed, reordered, or an upstream row changed.`;
+      return { valid: false, total: rows.length, verified, brokenAt: r.id, tamper, detail };
     }
-    prev = r.hash;
+    prev = r.hash as string; // contentOk true ⇒ r.hash equals a hash string (never null)
     verified++;
   }
-  return { valid: true, total: rows.length, verified, brokenAt: null };
+  return { valid: true, total: rows.length, verified, brokenAt: null, tamper: null, detail: null };
 }
 
 /**
@@ -121,6 +141,107 @@ export async function verifyCaseChain(caseId: string): Promise<ChainVerdict> {
     select: { id: true, step: true, actor: true, beforeState: true, afterState: true, details: true, hash: true, prevHash: true },
   });
   return verifyRows(rows as ChainRow[]);
+}
+
+// ── Forensic demonstration ───────────────────────────────────────────────────────────────────────
+// Prove the tamper-evidence property live, on a real case chain, WITHOUT ever writing bad data: each
+// scenario deep-clones the rows, applies one attack to the clone, and re-verifies. The real ledger is
+// never mutated. This is what makes "tamper-evident" checkable instead of merely asserted.
+
+export interface ForensicScenario {
+  id: string;
+  label: string;
+  attack: string;
+  expected: TamperKind | 'valid';
+  verdict: ChainVerdict;
+  caught: boolean;
+}
+
+export interface ForensicReport {
+  caseId: string | null;
+  chainLength: number;
+  scenarios: ForensicScenario[];
+  allCaught: boolean;
+}
+
+const clone = (rows: ChainRow[]): ChainRow[] => rows.map((r) => ({ ...r, details: r.details === null || r.details === undefined ? r.details : (JSON.parse(JSON.stringify(r.details)) as unknown) }));
+
+/** Run the tamper battery against a single untampered case chain (clones only — non-destructive). */
+export function forensicDemo(rows: ChainRow[]): ForensicReport {
+  const n = rows.length;
+  if (n < 3) return { caseId: null, chainLength: n, scenarios: [], allCaught: false };
+  const mid = Math.floor(n / 2); // a middle row: has both a predecessor and a successor
+  const scenarios: ForensicScenario[] = [];
+
+  // 0. Baseline — the untampered chain must verify.
+  {
+    const verdict = verifyRows(clone(rows));
+    scenarios.push({ id: 'baseline', label: 'Untampered ledger', attack: 'No changes — the chain as written.', expected: 'valid', verdict, caught: verdict.valid });
+  }
+
+  // 1. Content edit — change a field, leave the stored hash. Caught IN that row as content_altered.
+  {
+    const c = clone(rows);
+    const target = c[mid]!;
+    c[mid] = { ...target, afterState: `${target.afterState ?? ''}~tampered` };
+    const verdict = verifyRows(c);
+    scenarios.push({
+      id: 'content_altered',
+      label: 'Silent field edit',
+      attack: `Rewrite row ${mid + 1}'s outcome, leave its hash untouched.`,
+      expected: 'content_altered',
+      verdict,
+      caught: verdict.tamper === 'content_altered' && verdict.brokenAt === target.id,
+    });
+  }
+
+  // 2. Row deletion — drop a row. The successor's prevHash no longer links. Caught as chain_relinked.
+  {
+    const c = clone(rows).filter((_, i) => i !== mid);
+    const verdict = verifyRows(c);
+    scenarios.push({
+      id: 'row_deleted',
+      label: 'Deleted event',
+      attack: `Remove row ${mid + 1} to hide that it ever happened.`,
+      expected: 'chain_relinked',
+      verdict,
+      caught: verdict.tamper === 'chain_relinked',
+    });
+  }
+
+  // 3. Cover-your-tracks edit — change a field AND recompute THIS row's hash so it is self-consistent,
+  //    but don't re-hash the rest. The break simply moves to the next link: chain_relinked.
+  {
+    const c = clone(rows);
+    const target = c[mid]!;
+    const edited: ChainRow = { ...target, afterState: `${target.afterState ?? ''}~rehashed` };
+    edited.hash = chainHash(edited.prevHash ?? GENESIS, rowContent(edited)); // attacker re-hashes the edited row
+    c[mid] = edited;
+    const verdict = verifyRows(c);
+    scenarios.push({
+      id: 'rehash_propagation',
+      label: 'Edit + re-hash one row',
+      attack: `Edit row ${mid + 1} and recompute its own hash — but not the chain after it.`,
+      expected: 'chain_relinked',
+      verdict,
+      caught: verdict.tamper === 'chain_relinked',
+    });
+  }
+
+  return { caseId: null, chainLength: n, scenarios, allCaught: scenarios.every((s) => s.caught) };
+}
+
+/** Pick the richest real case chain and run the forensic battery on it (for the console). */
+export async function forensicReport(): Promise<ForensicReport> {
+  const grouped = await prisma.auditLog.groupBy({ by: ['caseId'], where: { hash: { not: null } }, _count: { _all: true } });
+  if (!grouped.length) return { caseId: null, chainLength: 0, scenarios: [], allCaught: false };
+  const richest = grouped.sort((a, b) => b._count._all - a._count._all)[0]!.caseId;
+  const rows = (await prisma.auditLog.findMany({
+    where: { caseId: richest, hash: { not: null } },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: { id: true, step: true, actor: true, beforeState: true, afterState: true, details: true, hash: true, prevHash: true },
+  })) as ChainRow[];
+  return { ...forensicDemo(rows), caseId: richest };
 }
 
 /** Verify every case's chain — the global ledger-integrity check. */

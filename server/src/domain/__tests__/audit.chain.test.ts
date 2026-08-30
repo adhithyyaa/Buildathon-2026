@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chainHash, rowContent, verifyRows, type ChainRow } from '../audit';
+import { chainHash, rowContent, verifyRows, forensicDemo, type ChainRow } from '../audit';
 
 /**
  * Tamper-evidence tests for the audit hash chain. A ledger that can be edited without detection is
@@ -33,29 +33,33 @@ describe('audit hash chain', () => {
     expect(v.brokenAt).toBeNull();
   });
 
-  it('detects an edited row (content changed after the fact)', () => {
+  it('detects an edited row and classifies it as content_altered', () => {
     const chain = buildChain(SAMPLE);
     // Attacker rewrites the recovered amount but can't recompute the whole downstream chain.
     chain[3] = { ...chain[3]!, details: { paymentRef: 'pay_TT123', paise: 99999900 } };
     const v = verifyRows(chain);
     expect(v.valid).toBe(false);
     expect(v.brokenAt).toBe('d');
+    expect(v.tamper).toBe('content_altered');
   });
 
-  it('detects a reordered chain', () => {
+  it('detects a reordered chain and classifies it as chain_relinked', () => {
     const chain = buildChain(SAMPLE);
     const tmp = chain[1]!;
     chain[1] = chain[2]!;
-    chain[2] = tmp; // swap two rows
-    expect(verifyRows(chain).valid).toBe(false);
+    chain[2] = tmp; // swap two rows — each row is self-consistent, but the links no longer match
+    const v = verifyRows(chain);
+    expect(v.valid).toBe(false);
+    expect(v.tamper).toBe('chain_relinked');
   });
 
-  it('detects a deleted row', () => {
+  it('detects a deleted row and classifies it as chain_relinked', () => {
     const chain = buildChain(SAMPLE);
     chain.splice(2, 1); // remove the ai_decision row
     const v = verifyRows(chain);
     expect(v.valid).toBe(false);
     expect(v.brokenAt).toBe('d'); // the next row's prevHash no longer matches
+    expect(v.tamper).toBe('chain_relinked');
   });
 
   it('detects an inserted forged row', () => {
@@ -63,5 +67,19 @@ describe('audit hash chain', () => {
     const forged: ChainRow = { id: 'x', step: 'recovered', actor: 'human', beforeState: 'analyzed', afterState: 'recovered', details: { paise: 5000000 }, prevHash: chain[1]!.hash, hash: 'deadbeef' };
     chain.splice(2, 0, forged);
     expect(verifyRows(chain).valid).toBe(false);
+  });
+
+  it('forensic demo catches every tamper class on a real chain, non-destructively', () => {
+    const rows = buildChain(SAMPLE);
+    const rep = forensicDemo(rows);
+    expect(rep.chainLength).toBe(4);
+    expect(rep.allCaught).toBe(true);
+    const byId = Object.fromEntries(rep.scenarios.map((s) => [s.id, s]));
+    expect(byId.baseline!.verdict.valid).toBe(true);
+    expect(byId.content_altered!.verdict.tamper).toBe('content_altered');
+    expect(byId.row_deleted!.verdict.tamper).toBe('chain_relinked');
+    expect(byId.rehash_propagation!.verdict.tamper).toBe('chain_relinked');
+    // The battery mutates clones only — the original chain still verifies afterwards.
+    expect(verifyRows(rows).valid).toBe(true);
   });
 });

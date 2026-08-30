@@ -105,6 +105,23 @@ export interface ChainVerdict {
   total: number;
   verified: number;
   brokenAt: string | null;
+  tamper?: 'content_altered' | 'chain_relinked' | null;
+  detail?: string | null;
+}
+
+export interface ForensicScenario {
+  id: string;
+  label: string;
+  attack: string;
+  expected: 'content_altered' | 'chain_relinked' | 'valid';
+  verdict: ChainVerdict;
+  caught: boolean;
+}
+export interface ForensicReport {
+  caseId: string | null;
+  chainLength: number;
+  scenarios: ForensicScenario[];
+  allCaught: boolean;
 }
 
 export interface UpliftRanking {
@@ -509,4 +526,5 @@ export const api = {
   evidence: () => get<{ captures: RoundtripCapture[] }>('/api/evidence/roundtrip'),
   complianceAudit: () => get<ComplianceAudit>('/api/compliance/audit'),
   redTeam: (attackId: string) => post<RedTeamResult>('/api/compliance/redteam', { attackId }),
+  auditForensics: () => get<ForensicReport>('/api/audit/forensics'),
 };
