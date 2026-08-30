@@ -493,6 +493,25 @@ export interface ComplianceAudit {
   breached: number;
   results: RedTeamResult[];
 }
+export interface FactViolation {
+  kind: 'amount_mismatch' | 'discount_mismatch' | 'fabricated_reference';
+  claimed: string;
+  expected: string;
+  detail: string;
+}
+export interface MessageSafetyCase {
+  id: string;
+  label: string;
+  intent: 'legitimate' | 'hallucination';
+  message: string;
+  validation: { ok: boolean; checked: number; violations: FactViolation[] };
+  handled: boolean;
+}
+export interface MessageSafetyReport {
+  facts: { amount: string; merchant: string; approvedIncentivePct: number };
+  cases: MessageSafetyCase[];
+  allHandled: boolean;
+}
 
 export const api = {
   health: () => get<HealthInfo>('/health'),
@@ -534,4 +553,5 @@ export const api = {
   complianceAudit: () => get<ComplianceAudit>('/api/compliance/audit'),
   redTeam: (attackId: string) => post<RedTeamResult>('/api/compliance/redteam', { attackId }),
   auditForensics: () => get<ForensicReport>('/api/audit/forensics'),
+  messageSafety: () => get<MessageSafetyReport>('/api/compliance/message-safety'),
 };

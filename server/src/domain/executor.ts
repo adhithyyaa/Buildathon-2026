@@ -8,6 +8,7 @@ import { logger } from '../lib/logger';
 import { toMessage } from '../lib/errors';
 import { createPaymentLink } from '../integrations/razorpay';
 import { isPaused } from './killswitch';
+import { validateMessageFacts } from './messageValidator';
 import type { RecoveryPlan } from '../ai/schemas';
 import type { PolicyDecision } from './policy';
 
@@ -104,7 +105,27 @@ async function dispatchRetry(input: ExecuteInput): Promise<ExecuteResult> {
   return { actionId: action.id, finalState: 'waiting_for_outcome', simulated: false };
 }
 
+/**
+ * Fact-check the LLM-authored message BEFORE it reaches a customer. If it asserts a wrong amount, an
+ * unapproved discount, or a fabricated reference, block the send and escalate to a human — the model
+ * never gets to state a fact the arithmetic and policy didn't sanction.
+ */
+async function guardOutboundMessage(input: ExecuteInput): Promise<ExecuteResult | null> {
+  const v = validateMessageFacts(`${input.plan.message.subject}\n${input.plan.message.body}`, {
+    amountPaise: input.amountPaise,
+    currency: input.currency,
+    merchantName: input.merchantName,
+    incentivePct: input.policy.finalIncentivePct,
+  });
+  if (v.ok) return null;
+  await logAudit({ caseId: input.caseId, step: 'message_validation_failed', actor: 'system', details: { checked: v.checked, violations: v.violations } as unknown as Prisma.InputJsonValue });
+  input.policy.notes.push(`Outbound message failed the fact-check (${v.violations.map((x) => x.kind).join(', ')}); blocked and escalated to a human.`);
+  return recordTerminalAction(input, 'escalate_to_human', 'succeeded', 'manual_escalation', 'message_validation_failed');
+}
+
 async function dispatchPaymentLink(input: ExecuteInput): Promise<ExecuteResult> {
+  const blocked = await guardOutboundMessage(input);
+  if (blocked) return blocked;
   const { caseId, policy, now } = input;
   const isIncentive = policy.finalAction === 'offer_incentive';
   const finalAmount = isIncentive
@@ -152,6 +173,8 @@ async function dispatchPaymentLink(input: ExecuteInput): Promise<ExecuteResult> 
 }
 
 async function dispatchReminder(input: ExecuteInput): Promise<ExecuteResult> {
+  const blocked = await guardOutboundMessage(input);
+  if (blocked) return blocked;
   const { caseId, policy, now } = input;
   const deferred = Boolean(policy.scheduledFor && policy.scheduledFor.getTime() > now.getTime());
   const expiresAt = new Date(now.getTime() + RECOVERY_TTL_HOURS * 3_600_000);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, type ComplianceAudit, type RedTeamResult, type OracleFinding } from '../lib/api';
+import { api, type ComplianceAudit, type RedTeamResult, type OracleFinding, type MessageSafetyReport, type MessageSafetyCase } from '../lib/api';
 import { Card, Pill, Button, cx } from '../components/ui';
 import { Icon } from '../components/icons';
 
@@ -10,10 +10,12 @@ import { Icon } from '../components/icons';
  */
 export function CompliancePage() {
   const [audit, setAudit] = useState<ComplianceAudit | null>(null);
+  const [msg, setMsg] = useState<MessageSafetyReport | null>(null);
   const [err, setErr] = useState(false);
 
   useEffect(() => {
     api.complianceAudit().then(setAudit).catch(() => setErr(true));
+    api.messageSafety().then(setMsg).catch(() => setMsg(null));
   }, []);
 
   const rerunOne = (id: string) => {
@@ -74,6 +76,64 @@ export function CompliancePage() {
           <AttackCard key={r.attack.id} result={r} onRerun={() => rerunOne(r.attack.id)} />
         ))}
       </div>
+
+      {/* Outbound message fact-check */}
+      {msg && <MessageSafetyCard report={msg} />}
+    </div>
+  );
+}
+
+function MessageSafetyCard({ report }: { report: MessageSafetyReport }) {
+  const blocked = report.cases.filter((c) => c.intent === 'hallucination').length;
+  return (
+    <Card
+      title="Outbound message fact-check"
+      right={<Pill tone={report.allHandled ? 'emerald' : 'rose'}>{report.cases.filter((c) => c.handled).length}/{report.cases.length} handled</Pill>}
+    >
+      <p className="text-sm leading-relaxed text-slate-600">
+        The LLM drafts customer copy, but it never states a <b className="text-slate-900">fact</b> that reaches a customer
+        unchecked. Before any send, a deterministic validator extracts every money amount, discount, and reference and
+        checks it against ground truth (<b className="text-slate-900">{report.facts.amount}</b> owed to{' '}
+        <b className="text-slate-900">{report.facts.merchant}</b>, approved incentive{' '}
+        <b className="text-slate-900">{report.facts.approvedIncentivePct}%</b>). A hallucinated amount, an unapproved
+        discount, or a fabricated id blocks the send and escalates to a human.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {report.cases.map((c) => (
+          <MessageCase key={c.id} c={c} />
+        ))}
+      </div>
+      <p className="mt-3 text-[11px] text-slate-400">{blocked} hallucinations, all caught before dispatch; the legitimate message passes untouched.</p>
+    </Card>
+  );
+}
+
+function MessageCase({ c }: { c: MessageSafetyCase }) {
+  const [subject, ...bodyLines] = c.message.split('\n');
+  const legit = c.intent === 'legitimate';
+  return (
+    <div className={cx('rounded-xl border p-3', c.handled ? (legit ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200 bg-white') : 'border-rose-300 bg-rose-50')}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold text-slate-800">{c.label}</span>
+        <span className={cx('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+          legit ? 'bg-emerald-100 text-emerald-700' : c.handled ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>
+          {legit ? '✓ passes' : c.handled ? '✓ blocked' : '✗ leaked'}
+        </span>
+      </div>
+      <div className="mt-1.5 rounded-lg border border-slate-100 bg-slate-50/70 p-2">
+        <div className="text-[11px] font-semibold text-slate-600">{subject}</div>
+        <div className="text-[11px] text-slate-500">{bodyLines.join(' ')}</div>
+      </div>
+      {c.validation.violations.length > 0 && (
+        <ul className="mt-1.5 space-y-1">
+          {c.validation.violations.map((v, i) => (
+            <li key={i} className="flex items-start gap-1.5 text-[11px] text-rose-600">
+              <span className="mt-0.5 font-mono rounded bg-rose-100 px-1 py-0.5 text-[9.5px] font-bold">{v.kind}</span>
+              <span className="text-slate-500">claimed {v.claimed}, expected {v.expected}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

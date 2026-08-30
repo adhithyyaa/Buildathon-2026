@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { ah } from '../lib/asyncHandler';
 import { runCompliance } from '../domain/compliance';
 import { ATTACKS, getAttack } from '../domain/redteamAttacks';
+import { messageSafetyDemo } from '../domain/messageValidator';
 import { policyEnvelope } from '../pipeline/runCase';
 
 export const complianceRouter = Router();
@@ -50,5 +51,13 @@ complianceRouter.get(
     });
     const defended = results.filter((r) => r.verdict === 'defended').length;
     res.json({ total: results.length, defended, breached: results.length - defended, results });
+  }),
+);
+
+/** GET /api/compliance/message-safety — fact-check battery over legit + hallucinated outbound messages. */
+complianceRouter.get(
+  '/message-safety',
+  ah(async (_req, res) => {
+    res.json(messageSafetyDemo());
   }),
 );
