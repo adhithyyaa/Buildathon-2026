@@ -115,6 +115,23 @@ export interface UpliftRanking {
   uplift_at_30pct: number;
 }
 
+export interface ConformalReport {
+  method: string;
+  target_coverage_pct: number;
+  empirical_coverage_pct: number;
+  avg_set_size: number;
+  buckets_pct: { confident_recoverable: number; confident_not_recoverable: number; uncertain_route_to_human: number };
+  note: string;
+}
+
+export interface RctReport {
+  dataset: { name: string; rows: number; treatment: string; outcome: string; real_randomized: boolean };
+  ate_ground_truth: { diff_in_means: number; ci95: [number, number] };
+  ate_recovered: { ips: number; doubly_robust: number; dr_error_vs_truth_pct: number | null };
+  uplift_learners: Record<string, { qini: number; uplift_at_30pct: number; mean_cate: number }>;
+  best_learner: string;
+}
+
 export interface ExploreReport {
   version: string;
   method: string;
@@ -437,6 +454,8 @@ export const api = {
   mlUplift: () => get<UpliftReport>('/api/ml/uplift'),
   modelHealth: () => get<ModelHealth>('/api/ml/monitor'),
   mlExplore: () => get<ExploreReport>('/api/ml/explore'),
+  mlConformal: () => get<ConformalReport>('/api/ml/conformal'),
+  mlRct: () => get<RctReport>('/api/ml/rct'),
   explainCase: (id: string) => post<{ text: string; source: string; llmConfigured: boolean }>(`/api/ai/cases/${id}/explain`),
   draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),
   summarizeCase: (id: string) => post<{ text: string; source: string }>(`/api/ai/cases/${id}/summarize`),

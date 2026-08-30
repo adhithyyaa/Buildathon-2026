@@ -10,6 +10,8 @@ export const mlRouter = Router();
 // Git-tracked training artifacts (like ml/metrics.json). Resolved relative to the launch cwd (server/).
 const UPLIFT_CANDIDATES = ['../ml/uplift.json', 'ml/uplift.json', '../../ml/uplift.json'];
 const EXPLORE_CANDIDATES = ['../ml/explore.json', 'ml/explore.json', '../../ml/explore.json'];
+const CONFORMAL_CANDIDATES = ['../ml/conformal.json', 'ml/conformal.json', '../../ml/conformal.json'];
+const RCT_CANDIDATES = ['../ml/rct_validation.json', 'ml/rct_validation.json', '../../ml/rct_validation.json'];
 
 async function readFirst(candidates: string[]): Promise<unknown | null> {
   for (const rel of candidates) {
@@ -48,6 +50,26 @@ mlRouter.get(
   ah(async (_req, res) => {
     const report = await readFirst(EXPLORE_CANDIDATES);
     if (!report) return void res.status(404).json({ error: 'explore_report_unavailable' });
+    res.json(report);
+  }),
+);
+
+/** GET /api/ml/conformal — split-conformal per-case certainty (coverage guarantee). */
+mlRouter.get(
+  '/conformal',
+  ah(async (_req, res) => {
+    const report = await readFirst(CONFORMAL_CANDIDATES);
+    if (!report) return void res.status(404).json({ error: 'conformal_report_unavailable' });
+    res.json(report);
+  }),
+);
+
+/** GET /api/ml/rct — external validity: uplift + DR-OPE recovered on a real public RCT. */
+mlRouter.get(
+  '/rct',
+  ah(async (_req, res) => {
+    const report = await readFirst(RCT_CANDIDATES);
+    if (!report) return void res.status(404).json({ error: 'rct_report_unavailable' });
     res.json(report);
   }),
 );

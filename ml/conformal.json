@@ -1,0 +1,17 @@
+{
+  "version": "20260830-0835",
+  "method": "split conformal prediction on the recovery head (distribution-free, finite-sample)",
+  "target_coverage_pct": 90.0,
+  "empirical_coverage_pct": 90.7,
+  "qhat": 0.7215,
+  "calibration_rows": 4800,
+  "test_rows": 4800,
+  "avg_set_size": 1.429,
+  "buckets_pct": {
+    "confident_recoverable": 6.2,
+    "confident_not_recoverable": 50.9,
+    "uncertain_route_to_human": 42.9
+  },
+  "note": "empirical coverage should land at or above target \u2014 the guarantee, checked on a fresh split. Uncertain cases are the honest hand-off, not a forced guess.",
+  "train_seconds": 29.8
+}
