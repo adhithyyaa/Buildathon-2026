@@ -1,0 +1,43 @@
+{
+  "version": "20260830-0825",
+  "dataset": {
+    "name": "Hillstrom MineThatData e-mail RCT",
+    "rows": 64000,
+    "test_rows": 19200,
+    "treatment": "email vs no-email",
+    "outcome": "visit",
+    "real_randomized": true
+  },
+  "ate_ground_truth": {
+    "diff_in_means": 0.061,
+    "ci95": [
+      0.0518,
+      0.0703
+    ]
+  },
+  "ate_recovered": {
+    "ips": 0.061,
+    "doubly_robust": 0.0621,
+    "dr_error_vs_truth_pct": 1.9
+  },
+  "uplift_learners": {
+    "t_learner": {
+      "qini": 44.0085,
+      "uplift_at_30pct": 0.0158,
+      "mean_cate": 0.0561
+    },
+    "s_learner": {
+      "qini": 57.6609,
+      "uplift_at_30pct": 0.0247,
+      "mean_cate": 0.0594
+    },
+    "x_learner": {
+      "qini": 59.6999,
+      "uplift_at_30pct": 0.02,
+      "mean_cate": 0.0576
+    }
+  },
+  "best_learner": "x_learner",
+  "interpretation": "On REAL randomized data our IPS/DR OPE recovers the trial ATE, and the uplift learners show positive Qini \u2014 the same machinery, externally validated (not just the synthetic world).",
+  "train_seconds": 70.6
+}
