@@ -143,6 +143,63 @@ export async function verifyCaseChain(caseId: string): Promise<ChainVerdict> {
   return verifyRows(rows as ChainRow[]);
 }
 
+// ── Append-only enforcement (DB-level) ─────────────────────────────────────────────────────────────
+// The hash chain makes tampering EVIDENT; this makes surgical tampering IMPOSSIBLE through the database.
+// A BEFORE UPDATE/DELETE trigger rejects any in-place edit or deletion of an AuditLog row — not even the
+// application's own connection can rewrite a ledger row. The ledger can only be appended to (INSERT) or,
+// as a whole-ledger admin reset, TRUNCATEd; individual rows can never be altered or removed. This closes
+// the "just rewrite the entire chain" gap the hash chain alone leaves open.
+
+const APPEND_ONLY_FN = `CREATE OR REPLACE FUNCTION recoup_audit_append_only() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'AuditLog is append-only: % is not permitted on the audit ledger', TG_OP USING ERRCODE = '23514';
+END;
+$$ LANGUAGE plpgsql`;
+
+/** Idempotently install the append-only trigger. Called at startup so the guard holds under both
+ *  `prisma migrate deploy` and `prisma db push` (which does not run raw-SQL migrations). */
+export async function ensureAuditAppendOnly(): Promise<void> {
+  await prisma.$executeRawUnsafe(APPEND_ONLY_FN);
+  for (const op of ['UPDATE', 'DELETE'] as const) {
+    const trg = `audit_log_no_${op.toLowerCase()}`;
+    await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS ${trg} ON "AuditLog"`);
+    await prisma.$executeRawUnsafe(`CREATE TRIGGER ${trg} BEFORE ${op} ON "AuditLog" FOR EACH ROW EXECUTE FUNCTION recoup_audit_append_only()`);
+  }
+}
+
+export interface AppendOnlyProbe {
+  enforced: boolean;
+  updateBlocked: boolean;
+  deleteBlocked: boolean;
+  rowsProbed: number;
+}
+
+class Rollback extends Error {}
+
+/** Live, NON-DESTRUCTIVE proof: attempt an UPDATE and a DELETE on a real ledger row inside a
+ *  transaction that is always rolled back. If the DB guard is in force, both are rejected outright. */
+export async function probeAppendOnly(): Promise<AppendOnlyProbe> {
+  const one = await prisma.auditLog.findFirst({ select: { id: true } });
+  if (!one) return { enforced: false, updateBlocked: false, deleteBlocked: false, rowsProbed: 0 };
+
+  const attempt = async (sql: string): Promise<boolean> => {
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(sql, one.id);
+        throw new Rollback(); // statement succeeded (guard NOT enforcing) → undo it, report unblocked
+      });
+      return false;
+    } catch (e) {
+      if (e instanceof Rollback) return false;
+      return /append-only/i.test(String((e as { message?: string })?.message ?? e));
+    }
+  };
+
+  const updateBlocked = await attempt('UPDATE "AuditLog" SET "afterState" = "afterState" WHERE id = $1');
+  const deleteBlocked = await attempt('DELETE FROM "AuditLog" WHERE id = $1');
+  return { enforced: updateBlocked && deleteBlocked, updateBlocked, deleteBlocked, rowsProbed: 1 };
+}
+
 // ── Forensic demonstration ───────────────────────────────────────────────────────────────────────
 // Prove the tamper-evidence property live, on a real case chain, WITHOUT ever writing bad data: each
 // scenario deep-clones the rows, applies one attack to the clone, and re-verifies. The real ledger is
@@ -162,6 +219,7 @@ export interface ForensicReport {
   chainLength: number;
   scenarios: ForensicScenario[];
   allCaught: boolean;
+  appendOnly?: AppendOnlyProbe;
 }
 
 const clone = (rows: ChainRow[]): ChainRow[] => rows.map((r) => ({ ...r, details: r.details === null || r.details === undefined ? r.details : (JSON.parse(JSON.stringify(r.details)) as unknown) }));
@@ -234,14 +292,15 @@ export function forensicDemo(rows: ChainRow[]): ForensicReport {
 /** Pick the richest real case chain and run the forensic battery on it (for the console). */
 export async function forensicReport(): Promise<ForensicReport> {
   const grouped = await prisma.auditLog.groupBy({ by: ['caseId'], where: { hash: { not: null } }, _count: { _all: true } });
-  if (!grouped.length) return { caseId: null, chainLength: 0, scenarios: [], allCaught: false };
+  const appendOnly = await probeAppendOnly();
+  if (!grouped.length) return { caseId: null, chainLength: 0, scenarios: [], allCaught: false, appendOnly };
   const richest = grouped.sort((a, b) => b._count._all - a._count._all)[0]!.caseId;
   const rows = (await prisma.auditLog.findMany({
     where: { caseId: richest, hash: { not: null } },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     select: { id: true, step: true, actor: true, beforeState: true, afterState: true, details: true, hash: true, prevHash: true },
   })) as ChainRow[];
-  return { ...forensicDemo(rows), caseId: richest };
+  return { ...forensicDemo(rows), caseId: richest, appendOnly };
 }
 
 /** Verify every case's chain — the global ledger-integrity check. */

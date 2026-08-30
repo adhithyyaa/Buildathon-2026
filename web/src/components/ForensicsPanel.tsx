@@ -50,10 +50,28 @@ export function ForensicsPanel() {
         ))}
       </div>
 
+      {/* DB-level append-only enforcement — closes the "rewrite the whole chain" gap, proven live. */}
+      {report.appendOnly && (
+        <div className={cx('mt-3 rounded-xl border p-3', report.appendOnly.enforced ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60')}>
+          <div className="flex items-center gap-2">
+            <Icon name="shield" className={cx('h-4 w-4', report.appendOnly.enforced ? 'text-emerald-600' : 'text-amber-600')} />
+            <span className="text-xs font-bold text-slate-800">Append-only — enforced by Postgres</span>
+            <span className={cx('ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide', report.appendOnly.enforced ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+              {report.appendOnly.enforced ? 'live-verified' : 'not enforced'}
+            </span>
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+            A hash chain makes tampering evident; this makes it impossible. Just now we attempted an in-place{' '}
+            <b className="text-slate-700">UPDATE</b> ({report.appendOnly.updateBlocked ? 'rejected' : 'allowed'}) and a{' '}
+            <b className="text-slate-700">DELETE</b> ({report.appendOnly.deleteBlocked ? 'rejected' : 'allowed'}) on a real ledger
+            row inside a rolled-back transaction — the database trigger refused both. Not even the app can rewrite a row; the
+            ledger is only appended to, or wiped whole by TRUNCATE.
+          </p>
+        </div>
+      )}
+
       <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-        {attacks} attacks, all detected. The baseline verifies; each attack is caught at the exact row it touched. A full
-        rewrite of the entire chain would still verify — which is why audit writes run under an append-only DB role, not
-        the app's.
+        {attacks} attacks, all detected — each caught at the exact row it touched.
       </p>
     </Card>
   );

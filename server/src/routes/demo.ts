@@ -141,7 +141,9 @@ demoRouter.post(
     await prisma.prediction.deleteMany({});
     await prisma.anomalyFlag.deleteMany({});
     await prisma.modelRun.deleteMany({});
-    await prisma.auditLog.deleteMany({});
+    // AuditLog is append-only (a BEFORE DELETE trigger rejects row deletes), so a full reset clears the
+    // whole ledger with TRUNCATE — the sanctioned wipe — rather than surgical row deletion.
+    await prisma.$executeRawUnsafe('TRUNCATE TABLE "AuditLog"');
     await prisma.action.deleteMany({});
     await prisma.decision.deleteMany({});
     await prisma.outcome.deleteMany({});

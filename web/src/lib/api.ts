@@ -117,11 +117,18 @@ export interface ForensicScenario {
   verdict: ChainVerdict;
   caught: boolean;
 }
+export interface AppendOnlyProbe {
+  enforced: boolean;
+  updateBlocked: boolean;
+  deleteBlocked: boolean;
+  rowsProbed: number;
+}
 export interface ForensicReport {
   caseId: string | null;
   chainLength: number;
   scenarios: ForensicScenario[];
   allCaught: boolean;
+  appendOnly?: AppendOnlyProbe;
 }
 
 export interface UpliftRanking {
