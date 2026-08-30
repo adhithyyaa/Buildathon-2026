@@ -191,6 +191,19 @@ cd web && npm run dev                                                     # web 
 
 Open http://localhost:5173 → **Seed cases → Run pipeline → Advance retries**, and watch the ML model card + recovered-₹.
 
+### Reproduce the results
+
+```bash
+./reproduce.sh   # installs, typechecks, and runs the full server + web suites (Git Bash on Windows)
+```
+
+One command reproduces every verifiable claim: the real money path (signed webhooks, exactly-once
+recovery over an embedded Postgres it provisions itself), the append-only + tamper-evident audit
+ledger, the policy invariants, the red-team compliance oracles, the outbound-message fact-check, and
+the two honesty guards — `claims.docs` (every headline number matches its source ML artifact) and
+`ml.bands` (every artifact sits inside its quality confidence band). The same steps run in CI
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on every push.
+
 ## Status
 
 🚧 Built for the buildathon. See the commit history for the build order, and [`docs/DECISIONS.md`](docs/DECISIONS.md)
