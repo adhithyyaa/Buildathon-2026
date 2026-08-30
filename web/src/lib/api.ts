@@ -406,8 +406,8 @@ export interface RoundtripCapture {
 
 // Operator token for the guarded write endpoints (pause, demo, run/approve/reject). Stored locally
 // and sent as `Authorization: Bearer <t>`, matching the server's requireToken middleware. When the
-// server has no RECOUP_ADMIN_TOKEN set (local dev) the endpoints are open and this is simply ignored.
-const ADMIN_TOKEN_KEY = 'recoup_admin_token';
+// server has no SENTINEL_ADMIN_TOKEN set (local dev) the endpoints are open and this is simply ignored.
+const ADMIN_TOKEN_KEY = 'sentinel_admin_token';
 export function getAdminToken(): string {
   try {
     return localStorage.getItem(ADMIN_TOKEN_KEY) ?? '';

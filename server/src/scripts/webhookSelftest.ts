@@ -158,7 +158,7 @@ async function partB(): Promise<void> {
 }
 
 (async () => {
-  console.log('Recoup webhook self-test');
+  console.log('Sentinel webhook self-test');
   partA();
   await partB();
   console.log(`\n${failures === 0 ? '✅ ALL CHECKS PASSED' : `❌ ${failures} CHECK(S) FAILED`}`);

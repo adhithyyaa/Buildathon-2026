@@ -1,5 +1,5 @@
 """
-Recoup ML inference service (FastAPI).
+Sentinel ML inference service (FastAPI).
 
 Endpoints:
   GET  /health              - liveness + which models are loaded
@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 
 from features import ACTIONS, RECOVERY_CATEGORICAL, case_frame, with_action
 
-ART = os.environ.get("RECOUP_MODELS", "ml/artifacts")
+ART = os.environ.get("SENTINEL_MODELS", "ml/artifacts")
 AUTOMATED = [a for a in ACTIONS if a not in ("escalate_to_human", "no_action")]
 
 # Human-readable label + category for each model feature, for the per-case reason codes (F5).
@@ -98,7 +98,7 @@ class Models:
 
 
 M: Optional[Models] = None
-app = FastAPI(title="Recoup ML Service")
+app = FastAPI(title="Sentinel AI ML Service")
 
 
 @app.on_event("startup")

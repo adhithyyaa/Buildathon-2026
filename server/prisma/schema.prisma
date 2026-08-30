@@ -1,4 +1,4 @@
-// Recoup data model — the backbone of the recovery pipeline.
+// Sentinel data model — the backbone of the recovery pipeline.
 // Money is ALWAYS stored as integer paise (₹1,499.00 -> 149900). Never floats.
 // events -> cases -> (decisions, actions, outcomes) with an append-only audit_logs trail.
 

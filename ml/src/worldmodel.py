@@ -1,5 +1,5 @@
 """
-Synthetic world model for Recoup's ML training data.
+Synthetic world model for Sentinel's ML training data.
 
 Generates a labeled dataset of at-risk payments with REAL causal structure so
 tabular models can genuinely learn (and be honestly evaluated on a held-out set):

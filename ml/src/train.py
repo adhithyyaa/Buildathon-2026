@@ -1,5 +1,5 @@
 """
-Recoup ML training pipeline.
+Sentinel ML training pipeline.
 
 Trains, on the SAME train/test split:
   Recovery head (binary: recovered | case + action)

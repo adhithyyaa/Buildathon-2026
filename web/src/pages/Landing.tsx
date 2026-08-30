@@ -3,7 +3,7 @@ import { Logo } from '../components/Logo';
 import { Icon } from '../components/icons';
 
 /**
- * Marketing landing page for Recoup — a fintech-SaaS front door positioned as the
+ * Marketing landing page for Sentinel — a fintech-SaaS front door positioned as the
  * measurement-and-governance layer that plugs under Razorpay's recovery.
  */
 export function Landing() {
@@ -29,7 +29,7 @@ function TopNav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 lg:px-8">
         <Link to="/" className="flex items-center gap-2.5">
           <Logo className="h-8 w-8" />
-          <span className="text-lg font-bold tracking-tight">Recoup</span>
+          <span className="text-lg font-bold tracking-tight">Sentinel AI</span>
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex">
           <a href="#features" className="hover:text-slate-900">Product</a>
@@ -54,13 +54,13 @@ function Hero() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 lg:grid-cols-2 lg:gap-8 lg:px-8 lg:py-24">
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-violet-500" /> Recovery, finally measured
+            <span className="h-1.5 w-1.5 rounded-full bg-violet-500" /> Where Nothing Slips Through
           </span>
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
             Recover the revenue<br />you already earned.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
-            Recoup is the ML-first recovery layer for Razorpay. It detects failed payments, decides the
+            Sentinel is the ML-first recovery layer for Razorpay. It detects failed payments, decides the
             safest recovery move, and proves — with a signed webhook and a live control holdout — exactly how
             many <span className="font-semibold text-slate-900">incremental rupees</span> it brought back.
           </p>
@@ -90,7 +90,7 @@ function HeroVisual() {
           <span className="h-2.5 w-2.5 rounded-full bg-rose-300" />
           <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
-          <span className="ml-3 text-[11px] font-medium text-slate-400">app.recoup.in / overview</span>
+          <span className="ml-3 text-[11px] font-medium text-slate-400">app.sentinel.in / overview</span>
         </div>
         <div className="space-y-4 p-5">
           <div className="grid grid-cols-2 gap-3">
@@ -188,7 +188,7 @@ function Problem() {
           <span className="font-semibold text-slate-900"> wanted to pay</span> — the failure is mechanical and
           recoverable. But blind retries annoy customers and burn gateway cost, and doing nothing leaves real
           money on the table. Recovery is <span className="font-semibold text-slate-900">decisioning under
-          constraints</span> — and that’s exactly what Recoup automates.
+          constraints</span> — and that’s exactly what Sentinel automates.
         </p>
       </div>
     </section>
@@ -264,7 +264,7 @@ function Differentiator() {
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Incremental ₹, not gross.</h2>
           <p className="mt-5 text-lg leading-relaxed text-slate-600">
             Every recovery tool reports “we recovered ₹X.” That number proves nothing — some customers would
-            have paid anyway. Recoup runs an always-on <span className="font-semibold text-slate-900">control
+            have paid anyway. Sentinel runs an always-on <span className="font-semibold text-slate-900">control
             holdout</span> and reports the recovery <span className="font-semibold text-slate-900">over what
             would have happened with no action</span>, with a 95% confidence interval — and auto-suppresses any
             reason that can’t beat doing nothing.
@@ -325,7 +325,7 @@ function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-slate-500 lg:flex-row lg:px-8">
         <div className="flex items-center gap-2.5">
           <Logo className="h-7 w-7" />
-          <span className="font-bold text-slate-800">Recoup</span>
+          <span className="font-bold text-slate-800">Sentinel AI</span>
           <span className="text-slate-300">·</span>
           <span>Bounded, ML-first revenue recovery</span>
         </div>

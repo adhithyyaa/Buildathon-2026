@@ -114,7 +114,7 @@ demoRouter.get(
     const amount = Number(payload?.finalAmountPaise) || kase.amount;
     await markRecovered(caseId, { recoveredAmountPaise: amount, source: 'demo', paymentRef: 'sim_pay' });
     res.set('Content-Type', 'text/html').send(
-      htmlPage('Payment successful', `You paid <b>${formatINR(amount)}</b> to ${kase.merchant.name}.<br/>This case is now marked <b>recovered</b> in Recoup.`),
+      htmlPage('Payment successful', `You paid <b>${formatINR(amount)}</b> to ${kase.merchant.name}.<br/>This case is now marked <b>recovered</b> in Sentinel.`),
     );
   }),
 );

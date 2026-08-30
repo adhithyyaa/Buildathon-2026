@@ -1,10 +1,10 @@
-# Recoup — Panel Demo Runbook
+# Sentinel — Panel Demo Runbook
 
 A click-by-click script for a live panel demo (~9–11 min), verified end-to-end against the running
 dashboard. Everything here was dry-run tested; every beat lands.
 
 > **Open with:** *"In India a failed payment is usually mechanical and recoverable — a UPI timeout, a
-> bank downtime, a momentary decline — not a change of heart. Recoup is the ML-first recovery layer
+> bank downtime, a momentary decline — not a change of heart. Sentinel is the ML-first recovery layer
 > that decides the safest move, bounds it with deterministic policy, and — uniquely — proves the
 > incremental rupees against a live control arm."*
 
@@ -17,7 +17,7 @@ Bring up the four processes, then prep a clean, rich demo state.
 ```bash
 cd server && npm run db:local                                                # DB   :5432
 ml/.venv/Scripts/python -m uvicorn serve:app --app-dir ml/src --port 8899    # ML   :8899
-cd server && RAZORPAY_WEBHOOK_SECRET=whsec_recoup_local_selftest npm run dev  # API  :8787
+cd server && RAZORPAY_WEBHOOK_SECRET=whsec_sentinel_local_selftest npm run dev  # API  :8787
 cd web && npm run dev                                                         # web  :5173
 ```
 
@@ -26,7 +26,7 @@ Prep the data — either from the dashboard **Demo** menu or the command palette
 the real-capture evidence (safe any time; sign with the SAME secret the API is running):
 
 ```bash
-cd server && RAZORPAY_WEBHOOK_SECRET=whsec_recoup_local_selftest npm run replay:roundtrip   # → "✅ REPLAYED …"
+cd server && RAZORPAY_WEBHOOK_SECRET=whsec_sentinel_local_selftest npm run replay:roundtrip   # → "✅ REPLAYED …"
 ```
 
 Sign in at **http://localhost:5173** (any email + 6-char password, or Google if configured) → lands on
@@ -49,7 +49,7 @@ Everything in the demo is one of those three.
   `+NNpp` chip. *"That last one is the number nobody publishes — recovered versus a live no-action
   control, not gross."*
 - **Measured-impact chart** (the flagship): cumulative recovered ₹ (solid) vs a dotted "without
-  Recoup" baseline. **"Stripe and Checkout.com estimate that dotted line. Ours is measured from a
+  Sentinel" baseline. **"Stripe and Checkout.com estimate that dotted line. Ours is measured from a
   randomised 20% control holdout."**
 - **Recovery funnel**: Detected → Decided → Attempted → Recovered, with the control-held drop-off
   labelled ("that's the experiment"). **Failure reasons** in Razorpay's own Customer/Bank/Business/
@@ -159,7 +159,7 @@ Everything in the demo is one of those three.
   ML decision). Say so — it's the holdout that makes the Lab honest — and open another case.
 - **A view won't load / API down** → the dashboard degrades gracefully; the pipeline falls back to
   deterministic scoring if ML is unreachable (flagged `source: fallback`). Re-run the API terminal.
-- **A guarded action returns 401** → a `RECOUP_ADMIN_TOKEN` is set; paste it via the shield icon.
+- **A guarded action returns 401** → a `SENTINEL_ADMIN_TOKEN` is set; paste it via the shield icon.
 
 ---
 

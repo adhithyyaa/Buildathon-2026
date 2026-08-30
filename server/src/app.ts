@@ -34,7 +34,7 @@ export function createApp() {
     const ml = await mlHealth();
     res.json({
       ok: true,
-      service: 'recoup-server',
+      service: 'sentinel-server',
       env: env.NODE_ENV,
       integrations: { razorpay: hasRazorpay, ai: hasAI, aiProvider, ml: ml.ok, mlVersion: ml.version },
       ts: new Date().toISOString(),
@@ -42,7 +42,7 @@ export function createApp() {
   });
 
   app.get('/', (_req, res) => {
-    res.json({ name: 'Recoup', tagline: 'Bounded AI revenue recovery for Razorpay', health: '/health' });
+    res.json({ name: 'Sentinel AI', tagline: 'Where Nothing Slips Through', health: '/health' });
   });
 
   app.use('/api/cases', casesRouter);

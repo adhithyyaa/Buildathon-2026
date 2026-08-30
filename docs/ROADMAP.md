@@ -1,6 +1,6 @@
-# Recoup — Strengthening Roadmap & ML v2 Design
+# Sentinel — Strengthening Roadmap & ML v2 Design
 
-Goal: make Recoup the strongest entry in the field on **every** axis — ML model, measurement
+Goal: make Sentinel the strongest entry in the field on **every** axis — ML model, measurement
 rigor, code quality, docs — grounded in a code-level competitive analysis of 22 other buildathon
 entries + one exceptional outlier (smit27ai/recoup).
 
@@ -9,7 +9,7 @@ measurement rigor). This roadmap closes that gap and pulls clear on ML.
 
 ---
 
-## 1. The ML crown — "Recoup Uplift Engine v2"
+## 1. The ML crown — "Sentinel Uplift Engine v2"
 
 ### The insight
 

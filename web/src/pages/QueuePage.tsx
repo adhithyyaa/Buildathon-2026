@@ -31,7 +31,7 @@ function exportCsv(rows: CaseRow[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `recoup-cases-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `sentinel-cases-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

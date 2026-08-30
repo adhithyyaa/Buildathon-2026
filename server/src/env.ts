@@ -20,7 +20,7 @@ const EnvSchema = z.object({
 
   // Bearer token guarding operator/destructive endpoints (pause, reset, dispatch, approve…).
   // If unset, those endpoints are OPEN (zero-config demo); set it in production to enforce auth.
-  RECOUP_ADMIN_TOKEN: z.string().optional(),
+  SENTINEL_ADMIN_TOKEN: z.string().optional(),
 
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default('claude-opus-5'),

@@ -48,8 +48,8 @@ export function Layout() {
           >
             <Logo className="h-9 w-9 shrink-0" />
             <div className="text-left">
-              <div className="text-sm font-bold text-slate-900 leading-none">Recoup</div>
-              <div className="mt-1 text-[11px] text-slate-500 leading-none font-medium">Revenue Recovery Engine</div>
+              <div className="text-sm font-bold text-slate-900 leading-none">Sentinel AI</div>
+              <div className="mt-1 text-[11px] text-slate-500 leading-none font-medium">Where Nothing Slips Through</div>
             </div>
           </Link>
         </div>
@@ -113,7 +113,7 @@ export function Layout() {
               <Link to="/app" className="lg:hidden"><Logo className="h-8 w-8" /></Link>
               <div>
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                  <span>Recoup</span>
+                  <span>Sentinel</span>
                   <span>›</span>
                   <span className="text-slate-600">{page.label}</span>
                 </div>

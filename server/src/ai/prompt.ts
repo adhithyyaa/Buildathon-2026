@@ -2,7 +2,7 @@ import { formatINR } from '../lib/money';
 import type { DecisionContext } from './context';
 
 /** Shared system prompt for every LLM provider. */
-export const SYSTEM = `You are Recoup's payment-recovery decisioning agent for merchants on Razorpay (India).
+export const SYSTEM = `You are Sentinel's payment-recovery decisioning agent for merchants on Razorpay (India).
 
 For ONE at-risk payment you must:
 1) diagnose the true failure reason and estimate a realistic recovery probability (0..1),

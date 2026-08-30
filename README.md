@@ -1,6 +1,6 @@
-# Recoup — Bounded, ML-First Revenue Recovery for Razorpay
+# Sentinel AI — Where Nothing Slips Through
 
-> Recover the revenue you already earned. Recoup detects failed payments and abandoned checkouts, uses **calibrated
+> **Bounded, ML-first revenue recovery for Razorpay.** Recover the revenue you already earned. Sentinel detects failed payments and abandoned checkouts, uses **calibrated
 > machine-learning models** to decide the safest recovery move and how likely it is to work, executes it with **real
 > Razorpay payment links** under hard policy limits, and proves — with a **signed webhook round-trip** — exactly how
 > much money it brought back.
@@ -13,7 +13,7 @@
 
 Payment failure in India is usually *mechanical and recoverable* (UPI timeout, bank downtime, a momentary decline),
 not a change of heart. The right recovery is **decisioning under constraints** — the right action, on the right channel,
-at the right time — which is a tabular ranking/classification problem, not a language problem. So in Recoup the
+at the right time — which is a tabular ranking/classification problem, not a language problem. So in Sentinel the
 **machine-learning models decide**, a deterministic **policy engine disposes** (it can override or block any decision),
 a deterministic **executor** moves the money, and an **LLM is used only to explain** — never to decide.
 
@@ -24,7 +24,7 @@ points is ₹1–10L/month, too small to build a recovery/data-science team. Raz
 products these merchants can turn on: **Agent Studio's Subscription Recovery and Abandoned Cart Conversion agents**
 (early access since Mar 2026, built on Anthropic's Claude Agent SDK), the **Intelligent Retry Engine** (WhatsApp nudges
 for failed autopay debits), the **RazorpayX Receivables Agent** (invoice follow-up, Jun 2026 beta), **Optimizer**
-(enterprise ML routing) and **Vulcan** (the payments foundation model, Aug 2026). Recoup doesn't compete with any of
+(enterprise ML routing) and **Vulcan** (the payments foundation model, Aug 2026). Sentinel doesn't compete with any of
 them — it's the **measurement-and-governance layer that plugs *under* them**: holdout-measured incremental recovery,
 calibrated per-case probabilities, deterministic error-reason triage before any model, India policy-as-code, and an
 append-only audit trail — the things none of those products publish. *(Doesn't Razorpay already do this?* — see
@@ -33,7 +33,7 @@ append-only audit trail — the things none of those products publish. *(Doesn't
 ## The standout: a live Recovery Lab (incremental ₹, not gross)
 
 Every recovery tool claims "we recovered ₹X". The number that actually matters — and that neither Razorpay nor the
-vendors publish — is **₹X *more* than would have happened anyway**. Recoup runs an always-on **holdout**: a random 20%
+vendors publish — is **₹X *more* than would have happened anyway**. Sentinel runs an always-on **holdout**: a random 20%
 of cases are a no-action **control** arm, and the dashboard shows the **incremental** recovered ₹ (treatment − control)
 with a **95% bootstrap CI**, sliced per failure reason. In the demo the treatment arm recovers **~48%** vs a much lower
 control — a large, **significant** lift. It doubles as a live A/B / drift signal on the model, and it closes the loop:
@@ -45,7 +45,7 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
 
 ## What makes it credible (not just a demo)
 
-- **Causal uplift, not just propensity.** The field predicts *whether* a payment recovers. Recoup models the
+- **Causal uplift, not just propensity.** The field predicts *whether* a payment recovers. Sentinel models the
   **uplift** — `τ_a(x) = P(recover | do action a) − P(recover | do nothing)` — the *incremental* recovery each action
   **causes**, which is exactly the ₹ our thesis claims and which no competitor models. An S-learner (action-as-feature
   CatBoost) is benchmarked against a T-learner (per-action CatBoost on a randomised RCT arm) and selected by Qini.
@@ -134,7 +134,7 @@ ML v2 design & roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 A single role-scoped React console, built to read as a real product:
 
 - **Overview** — recovered ₹, recovery rate, at-risk exposure, and the incremental-₹ lift; a **measured-impact chart**
-  (cumulative recovered ₹ vs a dotted "without Recoup" baseline computed from the control arm — *measured*, not
+  (cumulative recovered ₹ vs a dotted "without Sentinel" baseline computed from the control arm — *measured*, not
   estimated like Stripe/Checkout.com); a **recovery funnel** (Detected → Decided → Attempted → tri-state tail); and
   **failure reasons** in Razorpay's own Customer/Bank/Business/Other taxonomy, each tagged with the recovery path policy
   allows (auto-retry / fresh link / RBI-TAT no-action).

@@ -85,11 +85,11 @@ export function Overview() {
       {/* Flagship: measured counterfactual impact */}
       {impact && impact.series.length >= 2 ? (
         <Card
-          title="Measured impact — with Recoup vs without"
+          title="Measured impact — with Sentinel vs without"
           right={
             <span className="flex items-center gap-4 text-[11px] font-semibold">
               <span className="flex items-center gap-1.5 text-slate-600"><span className="h-0.5 w-5 rounded bg-emerald-500" /> Recovered (actual)</span>
-              <span className="flex items-center gap-1.5 text-slate-500"><span className="h-0 w-5 border-t-2 border-dashed border-slate-500" /> Without Recoup (control-measured)</span>
+              <span className="flex items-center gap-1.5 text-slate-500"><span className="h-0 w-5 border-t-2 border-dashed border-slate-500" /> Without Sentinel (control-measured)</span>
             </span>
           }
         >
@@ -107,7 +107,7 @@ export function Overview() {
         </Card>
       ) : (
         metrics && metrics.totalCases > 0 && (
-          <Card title="Measured impact — with Recoup vs without">
+          <Card title="Measured impact — with Sentinel vs without">
             <p className="py-6 text-center text-sm text-slate-400">
               Resolve outcomes (Demo menu → Resolve outcomes) to draw the measured counterfactual — cumulative recovered ₹ vs the control baseline.
             </p>

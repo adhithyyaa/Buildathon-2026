@@ -7,7 +7,7 @@ const round2 = (x: number) => Math.round(x * 100) / 100;
 
 /**
  * Deterministic recovery plan. This is what the system does when the AI is
- * disabled, errors, or returns invalid output — so Recoup ALWAYS makes a safe,
+ * disabled, errors, or returns invalid output — so Sentinel ALWAYS makes a safe,
  * explainable decision. It mirrors the reason taxonomy and recommended lane.
  */
 export function fallbackPlan(ctx: DecisionContext): RecoveryPlan {

@@ -1,6 +1,6 @@
 # Webhooks — the real recovered-money path
 
-Recoup's numbers are only credible if "recovered" means Razorpay actually captured the
+Sentinel's numbers are only credible if "recovered" means Razorpay actually captured the
 money. That proof arrives as a **signed Razorpay webhook**, verified with HMAC-SHA256 over
 the raw request body. This is the one inbound surface that must be real, not simulated — so
 it ships with a self-test that exercises the exact production code path.
@@ -10,7 +10,7 @@ it ships with a self-test that exercises the exact production code path.
 `POST /api/webhooks/razorpay` (mounted with `express.raw` so the bytes are untouched before
 signature verification):
 
-| Event | What Recoup does |
+| Event | What Sentinel does |
 |---|---|
 | `payment.failed` | Normalize → `ingestEvent` → a new **at-risk** case enters the pipeline |
 | `payment.captured` · `payment_link.paid` · `order.paid` | Resolve the referenced case (`reference_id` or `notes.caseId = case_<id>`) → `markRecovered(source: 'webhook')` → the case transitions to **recovered** with the captured amount |
@@ -105,7 +105,7 @@ The fixture was recorded with `src/scripts/recordProof.ts` (`GET /v1/orders/{id}
    cloudflared tunnel --url http://localhost:8787
    # or:  ngrok http 8787
    ```
-   Copy the public HTTPS URL it prints (e.g. `https://recoup-demo.trycloudflare.com`).
+   Copy the public HTTPS URL it prints (e.g. `https://sentinel-demo.trycloudflare.com`).
 2. Razorpay Dashboard → **Settings → Webhooks → Add New Webhook**:
    - **URL**: `<public-url>/api/webhooks/razorpay`
    - **Secret**: generate one, and put the same value in `server/.env` as `RAZORPAY_WEBHOOK_SECRET`.
@@ -118,6 +118,6 @@ The fixture was recorded with `src/scripts/recordProof.ts` (`GET /v1/orders/{id}
 `payment.captured` confirms Razorpay **captured** the payment (funds authorized and taken),
 which is the point at which the merchant considers the sale recovered. Final **settlement**
 (payout to the merchant's bank, T+n days) is a separate, later event Razorpay emits as
-`settlement.processed`. Recoup measures recovery at capture — the industry-standard recovery
+`settlement.processed`. Sentinel measures recovery at capture — the industry-standard recovery
 milestone — and the same signed-webhook plumbing would extend to `settlement.*` for a
 settlement-accurate ledger without any change to the verification path.

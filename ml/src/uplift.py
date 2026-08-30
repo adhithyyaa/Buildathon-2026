@@ -1,5 +1,5 @@
 """
-Recoup Uplift Engine v2 — causal treatment-effect modelling for recovery.
+Sentinel Uplift Engine v2 — causal treatment-effect modelling for recovery.
 
 The field models PROPENSITY  P(recover | x, action)  — "will it recover?".
 We model UPLIFT (the CATE)     tau_a(x) = P(recover | x, do a) - P(recover | x, do nothing)

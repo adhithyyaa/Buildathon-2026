@@ -1,5 +1,5 @@
 """
-External validity: validate Recoup's uplift + doubly-robust OPE machinery on a REAL public
+External validity: validate Sentinel's uplift + doubly-robust OPE machinery on a REAL public
 randomized controlled trial — the Hillstrom MineThatData e-mail experiment (64k customers randomised
 to Email vs No-Email; outcome = site visit). This is the credibility anchor: our synthetic-world Qini
 is high because the world is clean, so a skeptic discounts it. Here we run the SAME estimators on real

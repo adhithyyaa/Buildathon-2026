@@ -8,7 +8,7 @@ import { useAuth } from '../lib/auth';
 type Mode = 'signin' | 'signup';
 
 /**
- * Sign-in / create-account for Recoup. Google uses real Google Identity Services; the email path
+ * Sign-in / create-account for Sentinel. Google uses real Google Identity Services; the email path
  * establishes a local session so the dashboard is always reachable (there is no email backend).
  */
 export function Login() {
@@ -72,7 +72,7 @@ export function Login() {
         </div>
         <Link to="/" className="relative flex items-center gap-2.5 text-white">
           <Logo className="h-9 w-9" />
-          <span className="text-xl font-bold tracking-tight">Recoup</span>
+          <span className="text-xl font-bold tracking-tight">Sentinel AI</span>
         </Link>
         <div className="relative">
           <h2 className="text-3xl font-bold leading-tight text-white">
@@ -119,7 +119,7 @@ export function Login() {
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">
           <Link to="/" className="mb-8 flex items-center gap-2.5 lg:hidden">
             <Logo className="h-9 w-9" />
-            <span className="text-xl font-bold tracking-tight text-slate-900">Recoup</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900">Sentinel AI</span>
           </Link>
 
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{heading}</h1>
@@ -189,7 +189,7 @@ export function Login() {
 
           <p className="mt-6 text-center text-sm text-slate-500">
             {mode === 'signin' ? (
-              <>New to Recoup?{' '}
+              <>New to Sentinel AI?{' '}
                 <button onClick={() => switchMode('signup')} className="font-semibold text-violet-600 hover:text-violet-700">Create an account</button>
               </>
             ) : (

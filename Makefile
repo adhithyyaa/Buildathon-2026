@@ -1,4 +1,4 @@
-# Recoup — one-command entry points.
+# Sentinel — one-command entry points.
 # Windows: run these under Git Bash. Paths use the .venv Windows layout (Scripts/); on
 # macOS/Linux change `ml/.venv/Scripts/` to `ml/.venv/bin/`.
 

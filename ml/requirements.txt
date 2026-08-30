@@ -1,4 +1,4 @@
-# Recoup ML service — tabular models + anomaly detection + serving
+# Sentinel ML service — tabular models + anomaly detection + serving
 catboost>=1.2
 xgboost>=3.0
 scikit-learn>=1.9
