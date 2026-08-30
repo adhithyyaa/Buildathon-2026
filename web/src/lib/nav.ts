@@ -30,6 +30,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'GOVERNANCE',
     items: [
+      { path: '/app/rigor', label: 'Rigor', icon: 'check', subtitle: 'Every independent check that proves the system — in one scorecard' },
       { path: '/app/compliance', label: 'Compliance', icon: 'shield', subtitle: 'Attack the India-payments guardrails; judged by independent regulatory oracles' },
     ],
   },
