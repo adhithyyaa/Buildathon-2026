@@ -1,6 +1,6 @@
 # Recoup — Panel Demo Runbook
 
-A click-by-click script for a live panel demo (~8–10 min), verified end-to-end against the running
+A click-by-click script for a live panel demo (~9–11 min), verified end-to-end against the running
 dashboard. Everything here was dry-run tested; every beat lands.
 
 > **Open with:** *"In India a failed payment is usually mechanical and recoverable — a UPI timeout, a
@@ -64,7 +64,8 @@ Everything in the demo is one of those three.
 - **Why this decision — model reason codes**: per-case **SHAP** factors, signed ↑/↓. *"Not global
   importance — this case's actual drivers, from the same CatBoost that scored it."*
 - **Audit trail** with a **chain verified ✓** badge. *"Every row is SHA-256 hash-chained to the last —
-  edit, reorder, or delete one and the chain breaks. The ledger can't be quietly rewritten."*
+  edit, reorder, or delete one and the chain breaks. And it's append-only at the database level, so it
+  can't be quietly rewritten — we'll prove both on the Evidence page."*
 - **AI assist → Explain the decision**: a plain-English rationale. *"The LLM explains; it never
   decides or moves money."*
 
@@ -90,10 +91,27 @@ Everything in the demo is one of those three.
   system stops spending where it can't beat doing nothing."* Note: the estimator itself is **A/A-
   tested** (reads ~0 on identical arms), so the number isn't an artifact.
 
-### Evidence (`/app/evidence`) — 45s (the money shot)
+### Evidence (`/app/evidence`) — 60s (the money shot)
 - The **real Razorpay test-mode capture** with its **Payment/Order IDs** (`pay_TTyBx4OQoIQFkj`).
   Click **Recovered case ·** → the exact case it closed. **Verify on Razorpay ↗** → *"Real in
   Razorpay's own dashboard — not a flag we flipped."* Point at the **keys-free replay** command.
+- **Tamper-evidence forensics**: *"We attack a real 15-row ledger chain — on clones, the live ledger is
+  never touched — and the verifier catches AND classifies every tamper: a silent field edit as
+  content-altered, a deletion or re-hash as chain-relinked."* Then the **Append-only — enforced by
+  Postgres** badge: *"We just tried an UPDATE and a DELETE on a real ledger row inside a rolled-back
+  transaction — the database trigger rejected both. Not even our app can rewrite a row."*
+
+### Governance — Rigor & red-team (`/app/rigor`, `/app/compliance`) — 60s (the trust case)
+- **Rigor scorecard** (`/app/rigor`): *"Most demos ask you to trust the headline. Here's every
+  independent check in one place — 15/15 green — from the A/A null test to the real-RCT to the
+  append-only ledger, each linking to where it's proven."*
+- **Red-team compliance** (`/app/compliance`): *"Attack our India-payments guardrails — re-debiting a
+  stuck payment, a 4th silent retry, a ₹20k auto-debit with no AFA, messaging an opted-out customer.
+  8/8 defended — and judged by INDEPENDENT regulatory oracles, separate code from the policy, so a
+  silent regression is caught even when the policy would pass itself."* Hit **Run attack** on one live.
+- **Outbound message fact-check** (same page): *"The LLM drafts customer copy, but a validator checks
+  every amount, discount, and reference against ground truth before send — watch it catch a
+  hallucinated ₹8,400 and a 30%-off it was never approved to offer, and block them."*
 
 ### 🎬 The finale — live incident loop — 45s
 - Open **⌘K → Trigger failure spike** (or Demo menu). Within a second:
@@ -113,7 +131,9 @@ Everything in the demo is one of those three.
 | *"How do you know your lift number is real?"* | Three ways: a **randomised 20% control** holdout; the lift **estimator is A/A-tested** (unbiased on identical arms); and a **doubly-robust off-policy** estimate validated within ~6% of ground truth. Not a gross "we recovered ₹X". |
 | *"Your ML is just propensity / retries."* | No — we model **uplift (CATE)**, benchmarked S- vs T-learner, selected by **Qini 0.93**, calibrated to **ECE 0.008**. The uplift-optimal policy captures ~99% of the oracle's incremental ₹. |
 | *"Does the model still work on live traffic?"* | The **model-health panel**: per-feature **PSI** vs training (0.1/0.25), score-distribution, latency. Trigger a spike and the reason PSI moves watch → shift live. |
-| *"How do we trust the recovery / audit?"* | Recovery only ever happens on a **signed `payment.captured` webhook** (HMAC, idempotent, exactly-once under concurrency — a test suite proves it) + a committed **real-capture replay**. The audit trail is **SHA-256 hash-chained** (tamper-evident, `/api/audit/verify`). |
+| *"How do we trust the recovery / audit?"* | Recovery only ever happens on a **signed `payment.captured` webhook** (HMAC, idempotent, exactly-once under concurrency — a test suite proves it) + a committed **real-capture replay**. The audit trail is **SHA-256 hash-chained** (tamper-evident, and the verifier classifies *how* a chain broke) **and append-only at the database level** — a Postgres trigger rejects any UPDATE/DELETE, proven live on the Evidence page. |
+| *"How do you enforce compliance / can we break it?"* | Try it: the **red-team console** (`/app/compliance`) lets you attack the RBI-TAT, NPCI retry-cap, AFA, consent/DND, and quiet-hours guardrails — all defended, and judged by **independent regulatory oracles** (separate code from the policy). The policy's core invariants are also **property-tested** with fuzzed inputs. |
+| *"Can the LLM send a customer a wrong number?"* | No — a deterministic **fact-checker** validates every amount, discount, and reference in an outbound message against ground truth before dispatch; a hallucinated figure or unapproved discount **blocks the send and escalates to a human** (and is logged to the ledger). |
 | *"Numbers are on synthetic data."* | The *headline* eval is, and labelled so — but the **same uplift + doubly-robust machinery is re-run on a real public RCT** (Hillstrom, 64,000 randomised) and recovers the ground-truth ATE (+6.1pp) to within **1.9%**. It also scores against the synthetic world's **independent ground truth**, and a **frozen model transfers** to an independently designed world at ~0.68 AUC. External validity, not just the world we built. |
 | *"Doesn't Razorpay already do recovery?"* | Yes — we **plug under** those agents as the **measurement + governance** they don't publish: holdout-measured incremental ₹, causal uplift, PSI monitoring, tamper-evident audit, India policy-as-code. |
 
@@ -126,7 +146,8 @@ Everything in the demo is one of those three.
 - **Single-tenant operator console** — reads are token-guarded, but per-merchant identity is the
   documented next step.
 - **In-process retry scheduler** (single-flight DB lease); a durable queue (or Temporal) is the
-  production upgrade. Thompson-sampling exploration ships as an offline simulation, not yet online.
+  production upgrade. Contextual Thompson-sampling exploration is a simulation of online learning,
+  not yet wired into the live decision path.
 - **CatBoost's AUC edge over the baseline is small** — it earns its place on calibration + native
   categoricals + the uplift/governance layer, which we state rather than overclaim.
 
