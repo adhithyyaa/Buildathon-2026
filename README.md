@@ -57,6 +57,14 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
   behaviour propensity) and a **doubly-robust** estimator (adds a reward-model control variate to cut variance). DR
   estimates **₹3,276/case vs the logging policy's ₹2,442**, and — because ground truth is available here — lands within
   **~6%** of it. Stronger than a raw treatment−control mean (`ml/src/uplift.py`).
+- **Externally validated on a real public RCT.** The synthetic-world critique cuts both ways, so the *same* uplift +
+  doubly-robust machinery is re-run on the real **Hillstrom** e-mail RCT (**64,000** randomised customers): our DR
+  estimator recovers the trial's ground-truth ATE (**+6.1pp**) to within **1.9%**, with the **x-learner** ranking best
+  by Qini. External validity, not just the world we built (`ml/src/rct_validate.py` → [`ml/rct_validation.json`](ml/rct_validation.json)).
+- **Per-case certainty with a coverage guarantee.** Split **conformal prediction** turns each recovery probability into a
+  prediction *set* with a distribution-free, finite-sample guarantee — target **90%**, empirical **90.7%** on a fresh
+  split. Every case resolves to *confidently recoverable*, *confidently not*, or *uncertain → route to a human* — the
+  uncertain ones are an honest hand-off, not a forced guess (`ml/src/conformal.py` → [`ml/conformal.json`](ml/conformal.json)).
 - **Production model-health monitoring.** A live drift panel answers *"does the model still work on live traffic?"* —
   per-feature **PSI** vs training (0.1 watch / 0.25 shift), the score distribution, and real inference latency (p95 ≈ 85ms).
   Trigger a failure spike and the reason PSI visibly moves watch → shift; it's a live instrument, not a green light.

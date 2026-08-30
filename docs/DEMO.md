@@ -75,6 +75,10 @@ Everything in the demo is one of those three.
   captures ~99% of the oracle**.
 - **Doubly-robust off-policy eval** — *"Estimated from the logged data alone, the way you must in
   production: DR ≈ ₹3.3k/case vs the logging policy's ₹2.4k, validated within ~6% of ground truth."*
+- **External validity & per-case certainty** — *"The same machinery on a real public RCT (Hillstrom,
+  64,000 randomised): our DR estimate recovers the ground-truth ATE of +6.1pp to within 1.9%,
+  x-learner best. And conformal prediction gives each case a coverage-guaranteed set — target 90%,
+  empirical 90.7% — so uncertain cases are routed to a human, not guessed."*
 - **Model health** — per-feature **PSI drift** (0.1/0.25 thresholds), score distribution, real
   inference **latency (p95 ≈ 85ms)**. *"Production monitoring — remember this panel for the finale."*
 - (Scroll) **Model card** (CatBoost vs XGB vs LogReg AUC, calibration curve) and the **online
@@ -110,7 +114,7 @@ Everything in the demo is one of those three.
 | *"Your ML is just propensity / retries."* | No — we model **uplift (CATE)**, benchmarked S- vs T-learner, selected by **Qini 0.93**, calibrated to **ECE 0.008**. The uplift-optimal policy captures ~99% of the oracle's incremental ₹. |
 | *"Does the model still work on live traffic?"* | The **model-health panel**: per-feature **PSI** vs training (0.1/0.25), score-distribution, latency. Trigger a spike and the reason PSI moves watch → shift live. |
 | *"How do we trust the recovery / audit?"* | Recovery only ever happens on a **signed `payment.captured` webhook** (HMAC, idempotent, exactly-once under concurrency — a test suite proves it) + a committed **real-capture replay**. The audit trail is **SHA-256 hash-chained** (tamper-evident, `/api/audit/verify`). |
-| *"Numbers are on synthetic data."* | Correct, and labelled so. The eval scores against the world's **independent ground truth**, and a **frozen model transfers** to an independently designed world at ~0.68 AUC. |
+| *"Numbers are on synthetic data."* | The *headline* eval is, and labelled so — but the **same uplift + doubly-robust machinery is re-run on a real public RCT** (Hillstrom, 64,000 randomised) and recovers the ground-truth ATE (+6.1pp) to within **1.9%**. It also scores against the synthetic world's **independent ground truth**, and a **frozen model transfers** to an independently designed world at ~0.68 AUC. External validity, not just the world we built. |
 | *"Doesn't Razorpay already do recovery?"* | Yes — we **plug under** those agents as the **measurement + governance** they don't publish: holdout-measured incremental ₹, causal uplift, PSI monitoring, tamper-evident audit, India policy-as-code. |
 
 ---
