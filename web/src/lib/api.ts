@@ -423,6 +423,53 @@ async function post<T>(url: string, body?: unknown): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+// ── Red-team compliance console ────────────────────────────────────────────────────────────────
+export interface PolicyEnvelope {
+  maxRetries: number;
+  maxDiscountPct: number;
+  humanApprovalAmountPaise: number;
+  quietHoursStart: number;
+  quietHoursEnd: number;
+  minPursuitPaise: number;
+  afaThresholdPaise: number;
+}
+export interface OracleFinding {
+  rule: string;
+  citation: string;
+  requirement: string;
+  status: 'ok' | 'violation' | 'n/a';
+  detail: string;
+}
+export interface PolicyDecision {
+  outcome: 'approved' | 'escalate' | 'blocked';
+  finalAction: string;
+  finalChannel: string;
+  finalIncentivePct: number;
+  requiresHumanApproval: boolean;
+  scheduledFor: string | null;
+  notes: string[];
+}
+export interface AttackMeta {
+  id: string;
+  title: string;
+  targets: string;
+  goal: string;
+  caseSummary: string;
+}
+export interface RedTeamResult {
+  attack: AttackMeta;
+  decision: PolicyDecision;
+  findings: OracleFinding[];
+  verdict: 'defended' | 'breached';
+  violations: number;
+}
+export interface ComplianceAudit {
+  total: number;
+  defended: number;
+  breached: number;
+  results: RedTeamResult[];
+}
+
 export const api = {
   health: () => get<HealthInfo>('/health'),
   metrics: () => get<Metrics>('/api/metrics'),
@@ -460,4 +507,6 @@ export const api = {
   draftMessage: (id: string) => post<{ subject: string; body: string; source: string }>(`/api/ai/cases/${id}/draft-message`),
   summarizeCase: (id: string) => post<{ text: string; source: string }>(`/api/ai/cases/${id}/summarize`),
   evidence: () => get<{ captures: RoundtripCapture[] }>('/api/evidence/roundtrip'),
+  complianceAudit: () => get<ComplianceAudit>('/api/compliance/audit'),
+  redTeam: (attackId: string) => post<RedTeamResult>('/api/compliance/redteam', { attackId }),
 };

@@ -15,6 +15,7 @@ import { PipelinePage } from './pages/PipelinePage';
 import { ModelPage } from './pages/ModelPage';
 import { LabPage } from './pages/LabPage';
 import { EvidencePage } from './pages/EvidencePage';
+import { CompliancePage } from './pages/CompliancePage';
 import { CasePage } from './pages/CasePage';
 
 /** Reset scroll to the top on every client-side navigation. */
@@ -46,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="model" element={<ModelPage />} />
                   <Route path="lab" element={<LabPage />} />
                   <Route path="evidence" element={<EvidencePage />} />
+                  <Route path="compliance" element={<CompliancePage />} />
                   <Route path="cases/:id" element={<CasePage />} />
                 </Route>
               </Route>

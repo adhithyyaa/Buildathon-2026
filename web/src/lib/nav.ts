@@ -27,6 +27,12 @@ export const NAV_SECTIONS: NavSection[] = [
       { path: '/app/evidence', label: 'Evidence', icon: 'evidence', subtitle: 'A real Razorpay test-mode capture, verified end to end' },
     ],
   },
+  {
+    title: 'GOVERNANCE',
+    items: [
+      { path: '/app/compliance', label: 'Compliance', icon: 'shield', subtitle: 'Attack the India-payments guardrails; judged by independent regulatory oracles' },
+    ],
+  },
 ];
 
 export const NAV: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
