@@ -106,7 +106,8 @@ jobs:
           create "$WEB_APP" "$WEB_PORT" external 0 2
 
       - name: Report
-        run: echo "Provisioned. Next: run this workflow with **step=configure**, then **Deploy** (or push)." >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Provisioned — next run step=configure, then Deploy (or push)." >> "$GITHUB_STEP_SUMMARY"
 
   configure:
     if: ${{ github.event.inputs.step == 'configure' }}
