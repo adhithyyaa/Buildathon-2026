@@ -42,6 +42,15 @@ jobs:
     if: ${{ github.event.inputs.step == 'provision' }}
     runs-on: ubuntu-latest
     steps:
+      # TEMP diagnostic: print the exact OIDC subject GitHub presents, so the Azure federated
+      # credential can be matched precisely. Remove once login works.
+      - name: Debug — OIDC claims GitHub presents
+        run: |
+          TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r '.value')
+          claims=$(echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+')
+          case $((${#claims} % 4)) in 2) claims="$claims==";; 3) claims="$claims=";; esac
+          echo "$claims" | base64 -d | jq '{sub, aud, iss}'
+
       - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
