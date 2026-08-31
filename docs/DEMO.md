@@ -17,7 +17,7 @@ Bring up the four processes, then prep a clean, rich demo state.
 ```bash
 cd server && npm run db:local                                                # DB   :5432
 ml/.venv/Scripts/python -m uvicorn serve:app --app-dir ml/src --port 8899    # ML   :8899
-cd server && RAZORPAY_WEBHOOK_SECRET=whsec_sentinel_local_selftest npm run dev  # API  :8787
+cd server && RAZORPAY_WEBHOOK_SECRET=whsec_overwatch_local_selftest npm run dev  # API  :8787
 cd web && npm run dev                                                         # web  :5173
 ```
 
@@ -26,7 +26,7 @@ Prep the data — either from the dashboard **Demo** menu or the command palette
 the real-capture evidence (safe any time; sign with the SAME secret the API is running):
 
 ```bash
-cd server && RAZORPAY_WEBHOOK_SECRET=whsec_sentinel_local_selftest npm run replay:roundtrip   # → "✅ REPLAYED …"
+cd server && RAZORPAY_WEBHOOK_SECRET=whsec_overwatch_local_selftest npm run replay:roundtrip   # → "✅ REPLAYED …"
 ```
 
 Sign in at **http://localhost:5173** (any email + 6-char password, or Google if configured) → lands on

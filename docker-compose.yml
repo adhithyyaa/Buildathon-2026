@@ -4,21 +4,21 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: sentinel-db
+    container_name: overwatch-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: sentinel
-      POSTGRES_PASSWORD: sentinel
-      POSTGRES_DB: sentinel
+      POSTGRES_USER: overwatch
+      POSTGRES_PASSWORD: overwatch
+      POSTGRES_DB: overwatch
     ports:
       - "5432:5432"
     volumes:
-      - sentinel-db-data:/var/lib/postgresql/data
+      - overwatch-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      test: ["CMD-SHELL", "pg_isready -U overwatch -d overwatch"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  sentinel-db-data:
+  overwatch-db-data:

@@ -15,6 +15,6 @@ regexes = [
   '''sk-ant-xxx+''',
   '''whsec_xxx+''',
   '''xxxxxxxx+''',
-  '''whsec_sentinel_local_selftest''',   # documented throwaway HMAC key for the offline self-test
+  '''whsec_overwatch_local_selftest''',   # documented throwaway HMAC key for the offline self-test
   '''whsec_local_selftest''',
 ]

@@ -1,18 +1,18 @@
 # Full-stack container run — a local mirror of the hosted deploy, and the reference for Azure.
-#   RAZORPAY_WEBHOOK_SECRET=whsec_sentinel docker compose -f docker-compose.deploy.yml up --build
+#   RAZORPAY_WEBHOOK_SECRET=whsec_overwatch docker compose -f docker-compose.deploy.yml up --build
 #   open http://localhost:8080
 # ML is optional (the API falls back to deterministic scoring); uncomment the `ml` service to enable it.
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: sentinel
-      POSTGRES_PASSWORD: sentinel
-      POSTGRES_DB: sentinel
+      POSTGRES_USER: overwatch
+      POSTGRES_PASSWORD: overwatch
+      POSTGRES_DB: overwatch
     volumes:
-      - sentinel-db-data:/var/lib/postgresql/data
+      - overwatch-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      test: ["CMD-SHELL", "pg_isready -U overwatch -d overwatch"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,14 +22,14 @@ services:
       context: .
       dockerfile: server/Dockerfile
     environment:
-      DATABASE_URL: postgresql://sentinel:sentinel@db:5432/sentinel?schema=public
+      DATABASE_URL: postgresql://overwatch:overwatch@db:5432/overwatch?schema=public
       PORT: "8787"
       NODE_ENV: production
       # PUBLIC_URL — your public origin when hosting (e.g. http://<vm-ip> or https://your.domain).
       # Drives CORS (WEB_ORIGIN) and the Razorpay payment-link callback (PUBLIC_BASE_URL). Local default below.
       WEB_ORIGIN: ${PUBLIC_URL:-http://localhost:8080}
       PUBLIC_BASE_URL: ${PUBLIC_URL:-http://localhost:8080}
-      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-whsec_sentinel_local_selftest}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-whsec_overwatch_local_selftest}
       # Test-mode keys enable real payment links; empty = simulated links (fully functional demo).
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
@@ -53,4 +53,4 @@ services:
   #     OVERWATCH_MODELS: /app/artifacts
 
 volumes:
-  sentinel-db-data:
+  overwatch-db-data:

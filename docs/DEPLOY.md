@@ -14,7 +14,7 @@ Everything here is a verified-locally starting point; Azure specifics (names, re
 ## Verify locally first (one command)
 
 ```bash
-RAZORPAY_WEBHOOK_SECRET=whsec_sentinel docker compose -f docker-compose.deploy.yml up --build
+RAZORPAY_WEBHOOK_SECRET=whsec_overwatch docker compose -f docker-compose.deploy.yml up --build
 ```
 
 Open **http://localhost:8080**. This is the exact image you'll host — if it works here, it works on Azure.
@@ -41,7 +41,7 @@ The least-friction way to be live today: one VM running the same compose file.
    ssh azureuser@<vm-public-ip>
    curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER && newgrp docker
    git clone https://github.com/adhithyyaa/Buildathon-2026.git && cd Buildathon-2026
-   PUBLIC_URL=http://<vm-public-ip> WEB_PORT=80 RAZORPAY_WEBHOOK_SECRET=whsec_sentinel \
+   PUBLIC_URL=http://<vm-public-ip> WEB_PORT=80 RAZORPAY_WEBHOOK_SECRET=whsec_overwatch \
      RAZORPAY_KEY_ID=rzp_test_xxx RAZORPAY_KEY_SECRET=xxx \
      docker compose -f docker-compose.deploy.yml up -d --build
    ```

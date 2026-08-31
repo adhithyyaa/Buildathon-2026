@@ -21,7 +21,7 @@ import EmbeddedPostgres from 'embedded-postgres';
 const SERVER_DIR = path.resolve(__dirname, '../../..'); // server/
 const TEST_DATA_DIR = path.join(SERVER_DIR, '.pgdata-test'); // never .pgdata — that is the live dev DB
 const TEST_PG_PORT = 54329;
-const TEST_DB_URL = `postgresql://sentinel:sentinel@localhost:${TEST_PG_PORT}/sentinel`;
+const TEST_DB_URL = `postgresql://overwatch:overwatch@localhost:${TEST_PG_PORT}/overwatch`;
 const WEBHOOK_SECRET = 'whsec_test_suite';
 
 // Booting a fresh Postgres cluster + pushing the schema takes a while on first run.
@@ -47,8 +47,8 @@ beforeAll(async () => {
   fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
   pg = new EmbeddedPostgres({
     databaseDir: TEST_DATA_DIR,
-    user: 'sentinel',
-    password: 'sentinel',
+    user: 'overwatch',
+    password: 'overwatch',
     port: TEST_PG_PORT,
     persistent: false, // stop() deletes .pgdata-test — nothing survives the run
     // Force UTF8 so we can store ₹ and other Unicode (Windows initdb defaults to WIN1252).
@@ -56,7 +56,7 @@ beforeAll(async () => {
   });
   await pg.initialise();
   await pg.start();
-  await pg.createDatabase('sentinel');
+  await pg.createDatabase('overwatch');
 
   // 3. Apply the Prisma schema to the TEST database only (explicit env; no migrate,
   //    no reset — those belong to the dev workflow).
