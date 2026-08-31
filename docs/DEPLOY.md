@@ -198,6 +198,10 @@ REPO=adhithyyaa/Buildathon-2026            # owner/repo
 
 az group create -n $RG -l $LOC
 
+# Register the providers once (an RG-scoped CI principal can't do this itself).
+az provider register --namespace Microsoft.App --wait
+az provider register --namespace Microsoft.ContainerRegistry --wait
+
 APP_ID=$(az ad app create --display-name overwatch-cicd --query appId -o tsv)
 az ad sp create --id $APP_ID
 az ad app federated-credential create --id $APP_ID --parameters "{
