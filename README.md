@@ -9,6 +9,14 @@
 
 ---
 
+## See it run
+
+![Sentinel AI — product walkthrough: Overview + ROI, causal uplift + real-RCT, red-team compliance, tamper-evident evidence, and the 15/15 rigor scorecard](docs/assets/walkthrough.gif)
+
+**▶ Live demo:** _add your hosted URL here_ &nbsp;·&nbsp; **Run it yourself:** [`./reproduce.sh`](reproduce.sh) or the [Quickstart](#quickstart) &nbsp;·&nbsp; **Deploy:** [`docs/DEPLOY.md`](docs/DEPLOY.md) &nbsp;·&nbsp; **Re-record this walkthrough:** `node web/e2e/walkthrough.mjs` (Playwright → `docs/assets/walkthrough.gif`)
+
+---
+
 ## The one-line thesis
 
 Payment failure in India is usually *mechanical and recoverable* (UPI timeout, bank downtime, a momentary decline),
@@ -130,7 +138,8 @@ Webhook proof: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md) ·
 ML v2 design & roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md) ·
 Demo runbook: [`docs/DEMO.md`](docs/DEMO.md) ·
 Panel-defense playbook: [`docs/DEFENSE.md`](docs/DEFENSE.md) ·
-What broke &amp; how we recovered: [`POSTMORTEM.md`](POSTMORTEM.md)
+What broke &amp; how we recovered: [`POSTMORTEM.md`](POSTMORTEM.md) ·
+Deploy to Azure: [`docs/DEPLOY.md`](docs/DEPLOY.md)
 
 ## What the dashboard shows
 

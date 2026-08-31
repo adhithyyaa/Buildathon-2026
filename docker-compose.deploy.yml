@@ -1,0 +1,49 @@
+# Full-stack container run — a local mirror of the hosted deploy, and the reference for Azure.
+#   RAZORPAY_WEBHOOK_SECRET=whsec_sentinel docker compose -f docker-compose.deploy.yml up --build
+#   open http://localhost:8080
+# ML is optional (the API falls back to deterministic scoring); uncomment the `ml` service to enable it.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel
+    volumes:
+      - sentinel-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./server
+    environment:
+      DATABASE_URL: postgresql://sentinel:sentinel@db:5432/sentinel?schema=public
+      PORT: "8787"
+      NODE_ENV: production
+      WEB_ORIGIN: http://localhost:8080
+      PUBLIC_BASE_URL: http://localhost:8080
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-whsec_sentinel_local_selftest}
+      # RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET — add your test-mode keys to enable real payment links.
+      # ML_SERVICE_URL: http://ml:8899   # uncomment together with the ml service below
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+  # Optional ML service (trains at build — a few minutes). The API works without it.
+  # ml:
+  #   build: ./ml
+  #   environment:
+  #     SENTINEL_MODELS: /app/artifacts
+
+volumes:
+  sentinel-db-data:

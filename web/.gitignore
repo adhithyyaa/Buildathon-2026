@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Playwright walkthrough output (the committed GIF lives in docs/assets/)
+e2e/videos/
+test-results/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
