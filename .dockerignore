@@ -1,0 +1,24 @@
+# Build context for the API image is the repo root (see server/Dockerfile). Keep it lean, and
+# NEVER ship secrets or local state into the context.
+.git
+.github
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/*.log
+**/.pgdata
+**/.pgdata-test
+# The API image needs server/ + ml/*.json only — exclude the rest of the monorepo:
+web
+docs
+scratchpad
+*.md
+# ML: bundle only the git-tracked evidence JSON (ml/*.json). Skip source, data, and trained models.
+ml/src
+ml/data
+ml/artifacts
+ml/Dockerfile
+ml/requirements.txt
+**/__pycache__
+**/*.pyc

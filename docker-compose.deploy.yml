@@ -18,7 +18,9 @@ services:
       retries: 10
 
   api:
-    build: ./server
+    build:
+      context: .
+      dockerfile: server/Dockerfile
     environment:
       DATABASE_URL: postgresql://sentinel:sentinel@db:5432/sentinel?schema=public
       PORT: "8787"

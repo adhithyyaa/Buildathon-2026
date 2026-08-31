@@ -7,7 +7,9 @@ import { computeModelHealth } from '../domain/modelHealth';
 
 export const mlRouter = Router();
 
-// Git-tracked training artifacts (like ml/metrics.json). Resolved relative to the launch cwd (server/).
+// Git-tracked training artifacts. Resolved relative to the launch cwd — `server/` in dev, `/app` in the
+// container (where the image bundles them at `/ml`, so `../ml/*.json` resolves either way).
+const METRICS_CANDIDATES = ['../ml/metrics.json', 'ml/metrics.json', '../../ml/metrics.json'];
 const UPLIFT_CANDIDATES = ['../ml/uplift.json', 'ml/uplift.json', '../../ml/uplift.json'];
 const EXPLORE_CANDIDATES = ['../ml/explore.json', 'ml/explore.json', '../../ml/explore.json'];
 const CONFORMAL_CANDIDATES = ['../ml/conformal.json', 'ml/conformal.json', '../../ml/conformal.json'];
@@ -24,11 +26,15 @@ async function readFirst(candidates: string[]): Promise<unknown | null> {
   return null;
 }
 
-/** GET /api/ml/metrics — the training/validation report (model comparison, calibration, features). */
+/**
+ * GET /api/ml/metrics — the training/validation report (model comparison, calibration, features).
+ * Prefers the live ML service, then falls back to the bundled `ml/metrics.json` (identical payload —
+ * the service loads that same file) so the Model page works even without the Python service deployed.
+ */
 mlRouter.get(
   '/metrics',
   ah(async (_req, res) => {
-    const m = await mlMetrics();
+    const m = (await mlMetrics()) ?? (await readFirst(METRICS_CANDIDATES));
     if (!m) return void res.status(503).json({ error: 'ml_unavailable' });
     res.json(m);
   }),

@@ -52,26 +52,133 @@ The least-friction way to be live today: one VM running the same compose file.
 
 ---
 
-## Path B — Azure Container Apps (managed, scalable)
+## Path B — Azure Container Apps (managed, scale-to-zero, budget-friendly)
 
-1. **Managed Postgres** — Azure Database for PostgreSQL (Flexible Server). Grab the connection string:
-   ```
-   DATABASE_URL=postgresql://<user>:<pass>@<server>.postgres.database.azure.com:5432/sentinel?sslmode=require
-   ```
-2. **Build + push images** to Azure Container Registry (ACR builds remotely — no local Docker needed):
-   ```bash
-   az acr build -r <acr> -t sentinel-api:latest ./server
-   az acr build -r <acr> -t sentinel-web:latest ./web
-   ```
-3. **Create the Container Apps environment**, then deploy:
-   - **api** — internal ingress, target port `8787`. Set the env vars from the table below (`DATABASE_URL`,
-     `RAZORPAY_*`, `RAZORPAY_WEBHOOK_SECRET`, `WEB_ORIGIN`/`PUBLIC_BASE_URL` = the web app's public URL).
-     Migrations apply on boot.
-   - **web** — external ingress, target port `80`. **One edit:** in [`web/nginx.conf`](../web/nginx.conf)
-     replace `http://api:8787` with the API container app's **internal FQDN**
-     (`https://sentinel-api.internal.<env>.<region>.azurecontainerapps.io`), then rebuild the web image.
-     (Cross-app proxy on ACA needs the internal FQDN; on the single-VM path the service name `api` just works.)
-4. Open the web app's public URL. Done.
+Runs entirely from **Azure Cloud Shell** — no local Docker needed (`az acr build` builds the images in
+Azure). The repo is already prepped for it: the API image bundles the `ml/*.json` evidence reports (so the
+Intelligence panels work without the Python service), and nginx's upstream is set by the `API_UPSTREAM` env
+var (no file edit on deploy).
+
+### Cost — designed to stay under $50 for 2 months (uaenorth, education credits)
+
+| Resource | Config | ~/month | 2 months |
+|---|---|---|---|
+| Container Registry | Basic | ~$5 | ~$10 |
+| PostgreSQL Flexible | Burstable **B1ms**, 32 GB | ~$16 | ~$32 |
+| Container Apps (api + web) | Consumption, **min-replicas 0** | ~$0–3 | ~$0–6 |
+| Log Analytics | default (first 5 GB/mo free) | ~$0 | ~$0 |
+| **Total — Postgres running 24/7** | | | **~$42–48** |
+| **Total — Postgres stopped when idle** | | | **~$20–28** |
+
+Two levers keep it cheap: **min-replicas 0** (the apps cost ~nothing while idle — a Consumption plan has no
+fixed environment fee, and light demo traffic fits inside the monthly free grant), and **stopping Postgres**
+between demo sessions (below). Postgres is the only meaningful always-on cost.
+
+### One-time deploy (paste into Cloud Shell, in the repo root after `git clone`)
+
+```bash
+# ---- variables ----
+RG=sentinel-rg; LOC=uaenorth; ENVN=sentinel-env
+ACR=sentinel$RANDOM                       # must be globally unique, lowercase alphanumeric
+PG=sentinel-pg-$RANDOM
+PG_PASS='ChangeMe-Strong-Passw0rd!'       # choose your own
+WEBHOOK_SECRET='whsec_sentinel'           # choose your own; use the same in the Razorpay dashboard
+RZP_KEY_ID='rzp_test_xxx'                  # from your local server/.env (Razorpay Dashboard → API Keys, Test)
+RZP_KEY_SECRET='xxx'                       # from your local server/.env — never commit it
+
+az group create -n $RG -l $LOC
+az extension add -n containerapp --upgrade -y
+
+# ---- 1. Container Registry + remote image builds (no local Docker) ----
+az acr create -g $RG -n $ACR --sku Basic --admin-enabled true
+az acr build -r $ACR -t sentinel-api:v1 -f server/Dockerfile .   # root context bundles ml/*.json
+az acr build -r $ACR -t sentinel-web:v1 ./web
+
+# ---- 2. Postgres (cheapest burstable tier); --public-access 0.0.0.0 = allow Azure services ----
+az postgres flexible-server create -g $RG -n $PG -l $LOC \
+  --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16 \
+  --database-name sentinel --admin-user sentineladmin --admin-password "$PG_PASS" \
+  --public-access 0.0.0.0 --yes
+PG_HOST=$(az postgres flexible-server show -g $RG -n $PG --query fullyQualifiedDomainName -o tsv)
+DATABASE_URL="postgresql://sentineladmin:$PG_PASS@$PG_HOST:5432/sentinel?sslmode=require"
+
+# ---- 3. Container Apps environment (Consumption; no fixed fee) ----
+az containerapp env create -g $RG -n $ENVN -l $LOC
+
+# ---- 4. ACR pull credentials ----
+ACR_SERVER=$(az acr show -n $ACR --query loginServer -o tsv)
+ACR_USER=$(az acr credential show -n $ACR --query username -o tsv)
+ACR_PASS=$(az acr credential show -n $ACR --query 'passwords[0].value' -o tsv)
+
+# ---- 5. API — internal ingress, scale-to-zero, secrets for the sensitive values ----
+az containerapp create -g $RG -n sentinel-api --environment $ENVN \
+  --image $ACR_SERVER/sentinel-api:v1 \
+  --registry-server $ACR_SERVER --registry-username $ACR_USER --registry-password $ACR_PASS \
+  --target-port 8787 --ingress internal --min-replicas 0 --max-replicas 1 --cpu 0.5 --memory 1.0Gi \
+  --secrets db-url="$DATABASE_URL" rzp-secret="$RZP_KEY_SECRET" wh-secret="$WEBHOOK_SECRET" \
+  --env-vars DATABASE_URL=secretref:db-url RAZORPAY_KEY_ID="$RZP_KEY_ID" \
+             RAZORPAY_KEY_SECRET=secretref:rzp-secret RAZORPAY_WEBHOOK_SECRET=secretref:wh-secret \
+             NODE_ENV=production
+API_FQDN=$(az containerapp show -g $RG -n sentinel-api --query properties.configuration.ingress.fqdn -o tsv)
+
+# ---- 6. WEB — external ingress; nginx proxies /api to the API's internal FQDN ----
+az containerapp create -g $RG -n sentinel-web --environment $ENVN \
+  --image $ACR_SERVER/sentinel-web:v1 \
+  --registry-server $ACR_SERVER --registry-username $ACR_USER --registry-password $ACR_PASS \
+  --target-port 80 --ingress external --min-replicas 0 --max-replicas 1 --cpu 0.25 --memory 0.5Gi \
+  --env-vars API_UPSTREAM="https://$API_FQDN"
+WEB_FQDN=$(az containerapp show -g $RG -n sentinel-web --query properties.configuration.ingress.fqdn -o tsv)
+
+# ---- 7. Now the public URL is known — set it on the API (CORS + payment-link callback) ----
+az containerapp update -g $RG -n sentinel-api \
+  --set-env-vars WEB_ORIGIN="https://$WEB_FQDN" PUBLIC_BASE_URL="https://$WEB_FQDN"
+
+echo "LIVE:    https://$WEB_FQDN"
+echo "WEBHOOK: https://$WEB_FQDN/api/webhooks/razorpay"
+```
+
+Open the `LIVE` URL. (First hit after idle triggers a ~few-second cold start — scale-to-zero. Refresh once.)
+
+### Getting the values you need (Cloud Shell)
+
+```bash
+az acr show -n $ACR --query loginServer -o tsv                                             # registry host
+az acr credential show -n $ACR --query username -o tsv                                     # registry user
+az acr credential show -n $ACR --query 'passwords[0].value' -o tsv                         # registry password
+az postgres flexible-server show -g $RG -n $PG --query fullyQualifiedDomainName -o tsv     # DB host
+az containerapp show -g $RG -n sentinel-api --query properties.configuration.ingress.fqdn -o tsv  # API internal FQDN
+az containerapp show -g $RG -n sentinel-web --query properties.configuration.ingress.fqdn -o tsv  # public site
+```
+
+Your **Razorpay keys are not in Azure** — copy them from your local `server/.env` (Razorpay Dashboard →
+Settings → API Keys → **Test Mode**). Rotate a secret later with
+`az containerapp secret set -g $RG -n sentinel-api --secrets rzp-secret="<new>"`.
+
+### Webhook + smoke test
+
+Register the webhook in the Razorpay dashboard → **`https://<WEB_FQDN>/api/webhooks/razorpay`**, same
+`WEBHOOK_SECRET`, event `payment.captured`. Then verify the money path from Cloud Shell:
+
+```bash
+az containerapp exec -g $RG -n sentinel-api --command "npm run selftest:webhook"
+```
+
+### Keep it under budget
+
+```bash
+az postgres flexible-server stop -g $RG -n $PG     # between demo sessions — storage-only (~$4/mo)
+az postgres flexible-server start -g $RG -n $PG    # ~1 min before you demo
+```
+
+The container apps already idle to zero. To tear everything down after the buildathon: `az group delete -n $RG --yes`.
+
+### Redeploying after a code change
+
+```bash
+az acr build -r $ACR -t sentinel-api:v2 -f server/Dockerfile .
+az containerapp update -g $RG -n sentinel-api --image $ACR_SERVER/sentinel-api:v2
+# (web: build sentinel-web:v2 from ./web, then update sentinel-web the same way)
+```
 
 ---
 
