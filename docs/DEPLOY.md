@@ -19,6 +19,11 @@ RAZORPAY_WEBHOOK_SECRET=whsec_sentinel docker compose -f docker-compose.deploy.y
 
 Open **http://localhost:8080**. This is the exact image you'll host — if it works here, it works on Azure.
 
+> **Needs a Linux Docker engine** (Docker Desktop with the WSL2 backend, or any Linux host). If this
+> machine has no WSL2, skip local build entirely and use **`az acr build`** (Path B) — it builds the
+> images *in Azure*, no local Docker required. The build steps themselves are verified: the API compiles
+> and emits `dist/index.js`, the web app builds to `dist/`, and the ML train args are valid.
+
 ---
 
 ## Path A — Single Azure VM (fastest; recommended for the buildathon)
