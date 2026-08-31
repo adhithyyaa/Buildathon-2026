@@ -7,6 +7,7 @@ import { Card, Stat, cx } from '../components/ui';
 import { Icon } from '../components/icons';
 import { CountUp } from '../components/CountUp';
 import { ImpactChart } from '../components/ImpactChart';
+import { BusinessCasePanel } from '../components/BusinessCasePanel';
 
 interface Module {
   icon: string;
@@ -114,6 +115,9 @@ export function Overview() {
           </Card>
         )
       )}
+
+      {/* Business case — ROI grounded in the measured lift + our cost model */}
+      <BusinessCasePanel lab={lab} />
 
       {/* Funnel + failure-reason intelligence */}
       <div className="grid gap-6 lg:grid-cols-2">
