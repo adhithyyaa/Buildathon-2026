@@ -1,11 +1,41 @@
-# Sentinel — Strengthening Roadmap & ML v2 Design
+# Sentinel — ML v2 Design Record & Forward Roadmap
 
-Goal: make Sentinel the strongest entry in the field on **every** axis — ML model, measurement
-rigor, code quality, docs — grounded in a code-level competitive analysis of 22 other buildathon
-entries + one exceptional outlier (smit27ai/recoup).
+> **STATUS — this plan shipped.** This document was written as a forward plan to make Sentinel the
+> strongest entry in the field on **every** axis (ML model, measurement rigor, code quality, docs). Its
+> **Phase 1 and Phase 2 are now built and tested** — so read §1–§3 as the *design record of what was
+> executed*, not a wishlist. The **shipped ledger** below maps each planned item to the file that
+> implements it and the test that proves it. Genuinely-forward work is collected in **§5 "Still ahead"**.
+>
+> The design was validated against a later, wider code-level scan of the field (see the published
+> competitive analysis linked from [`DEFENSE.md`](./DEFENSE.md)); Sentinel came out first, and the axes
+> below are why.
 
-Where we stand today: **#2 of 23 overall, #1 on ML.** Only smit27ai edges us (+0.2, on test/
-measurement rigor). This roadmap closes that gap and pulls clear on ML.
+## 0. Shipped ledger — plan → code → proof
+
+| Planned capability | Shipped in | Proven by |
+|---|---|---|
+| Uplift / CATE engine (S/T/X-learner CatBoost) + benchmark | `ml/src/uplift.py` | `ml/uplift.json` |
+| Qini / AUUC / uplift@decile | `ml/src/uplift.py` | `ml/uplift.json` |
+| Per-head isotonic calibration + ECE/Brier/reliability | `ml/src/train.py` | `ml/metrics.json`, model card |
+| SHAP per-case attribution → signed reason codes | `ml/src/serve.py` → `web` ReasonCodes | UI case drawer |
+| Doubly-robust / IPS off-policy evaluation | `ml/src/uplift.py`, `ml/src/eval.py` | `ml/uplift.json`, `ml/eval*.json` |
+| **Conformal prediction** (distribution-free coverage) | `ml/src/conformal.py` | `ml/conformal.json`, `ml.bands` test |
+| **Real-RCT external validation** (Hillstrom) | `ml/src/rct_validate.py` | `ml/rct_validation.json` |
+| Cross-world transfer (frozen model, independent world) | `ml/src/transfer.py` | `ml/transfer.json` |
+| Thompson-sampling exploration | `ml/src/explore.py` | `ml/explore.json` |
+| A/A null test (estimator unbiased) | `server` Lab | `lab.aa.test.ts` |
+| Multi-strategy CI table (4 eval arms, both worlds) | `ml/src/eval.py` | `ml/eval.json`, `ml/eval_v2.json` |
+| Hash-chained + **DB-enforced append-only** audit + forensics | `server/src/domain/audit.ts` | `audit.chain.test.ts` |
+| Chaos / invariant suite (exactly-once, race, kill-switch, replay, tamper) | `server` | `policy.chaos.test.ts` |
+| **Independent-oracle compliance console + red-team battery** | `server/src/domain/compliance.ts`, `redteamAttacks.ts` | `compliance.redteam.test.ts` |
+| **Outbound-message factual-token validator** | `server/src/domain/messageValidator.ts` | `messageValidator.test.ts` |
+| Artifact-locked claim numbers (docs can't drift from code) | `server` | `claims.docs.test.ts` |
+| Model-health panel (calibration-over-time, PSI, latency) | `server/src/domain/modelHealth.ts` → `web` | UI Model page |
+| README rewrite + reproduce + CI | `README.md`, `reproduce.sh`, `.github/workflows/ci.yml` | CI green |
+
+The ML design is documented in depth in [`ARCHITECTURE.md`](./ARCHITECTURE.md) §7–§13 and this file §1–§3;
+the panel-defense playbook and the governance/rigor rationale are in [`DEFENSE.md`](./DEFENSE.md). (The
+originally-planned standalone `docs/ML_DESIGN.md` was folded into those three rather than duplicated.)
 
 ---
 
@@ -211,21 +241,38 @@ Priority: **P0** = wins the panel / closes the gap · **P1** = production depth 
 
 ---
 
-## 4. Phasing
+## 4. Phasing — as executed
 
-**Phase 1 — "Beat the field" (the panel-winning core).**
-Uplift engine + Qini/ECE + SHAP reason codes (ml + web F5) + A/A test + multi-strategy CI table +
-README rewrite. This alone moves ML clearly to #1 and overall past smit27ai (~8.4 → ~8.9).
+**Phase 1 — "Beat the field" (the panel-winning core). ✅ Shipped.**
+Uplift engine + Qini/ECE + SHAP reason codes (ml + web) + A/A test + multi-strategy CI table +
+README rewrite.
 
-**Phase 2 — "Production depth."**
-DR off-policy eval + model-health panel (F8) + hash-chained audit + chaos suite + expanded tests +
-mypy-strict. Closes the rigor/testing gap outright.
+**Phase 2 — "Production depth." ✅ Shipped.**
+DR off-policy eval + model-health panel + hash-chained audit + chaos suite + expanded tests. Went
+*beyond* the original plan: conformal prediction, real-RCT (Hillstrom) external validation, an
+independent-oracle compliance console with a red-team battery, an outbound-message factual-token
+validator, DB-enforced append-only audit with forensic tamper classification, and an artifact-locked
+claims test so the numbers in these docs can't silently drift from the code.
 
-**Phase 3 — "Polish & optional."**
-Thompson exploration + drill-down/CSV/Cmd+K + scheduled reports. Diminishing returns; roadmap-slide
-candidates.
+**Phase 3 — "Polish & optional." ✅ Mostly shipped.**
+Thompson-sampling exploration shipped (`ml/src/explore.py`). Scheduled reports / command palette were
+judged diminishing-returns and deliberately left out.
 
-### If you only do three things
-1. **Uplift engine + Qini** — the ML crown nobody else has.
-2. **SHAP reason codes (F5)** — turns explainability from heuristic to rigorous; strong panel answer.
-3. **A/A null test + multi-strategy CI table** — proves the incremental-₹ number; closes the exact gap to #1.
+---
+
+## 5. Still ahead (production, not buildathon)
+
+The honest forward list — what a real merchant deployment needs that a 12-day build correctly did not:
+
+- **Live merchant data** replacing the synthetic world — the whole point of the synthetic→real flywheel
+  (ADR-012/015). Real signed `payment.captured` outcomes retrain the same feature schema in place.
+- **Per-action randomization** (a small ε-random assignment) to harden the causal per-action estimates
+  beyond today's T-learners-on-observational-data + randomized control baseline (§1 honesty note).
+- **Durable retry queue** (BullMQ/Redis or a scheduled cloud function) replacing the in-process
+  scheduler (ADR-008), and a **transactional outbox** for per-endpoint idempotency (ADR-018 follow-up).
+- **Model registry + drift-triggered retraining** — modelHealth already exports PSI/calibration-over-time;
+  the missing piece is the automated registry + promotion gate.
+- **DPDP data-fiduciary controls** — PII hashing, retention windows, erasure-on-opt-out, breach reporting.
+  The top compliance gap, owned openly ([`COMPLIANCE.md`](./COMPLIANCE.md), ADR-016).
+- **Cross-merchant network intelligence** — deliberately deferred as off-thesis for a per-merchant
+  decision layer; noted so the decision is a choice, not an oversight.

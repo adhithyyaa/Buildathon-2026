@@ -288,7 +288,51 @@ paid anyway. The number that matters — and that neither Razorpay's agents nor 
 Surfaced on the dashboard as the **Recovery Lab** panel (incremental ₹ + CI, treatment vs control rates, per-reason
 lift, suppression candidates). See `GET /api/lab` and `POST /api/lab/resolve`.
 
-## 14. Tech choices (rationale in [`DECISIONS.md`](./DECISIONS.md))
+## 14. The rigor & governance stack (why the numbers are trustworthy)
+
+Everything above is the money path. On top of it sits a layer whose entire job is to make the claims *checkable* —
+by a panel that reads code, and by us in CI. A hard boundary is maintained and worth stating up front:
+
+> **Live money path** (`serve.py`: `/predict`, `/explain`, `/anomaly/window`) = calibrated per-action recovery
+> probabilities → EV action selection → escalation/anomaly, plus **live SHAP reason codes**. **Offline rigor layer**
+> (the `ml/` scripts → git-tracked JSON artifacts → read-only `/api/ml/*`) = the causal, conformal, and external-validity
+> analyses below. The rigor layer is *evidence about* the money path; it never sits *in* it. See ADR-019 for why the
+> served EV choice is nonetheless uplift-consistent by construction.
+
+**Causal uplift engine** (`ml/src/uplift.py` → `/api/ml/uplift`). Fits S-/T-/X-learner CATE models on the randomized
+control holdout and reports **Qini / AUUC / uplift@decile** and a **doubly-robust off-policy** policy value. This is the
+ML that *is* our incremental-₹ thesis — it proves the deployed policy adds value, rather than asserting it (ADR-019).
+
+**Conformal prediction** (`ml/src/conformal.py` → `/api/ml/conformal`). Split-conformal prediction sets give each
+recovery estimate a **finite-sample, distribution-free coverage guarantee** — a guarantee that holds even if the model
+is misspecified, which point-calibration alone cannot offer (ADR-020). Empirical coverage is asserted by `ml.bands.test.ts`.
+
+**Real-RCT external validation** (`ml/src/rct_validate.py` → `/api/ml/rct`). Runs the same uplift + DR-OPE machinery on
+the **Hillstrom email RCT** — a genuine public randomized trial — so the *technique's* validity doesn't rest on our
+synthetic worlds (ADR-021). Cross-world **transfer** (`transfer.py`) and Thompson **exploration** (`explore.py` →
+`/api/ml/explore`) round out the ML evidence.
+
+**Independent-oracle compliance console + red-team** (`domain/compliance.ts`, `redteamAttacks.ts` →
+`/api/compliance/*`). A *second, separately authored* encoding of each India rule re-audits every decision the policy
+engine made, and an adversarial attack battery asserts each rule holds under fire — a violation must occur in **both**
+codebases to escape (ADR-022, tested in `compliance.redteam.test.ts`).
+
+**Outbound-message fact validator** (`domain/messageValidator.ts`). Every LLM-drafted customer message is fact-checked
+token-by-token against the real case (amount, discount, reference id) and **blocked** on mismatch before the executor can
+send it (ADR-023, tested in `messageValidator.test.ts`).
+
+**Tamper-evident, DB-enforced audit ledger** (`domain/audit.ts`). The `AuditLog` is hash-chained *and* protected by a
+**PostgreSQL trigger** that rejects in-place `UPDATE`/`DELETE` at the database layer; `verifyRows` classifies any tamper
+as `content_altered` vs `chain_relinked`, and a non-destructive forensic battery proves detection (ADR-024, tested in
+`audit.chain.test.ts`).
+
+**Self-checking claims + CI.** `claims.docs.test.ts` re-reads every headline metric quoted in these docs from the actual
+artifacts, so a number that drifts from the code **fails the build** (ADR-026). Alongside it: the Recovery-Lab **A/A null
+test** (`lab.aa.test.ts`), the **chaos/invariant** suite (`policy.chaos.test.ts`), and property-based tests. `reproduce.sh`
+regenerates every artifact from scratch and `.github/workflows/ci.yml` runs the full suite. The in-product **Rigor page**
+(`/app/rigor`) is a live scorecard of these checks. The full panel-defense mapping is in [`DEFENSE.md`](./DEFENSE.md).
+
+## 15. Tech choices (rationale in [`DECISIONS.md`](./DECISIONS.md))
 
 TypeScript money path — Node/Express + Prisma + PostgreSQL (embedded, no Docker) · React/Vite/Tailwind dashboard ·
 **Python ML tier — FastAPI + CatBoost + XGBoost + scikit-learn** · Razorpay test-mode (Orders + Payment Links +

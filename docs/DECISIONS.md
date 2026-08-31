@@ -180,3 +180,99 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
   open for the zero-config demo — and the metrics endpoint was moved to SQL-side aggregation (groupBy/aggregate) so it
   no longer loads whole tables into memory. Still on the roadmap: a real model registry + drift monitoring, a
   transactional-outbox for per-endpoint idempotency, and order-level out-of-order reconciliation.)*
+
+### ADR-019 — Model the *causal uplift* of each action, not propensity *(2026-08-26)*
+- **Context:** Our whole thesis is **incremental** ₹ (treatment − control). The field models the wrong quantity:
+  propensity `P(recover | x, action)` (observational, biased by who got which action) or online bandits (cold-start).
+  Predicting *whether* a case recovers is not the same as knowing whether *the action helped*.
+- **Rationale:** We already run a randomized ~20% no-action control (ADR-017) — the exact experimental data to estimate
+  the per-case, per-action **CATE** `τ_a(x) = P(recover | x, do a) − P(recover | x, do nothing)`. `ml/src/uplift.py`
+  fits S-/T-/X-learners (CatBoost base learners), picks by uplift metric, and reports **Qini / AUUC / uplift@decile** plus
+  a **doubly-robust** off-policy value — the metrics nobody else in the field publishes. Two honesty notes on *where* this
+  sits: (1) the **live** `/predict` selects the action by EV over calibrated per-action recovery probabilities
+  `argmax_a [p_a·amount − cost_a]`; because the do-nothing baseline `p_0(x)` is action-independent it cancels in the
+  argmax, so this selects the **same** action as `argmax_a [τ_a·amount − cost_a]` — the served choice is uplift-consistent
+  by construction. (2) The uplift *magnitudes* (τ_a) are what prove the incremental-₹ thesis, decide *whether acting beats
+  doing nothing at all* per reason (the Recovery Lab suppression loop, ADR-017), and **validate the deployed policy
+  off-policy** (Qini, DR-OPE) — these run **offline** in `ml/` and are surfaced read-only via `/api/ml/uplift`, not on the
+  money path. SHAP (`ml/src/serve.py` `/explain`) *is* live, turning the chosen head into signed reason codes.
+- **Trade-off:** Clean *per-action* causal estimates ideally want per-action randomization; we start with T-learners on
+  observational treatment data + the randomized control baseline, DR-corrected, and state the assumption openly (§5 of
+  [`ROADMAP.md`](ROADMAP.md)). A small ε-random per-action assignment is the documented hardening. Feeding τ_a directly
+  into the serve-time score (rather than the equivalent-argmax p_a form) is a cosmetic wiring change, not a behavior one.
+
+### ADR-020 — Conformal prediction for a distribution-free coverage guarantee *(2026-08-26)*
+- **Context:** Isotonic calibration (ADR-011) makes `recovery_probability` *marginally* honest, but a panel can still
+  ask "what's the guarantee on any *single* prediction?" A point probability doesn't answer that.
+- **Rationale:** `ml/src/conformal.py` wraps the recovery head in split-conformal prediction: on a held-out calibration
+  set it produces prediction sets/intervals with a **finite-sample, distribution-free coverage guarantee** (target
+  coverage is met regardless of whether the model is well-specified). Empirical coverage is exported to
+  `ml/conformal.json` and asserted by `ml.bands.test.ts`, and surfaced in the UI rigor panel.
+- **Trade-off:** Conformal intervals are wider than a naive point estimate — which is the honest picture. It buys a
+  guarantee that survives model misspecification, which calibration alone does not.
+
+### ADR-021 — Validate on a *real* randomized trial, not only synthetic worlds *(2026-08-26)*
+- **Context:** Every offline number we compute is on synthetic worlds (ADR-012/015). The strongest possible rebuttal to
+  "it's all synthetic" is to run the *same* uplift machinery on a real, public randomized experiment.
+- **Rationale:** `ml/src/rct_validate.py` runs the uplift/Qini pipeline against the **Hillstrom email RCT** (a genuine
+  randomized marketing trial) and exports `ml/rct_validation.json`. It shows the causal method recovers a sensible,
+  significant treatment effect on real randomized data — external validity for the *technique*, independent of our world
+  generator.
+- **Trade-off:** Hillstrom is marketing email, not payment recovery, so it validates the *method* and not the domain
+  numbers — stated plainly. It is still far stronger evidence than any synthetic-only claim.
+
+### ADR-022 — Compliance as independent oracles + a red-team battery, separate from the policy it checks *(2026-08-27)*
+- **Context:** The policy engine (ADR-016) enforces India rules, and `policy.test.ts` tests it. But a test written by the
+  same author against the same code can share the same blind spot. "We enforce compliance" needs an *adversarial*, code-
+  independent check to be credible.
+- **Rationale:** `server/src/domain/compliance.ts` implements **independent regulatory oracles** — a second, separately
+  authored encoding of each rule (RBI TAT, NPCI cap, AFA ceiling, opt-out, quiet hours) that audits a decision the policy
+  engine already made, so a bug has to occur in *both* to pass. `redteamAttacks.ts` fires a battery of adversarial cases
+  (a debited-pending-reversal nudge, an over-cap retry, an AFA-ceiling silent debit, an opted-out contact, …) at the money
+  path; `compliance.redteam.test.ts` asserts every one is caught. Exposed as an in-product **compliance console**.
+- **Trade-off:** Two encodings of the rules to maintain — deliberate redundancy, the same reason avionics runs dissimilar
+  implementations. The duplication *is* the safety property.
+
+### ADR-023 — Fact-check every outbound message against the case before it can send *(2026-08-27)*
+- **Context:** The LLM drafts customer-facing messages (ADR-010). Even off the money path, a hallucinated amount, a wrong
+  discount, or an invented reference number in a message to a real customer is a compliance and trust failure.
+- **Rationale:** `server/src/domain/messageValidator.ts` (`validateMessageFacts`) parses the drafted message and checks
+  every factual token — amount, discount %, order/reference id — against the case's real fields, flagging
+  `amount_mismatch` / `discount_mismatch` / `fabricated_reference`. It is wired into `executor.ts`'s outbound guard, so a
+  message that fails validation is **blocked, not sent**. Tested in `messageValidator.test.ts`.
+- **Trade-off:** A drafted message can be rejected and fall back to a template — the correct failure mode. We constrain
+  the LLM's output rather than trusting it.
+
+### ADR-024 — Enforce append-only in the *database*, and classify tampering forensically *(2026-08-27)*
+- **Context:** A hash-chained audit log (ADR/ROADMAP) is tamper-*evident*, but application-level "append-only" is only a
+  convention — a direct `UPDATE`/`DELETE` on the table bypasses it. And "the chain broke" is less useful than "*how* it
+  broke."
+- **Rationale:** `server/src/domain/audit.ts` installs a **PostgreSQL trigger** (`ensureAuditAppendOnly`) that rejects any
+  `UPDATE`/`DELETE` on the audit table at the DB layer, verified live by a rolled-back probe. `verifyRows` returns a
+  forensic classification — **`content_altered`** (a row's payload changed) vs **`chain_relinked`** (rows reordered/spliced)
+  — and `forensicDemo()` runs a non-destructive tamper battery proving each is detected. Numbers are canonicalized to 12
+  significant figures before hashing so jsonb float round-trips can't cause false tamper alarms. Tested in `audit.chain.test.ts`.
+- **Trade-off:** The trigger makes the audit table genuinely immutable in-place (schema migrations must drop/recreate it
+  deliberately) — which is exactly the guarantee an auditor wants.
+
+### ADR-025 — Refuse to fabricate "real" captures; ship only genuine ones *(2026-08-28)*
+- **Context:** The most impressive proof is a real hosted-Checkout payment captured end-to-end. Automating Razorpay's
+  hosted Checkout proved infeasible (cross-origin iframe blocks scripted keystrokes; contact + OTP are mandatory), and
+  test mode caps payment links. The tempting shortcut was to synthesize "real"-looking capture receipts.
+- **Rationale:** We did **not**. Integrity is the entire value proposition of a money system — a single fabricated receipt
+  would poison every real number. We kept only genuine test-card captures, shipped `appendProof.ts` to record real
+  captures honestly, and descoped hands-free hosted-Checkout automation rather than fake it. The signed-webhook round-trip
+  we *do* demonstrate is real.
+- **Trade-off:** Fewer captures in the demo than a fabricated set would show — and that honesty is the point under a panel
+  that reads code and can tell.
+
+### ADR-026 — Lock the claim numbers to the code, and rebrand Recoup → Sentinel AI *(2026-08-28)*
+- **Context:** Docs drift from code — a metric quoted in a README goes stale after a retrain and quietly becomes a lie.
+  Separately, the project was renamed from "Recoup" to **Sentinel AI** ("Where nothing slips through").
+- **Rationale:** `claims.docs.test.ts` is an **artifact-locked-numbers test**: every headline metric asserted in the docs
+  is re-read from the actual ML artifacts / eval JSON at test time, so a number that drifts from the code **fails CI**.
+  The rebrand was a mechanical sweep (133 occurrences / 53 files); intentionally preserved were external competitor refs
+  (`smit27ai/recoup`), the historical live-capture receipt ids, and the DB function name `recoup_audit_append_only`
+  (renaming a live trigger is a needless migration risk).
+- **Trade-off:** The claims test is one more gate to keep green — which is the entire point: the docs cannot lie about the
+  numbers without breaking the build.
