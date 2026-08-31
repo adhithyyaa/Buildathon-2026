@@ -163,5 +163,5 @@ Everything in the demo is one of those three.
 
 ---
 
-*Companion docs: [`ARCHITECTURE.md`](./ARCHITECTURE.md) · [`ROADMAP.md`](./ROADMAP.md) ·
-[`WEBHOOKS.md`](./WEBHOOKS.md) · [`DECISIONS.md`](./DECISIONS.md).*
+*Companion docs: [`DEFENSE.md`](./DEFENSE.md) (panel Q&A) · [`ARCHITECTURE.md`](./ARCHITECTURE.md) ·
+[`ROADMAP.md`](./ROADMAP.md) · [`WEBHOOKS.md`](./WEBHOOKS.md) · [`DECISIONS.md`](./DECISIONS.md).*
