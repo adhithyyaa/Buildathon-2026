@@ -22,7 +22,47 @@ a tamper-evident, append-only ledger. Where nothing slips through."*
 
 ---
 
+## Judged on the four criteria
+
+Answer each in one breath, then open the proof.
+
+- **Problem taste — did you pick something that matters?** Yes, and reframed it: in India a failed payment
+  is *mechanical and recoverable*, and the un-published gap isn't retrying — it's **measuring** whether a
+  retry actually recovered anything *over doing nothing*, and **governing** it under RBI/NPCI. We built the
+  measurement + governance layer that plugs under Razorpay, not another retry toggle. *Incremental ₹, not gross.*
+
+- **Build quality — does it run, is it structured, would you trust it?** Real money path (exactly-once under
+  concurrency, proven by a test), 80 tests incl. property-based invariants, a tamper-evident **+ DB-enforced
+  append-only** ledger, `reproduce.sh` + CI, clean commit history. It runs from a clone; the numbers are
+  pinned to their source artifacts so you can trust them by construction, not by our say-so.
+
+- **AI judgment — right tool in the right place, and where you chose *not* to use one?** The architecture is
+  the judgment: calibrated **ML** decides (a tabular problem gets tabular ML, not an LLM), a **deterministic
+  policy** disposes, an **allow-listed executor** acts, and the **LLM only explains/drafts — behind a
+  fact-checker, never touching money.** The whole money path is deliberately AI-free.
+
+- **Failure recovery — what broke, and what you did?** Five real incidents in
+  [`POSTMORTEM.md`](../POSTMORTEM.md), each with the committed regression that pins the fix (headline: a
+  99.5% model that had *learned nothing* → an honest ~70% after we found the label leakage). And a step
+  beyond: **failure-prevention** guards (artifact-locked numbers, confidence bands, A/A) that make shipping
+  a false headline number *structurally impossible* — the failure the strongest rivals had to catch by hand.
+
+---
+
 ## The hard questions
+
+**"What broke, and what did you do about it?"**
+Read the [`POSTMORTEM.md`](../POSTMORTEM.md) — it's five incidents, not a highlight reel. The one that
+matters: our first "clean" run scored **99.5%** on the action head and **0.999** on escalation. Those aren't
+good numbers, they're a *smell* — an adversarial eval panel called it a tautology, and it was: the label was
+a closed-form function of the features (leakage by construction). We injected irreducible noise between the
+world mechanism and the label; the model dropped to a defensible **~70%** (84% agreement with EV-optimal),
+and we now flag any return above ~0.95 as a *regression to the tautology*. "A 70% number we can defend beats
+a 99.5% number we can't." The others (CatBoost calibration clone, a process-kill that hit the DB, the ledger
+that flagged itself, the capture we refused to fake) each ship with the committed test/rule that stops the
+recurrence — and the honest-numbers failure is made impossible by CI, not just documented.
+
+
 
 **"Isn't this just an LLM wrapper?"**
 No. The decision is a **CatBoost ensemble** (benchmarked vs XGBoost + a logistic baseline) over a shared

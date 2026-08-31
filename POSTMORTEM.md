@@ -2,10 +2,15 @@
 
 > **Read this first.** Sentinel is a bounded, ML-first revenue-recovery system for Razorpay (see
 > [`README.md`](README.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)). This document is not a
-> highlight reel — it is the three times the build was *wrong*, how each was caught, and the committed
-> artifact that now stops it recurring. The headline (Incident 1) is the one that matters most: our best
-> model scored 99.5% and had learned nothing, and the story of how we found that out is the story of why
-> the current numbers are trustworthy.
+> highlight reel — it is the times the build was *wrong*, how each was caught, and the committed artifact
+> that now stops it recurring. The headline (Incident 1) is the one that matters most: our best model
+> scored 99.5% and had learned nothing, and the story of how we found that out is the story of why the
+> current numbers are trustworthy.
+>
+> It answers the "**what broke, and what you did about it**" question directly — five real incidents, each
+> with the committed regression that pins the fix — and then goes one further: a **failure-*prevention***
+> layer of CI guards that make the classic failure of this field (a headline number that isn't true)
+> structurally impossible to ship.
 
 Every incident below is real. Each follows the same shape: **Symptom → Diagnosis → Root cause → Fix →
 Regression** (the committed thing that stops it happening again). All metrics quoted are the *post-fix*
@@ -197,14 +202,116 @@ of flaking on it — the graceful-degradation behavior is pinned by a test that 
 
 ---
 
+## Incident 4 — The tamper-evident ledger that flagged itself as tampered
+
+**Severity: high (the audit trail is the trust anchor; if it can't verify a clean ledger, it's worthless).**
+
+### Symptom
+The SHA-256 hash-chained audit ledger is meant to prove nothing was altered — re-walk the chain, recompute
+each row's hash, confirm every link. On an **untampered** ledger, `verifyAllChains()` started reporting
+`valid: false`: the chain accused itself of tampering that never happened.
+
+### Diagnosis (how we found it)
+The write-time hash (computed in `logAudit` before insert) and the verify-time hash (recomputed after
+reading the row back from Postgres) disagreed. Three distinct causes, each found by narrowing which rows and
+which fields diverged:
+1. **`jsonb` float drift.** Postgres round-trips a JSON number through `numeric`, which can change the ~16th
+   significant digit (`0.42947368421052627` → `0.4294736842105263`). Hashing the raw double made write and
+   read hashes differ on any row whose `details` held a probability.
+2. **Same-millisecond ordering ties.** `logAudit` picked the previous row and `verifyCaseChain` walked the
+   chain using *different* orderings; when several rows shared a `createdAt` millisecond (rapid transitions),
+   the two sides disagreed on chain order and the links broke.
+3. **Dropped `undefined` keys.** `undefined`-valued fields serialized inconsistently vs how `jsonb` stored them.
+
+### Root cause
+**Non-determinism between write-time and read-time canonicalization.** A hash chain is only sound if the
+exact same bytes are hashed on both sides; three separate serialization/ordering mismatches violated that.
+
+### Fix
+In `server/src/domain/audit.ts`, `stableStringify` now canonicalizes numbers to **12 significant figures**
+(absorbing the sub-ULP `jsonb` drift while preserving every semantically meaningful value), sorts keys, and
+drops `undefined`. `logAudit` and `verifyCaseChain` were aligned to the **same** `[createdAt, id]` ordering
+so same-millisecond rows chain identically on both sides.
+
+### Regression (what stops it recurring)
+[`audit.chain.test.ts`](server/src/domain/__tests__/audit.chain.test.ts) re-walks a chain and asserts a
+clean ledger verifies — and that every tamper class (content edit, reorder, deletion, insertion) is caught
+*and classified* (content-altered vs chain-relinked). We then went one better than "evident": a Postgres
+**append-only trigger** now rejects any `UPDATE`/`DELETE` on a ledger row, and a live, non-destructive probe
+on the Evidence page proves it. The ledger can no longer disagree with itself, and it can no longer be
+rewritten at all.
+
+---
+
+## Incident 5 — The capture we refused to fake
+
+**Severity: medium (integrity) — the failure was a temptation, and the recovery was saying no.**
+
+### Symptom
+Our strongest un-fakeable asset is **real, replayable Razorpay test-mode captures**. To widen the evidence
+from card to UPI + netbanking, the plan needed to complete Razorpay's hosted Checkout for those rails
+programmatically. It couldn't be done: the checkout renders in a **cross-origin iframe** that synthetic
+keystrokes can't reach, and contact + OTP entry is mandatory. The feature was blocked.
+
+### Diagnosis / the fork
+There were two ways out. The easy one: hand-write UPI/netbanking capture payloads that *look* real and
+commit them to the evidence fixture — nobody would diff them at a glance. The hard one: accept the block.
+
+### Root cause
+The whole point of the real-captures asset is that it is **the one thing the field can't fake** — every
+rival simulates payments. Fabricating a "real" capture to fill a table would have destroyed exactly the
+property the asset exists to provide, and quietly turned our credibility story into the thing we criticize.
+
+### Fix
+We refused to fabricate. We kept the genuine, API-fetched card captures, shipped
+[`appendProof.ts`](server/src/scripts/appendProof.ts) — a one-command tool that records a genuinely
+**captured** payment (fetched from the Razorpay API, `status === "captured"`) once a checkout is completed
+by hand — and documented the limitation plainly rather than papering over it.
+
+### Regression (what stops it recurring)
+The evidence fixture only ever holds captures fetched from `GET /v1/payments/{id}`; `replayRoundtrip.ts`
+asserts `status === "captured"` before it will replay one; and `appendProof` skips anything not genuinely
+captured. There is no code path that writes a simulated payment into the real-capture evidence — the
+integrity is structural, not a promise.
+
+---
+
+## Failure prevention: the classic hackathon failure, made impossible
+
+The most common failure in this field isn't a crash — it's a **headline number that isn't true.** Several of
+the strongest competitors caught theirs by hand and disclosed it (one walked back a "1790% uplift"; another
+shrank +10pp to +5pp after finding a bug). That honesty is admirable — but we went one step further and made
+that failure **structurally impossible to ship**, with three committed guards that turn "trust our numbers"
+into "the build fails if a number is wrong":
+
+- **Artifact-locked numbers** — [`claims.docs.test.ts`](server/src/domain/__tests__/claims.docs.test.ts)
+  pins every headline figure in the README and demo runbook to the exact ML artifact that produced it. A
+  retrain that moves a number, or a doc that quotes one the artifact doesn't support, turns **CI red**. You
+  cannot commit an inflated number.
+- **Confidence bands** — [`ml.bands.test.ts`](server/src/domain/__tests__/ml.bands.test.ts) fails the build
+  if any committed artifact drifts outside its quality band, so a degraded retrain is caught before its
+  number is ever quoted.
+- **The A/A null test** — [`lab.aa.test.ts`](server/src/domain/__tests__/lab.aa.test.ts) proves the lift
+  estimator reads ~0 on two identical arms *before* any lift number is believed; the incrementality claim
+  can't be an artifact of the estimator.
+
+Failure recovery is documenting what broke and fixing it. Failure *prevention* is a test that makes the
+break impossible next time. We do both — and the "next time" guard is the one a panel can run.
+
+---
+
 ## What these have in common
 
-None of the three was caught by us congratulating ourselves — **each was caught by an adversarial check we
-didn't control.** Incident 1 was an eval panel that refused to believe a 99.5% number. Incident 2 was a
-`RuntimeError` thrown by scikit-learn the moment we tried to calibrate. Incident 3 was reality: a runtime
-that shares a name across processes, and a real upstream API enforcing a real limit. And in every case the
-fix is not a promise in a doc — it is **pinned by a committed artifact** that would fail or diff loudly if
-the bug came back: the git-tracked metrics contract (`ml/metrics.json` + ADR-012's red-flag rule), the
-reliability curve rendered on the model card, and the signed webhook self-test. That is the throughline of
-this project: we trust the numbers because we tried hardest to break them, and the checks that broke them
-are still running.
+None of these was caught by us congratulating ourselves — **each was caught by an adversarial check we
+didn't control, or by reality.** Incident 1 was an eval panel that refused to believe a 99.5% number.
+Incident 2 was a `RuntimeError` thrown by scikit-learn the moment we tried to calibrate. Incident 3 was
+reality: a runtime that shares a name across processes, and a real upstream API enforcing a real limit.
+Incident 4 was the ledger's own verifier refusing to pass a clean chain. Incident 5 was a temptation — and
+the recovery was declining to fake the one asset the field can't fake.
+
+And in every case the fix is not a promise in a doc — it is **pinned by a committed artifact** that fails or
+diffs loudly if the bug returns: the git-tracked metrics contract (`ml/metrics.json` + ADR-012's red-flag
+rule), the reliability curve on the model card, the signed webhook self-test, the hash-chain + append-only
+audit tests, and the integrity-by-construction of the evidence fixture. That is the throughline: we trust
+the numbers because we tried hardest to break them, the checks that broke them are still running — and the
+few failures we couldn't tolerate at all, we made **structurally impossible** rather than merely watched for.

@@ -129,7 +129,8 @@ Decisions & trade-offs: [`docs/DECISIONS.md`](docs/DECISIONS.md) ·
 Webhook proof: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md) ·
 ML v2 design & roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md) ·
 Demo runbook: [`docs/DEMO.md`](docs/DEMO.md) ·
-Panel-defense playbook: [`docs/DEFENSE.md`](docs/DEFENSE.md)
+Panel-defense playbook: [`docs/DEFENSE.md`](docs/DEFENSE.md) ·
+What broke &amp; how we recovered: [`POSTMORTEM.md`](POSTMORTEM.md)
 
 ## What the dashboard shows
 
