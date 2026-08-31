@@ -1,4 +1,4 @@
-# Deploying Sentinel AI to Azure
+# Deploying Overwatch to Azure
 
 A deploy kit for hosting the full stack. You're shipping three things — the **web** (Vite build behind
 nginx), the **API** (Node/Express + Prisma), and **Postgres** — plus an **optional** ML service (the API
@@ -32,9 +32,9 @@ The least-friction way to be live today: one VM running the same compose file.
 
 1. **Create the VM** (Ubuntu, ports 80 + 443 open):
    ```bash
-   az vm create -g sentinel-rg -n sentinel-vm --image Ubuntu2204 \
+   az vm create -g overwatch-rg -n overwatch-vm --image Ubuntu2204 \
      --admin-username azureuser --generate-ssh-keys --size Standard_B2s
-   az vm open-port -g sentinel-rg -n sentinel-vm --port 80 --priority 900
+   az vm open-port -g overwatch-rg -n overwatch-vm --port 80 --priority 900
    ```
 2. **SSH in, install Docker, clone, run:**
    ```bash
@@ -59,48 +59,45 @@ Azure). The repo is already prepped for it: the API image bundles the `ml/*.json
 Intelligence panels work without the Python service), and nginx's upstream is set by the `API_UPSTREAM` env
 var (no file edit on deploy).
 
-### Cost — designed to stay under $50 for 2 months (uaenorth, education credits)
+### Cost — well under $50 for 2 months (uaenorth, education credits)
+
+Postgres runs on **Supabase (free tier, $0)**, so Azure only pays for the registry and the two containers:
 
 | Resource | Config | ~/month | 2 months |
 |---|---|---|---|
 | Container Registry | Basic | ~$5 | ~$10 |
-| PostgreSQL Flexible | Burstable **B1ms**, 32 GB | ~$16 | ~$32 |
 | Container Apps (api + web) | Consumption, **min-replicas 0** | ~$0–3 | ~$0–6 |
 | Log Analytics | default (first 5 GB/mo free) | ~$0 | ~$0 |
-| **Total — Postgres running 24/7** | | | **~$42–48** |
-| **Total — Postgres stopped when idle** | | | **~$20–28** |
+| PostgreSQL | **Supabase free tier** (external) | $0 | $0 |
+| **Total** | | | **~$10–16** |
 
-Two levers keep it cheap: **min-replicas 0** (the apps cost ~nothing while idle — a Consumption plan has no
-fixed environment fee, and light demo traffic fits inside the monthly free grant), and **stopping Postgres**
-between demo sessions (below). Postgres is the only meaningful always-on cost.
+The apps scale to zero (a Consumption plan has no fixed environment fee, and light demo traffic fits inside
+the monthly free grant), so the registry's ~$5/mo is effectively the only fixed cost.
 
 ### One-time deploy (paste into Cloud Shell, in the repo root after `git clone`)
 
 ```bash
 # ---- variables ----
-RG=sentinel-rg; LOC=uaenorth; ENVN=sentinel-env
-ACR=sentinel$RANDOM                       # must be globally unique, lowercase alphanumeric
-PG=sentinel-pg-$RANDOM
-PG_PASS='ChangeMe-Strong-Passw0rd!'       # choose your own
-WEBHOOK_SECRET='whsec_sentinel'           # choose your own; use the same in the Razorpay dashboard
-RZP_KEY_ID='rzp_test_xxx'                  # from your local server/.env (Razorpay Dashboard → API Keys, Test)
-RZP_KEY_SECRET='xxx'                       # from your local server/.env — never commit it
+RG=overwatch-rg; LOC=uaenorth; ENVN=overwatch-env
+ACR=overwatch$RANDOM                      # must be globally unique, lowercase alphanumeric
+WEBHOOK_SECRET='whsec_overwatch'          # choose your own; use the same in the Razorpay dashboard
+RZP_KEY_ID='rzp_test_xxx'                 # from your local server/.env (Razorpay Dashboard → API Keys, Test)
+RZP_KEY_SECRET='xxx'                      # from your local server/.env — never commit it
+# Supabase → Project Settings → Database → Connection string → "Session pooler" (IPv4, port 5432).
+# Paste it verbatim and keep ?sslmode=require. Shape:
+DATABASE_URL='postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require'
 
 az group create -n $RG -l $LOC
 az extension add -n containerapp --upgrade -y
 
 # ---- 1. Container Registry + remote image builds (no local Docker) ----
 az acr create -g $RG -n $ACR --sku Basic --admin-enabled true
-az acr build -r $ACR -t sentinel-api:v1 -f server/Dockerfile .   # root context bundles ml/*.json
-az acr build -r $ACR -t sentinel-web:v1 ./web
+az acr build -r $ACR -t overwatch-api:v1 -f server/Dockerfile .   # root context bundles ml/*.json
+az acr build -r $ACR -t overwatch-web:v1 ./web
 
-# ---- 2. Postgres (cheapest burstable tier); --public-access 0.0.0.0 = allow Azure services ----
-az postgres flexible-server create -g $RG -n $PG -l $LOC \
-  --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16 \
-  --database-name sentinel --admin-user sentineladmin --admin-password "$PG_PASS" \
-  --public-access 0.0.0.0 --yes
-PG_HOST=$(az postgres flexible-server show -g $RG -n $PG --query fullyQualifiedDomainName -o tsv)
-DATABASE_URL="postgresql://sentineladmin:$PG_PASS@$PG_HOST:5432/sentinel?sslmode=require"
+# ---- 2. Postgres: none to create — using your Supabase DATABASE_URL above.
+#         (Use the SESSION POOLER string, port 5432 — it's IPv4 and supports Prisma's migrate-on-boot.
+#          The direct db.<ref>.supabase.co host is IPv6-only on the free tier and won't reach from ACA.)
 
 # ---- 3. Container Apps environment (Consumption; no fixed fee) ----
 az containerapp env create -g $RG -n $ENVN -l $LOC
@@ -111,26 +108,26 @@ ACR_USER=$(az acr credential show -n $ACR --query username -o tsv)
 ACR_PASS=$(az acr credential show -n $ACR --query 'passwords[0].value' -o tsv)
 
 # ---- 5. API — internal ingress, scale-to-zero, secrets for the sensitive values ----
-az containerapp create -g $RG -n sentinel-api --environment $ENVN \
-  --image $ACR_SERVER/sentinel-api:v1 \
+az containerapp create -g $RG -n overwatch-api --environment $ENVN \
+  --image $ACR_SERVER/overwatch-api:v1 \
   --registry-server $ACR_SERVER --registry-username $ACR_USER --registry-password $ACR_PASS \
   --target-port 8787 --ingress internal --min-replicas 0 --max-replicas 1 --cpu 0.5 --memory 1.0Gi \
   --secrets db-url="$DATABASE_URL" rzp-secret="$RZP_KEY_SECRET" wh-secret="$WEBHOOK_SECRET" \
   --env-vars DATABASE_URL=secretref:db-url RAZORPAY_KEY_ID="$RZP_KEY_ID" \
              RAZORPAY_KEY_SECRET=secretref:rzp-secret RAZORPAY_WEBHOOK_SECRET=secretref:wh-secret \
              NODE_ENV=production
-API_FQDN=$(az containerapp show -g $RG -n sentinel-api --query properties.configuration.ingress.fqdn -o tsv)
+API_FQDN=$(az containerapp show -g $RG -n overwatch-api --query properties.configuration.ingress.fqdn -o tsv)
 
 # ---- 6. WEB — external ingress; nginx proxies /api to the API's internal FQDN ----
-az containerapp create -g $RG -n sentinel-web --environment $ENVN \
-  --image $ACR_SERVER/sentinel-web:v1 \
+az containerapp create -g $RG -n overwatch-web --environment $ENVN \
+  --image $ACR_SERVER/overwatch-web:v1 \
   --registry-server $ACR_SERVER --registry-username $ACR_USER --registry-password $ACR_PASS \
   --target-port 80 --ingress external --min-replicas 0 --max-replicas 1 --cpu 0.25 --memory 0.5Gi \
   --env-vars API_UPSTREAM="https://$API_FQDN"
-WEB_FQDN=$(az containerapp show -g $RG -n sentinel-web --query properties.configuration.ingress.fqdn -o tsv)
+WEB_FQDN=$(az containerapp show -g $RG -n overwatch-web --query properties.configuration.ingress.fqdn -o tsv)
 
 # ---- 7. Now the public URL is known — set it on the API (CORS + payment-link callback) ----
-az containerapp update -g $RG -n sentinel-api \
+az containerapp update -g $RG -n overwatch-api \
   --set-env-vars WEB_ORIGIN="https://$WEB_FQDN" PUBLIC_BASE_URL="https://$WEB_FQDN"
 
 echo "LIVE:    https://$WEB_FQDN"
@@ -145,14 +142,13 @@ Open the `LIVE` URL. (First hit after idle triggers a ~few-second cold start —
 az acr show -n $ACR --query loginServer -o tsv                                             # registry host
 az acr credential show -n $ACR --query username -o tsv                                     # registry user
 az acr credential show -n $ACR --query 'passwords[0].value' -o tsv                         # registry password
-az postgres flexible-server show -g $RG -n $PG --query fullyQualifiedDomainName -o tsv     # DB host
-az containerapp show -g $RG -n sentinel-api --query properties.configuration.ingress.fqdn -o tsv  # API internal FQDN
-az containerapp show -g $RG -n sentinel-web --query properties.configuration.ingress.fqdn -o tsv  # public site
+az containerapp show -g $RG -n overwatch-api --query properties.configuration.ingress.fqdn -o tsv  # API internal FQDN
+az containerapp show -g $RG -n overwatch-web --query properties.configuration.ingress.fqdn -o tsv  # public site
 ```
 
 Your **Razorpay keys are not in Azure** — copy them from your local `server/.env` (Razorpay Dashboard →
 Settings → API Keys → **Test Mode**). Rotate a secret later with
-`az containerapp secret set -g $RG -n sentinel-api --secrets rzp-secret="<new>"`.
+`az containerapp secret set -g $RG -n overwatch-api --secrets rzp-secret="<new>"`.
 
 ### Webhook + smoke test
 
@@ -160,24 +156,21 @@ Register the webhook in the Razorpay dashboard → **`https://<WEB_FQDN>/api/web
 `WEBHOOK_SECRET`, event `payment.captured`. Then verify the money path from Cloud Shell:
 
 ```bash
-az containerapp exec -g $RG -n sentinel-api --command "npm run selftest:webhook"
+az containerapp exec -g $RG -n overwatch-api --command "npm run selftest:webhook"
 ```
 
 ### Keep it under budget
 
-```bash
-az postgres flexible-server stop -g $RG -n $PG     # between demo sessions — storage-only (~$4/mo)
-az postgres flexible-server start -g $RG -n $PG    # ~1 min before you demo
-```
-
-The container apps already idle to zero. To tear everything down after the buildathon: `az group delete -n $RG --yes`.
+The container apps idle to zero on their own, and Supabase Postgres is free — so there's nothing to stop
+between sessions. The registry (~$5/mo) is the only fixed cost. Tear everything Azure down after the
+buildathon with `az group delete -n $RG --yes` (your Supabase project is separate and stays).
 
 ### Redeploying after a code change
 
 ```bash
-az acr build -r $ACR -t sentinel-api:v2 -f server/Dockerfile .
-az containerapp update -g $RG -n sentinel-api --image $ACR_SERVER/sentinel-api:v2
-# (web: build sentinel-web:v2 from ./web, then update sentinel-web the same way)
+az acr build -r $ACR -t overwatch-api:v2 -f server/Dockerfile .
+az containerapp update -g $RG -n overwatch-api --image $ACR_SERVER/overwatch-api:v2
+# (web: build overwatch-web:v2 from ./web, then update overwatch-web the same way)
 ```
 
 ---

@@ -15,7 +15,7 @@ interface AuthContextValue {
   signOut: () => void;
 }
 
-const SESSION_KEY = 'sentinel.session';
+const SESSION_KEY = 'overwatch.session';
 const AuthCtx = createContext<AuthContextValue | null>(null);
 
 function readSession(): AuthUser | null {

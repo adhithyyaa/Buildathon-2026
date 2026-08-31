@@ -1,6 +1,6 @@
-# Sentinel — Postmortem: what broke, and how we got out
+# Overwatch — Postmortem: what broke, and how we got out
 
-> **Read this first.** Sentinel is a bounded, ML-first revenue-recovery system for Razorpay (see
+> **Read this first.** Overwatch is a bounded, ML-first revenue-recovery system for Razorpay (see
 > [`README.md`](README.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)). This document is not a
 > highlight reel — it is the times the build was *wrong*, how each was caught, and the committed artifact
 > that now stops it recurring. The headline (Incident 1) is the one that matters most: our best model
@@ -147,7 +147,7 @@ dashboard — the calibration isn't an internal claim, it's rendered where the p
 **Symptom.** While restarting dev servers, a broad "kill anything matching `tsx`" command took the whole
 app down — including the database. Queries started failing against a Postgres that was no longer there.
 
-**Diagnosis.** Sentinel runs a *real* embedded PostgreSQL 18 for local dev (no Docker) via
+**Diagnosis.** Overwatch runs a *real* embedded PostgreSQL 18 for local dev (no Docker) via
 `npm run db:local`, which is `tsx src/scripts/localdb.ts` (see `server/package.json`). The dev API
 (`tsx watch src/index.ts`), the retry worker (`tsx watch src/worker/index.ts`), and the DB supervisor
 **all run under the `tsx` runtime.** A process filter matching the runtime name swept up the database
@@ -167,7 +167,7 @@ database again.
 **TEST** API, link creation started returning `RATE_LIMIT_EXCEEDED`.
 
 **Diagnosis.** Razorpay test mode caps a business at **30 payment links**. The self-test creates *real*
-test-mode links end-to-end, and repeated runs crossed that ceiling. This was not a bug in Sentinel — it was
+test-mode links end-to-end, and repeated runs crossed that ceiling. This was not a bug in Overwatch — it was
 a genuine upstream limit, hit for real.
 
 **Root cause.** A hard upstream constraint on the test environment, surfaced under exactly the conditions

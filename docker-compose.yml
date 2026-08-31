@@ -1,4 +1,4 @@
-# Local PostgreSQL for Sentinel.
+# Local PostgreSQL for Overwatch.
 # Start with:  docker compose up -d   (requires Docker Desktop running)
 # Then set server/.env DATABASE_URL to the value in server/.env.example.
 services:

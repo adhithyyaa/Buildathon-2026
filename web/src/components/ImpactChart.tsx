@@ -16,7 +16,7 @@ const H = 264;
 
 /**
  * The flagship counterfactual chart: cumulative recovered-₹ (solid) vs the dotted "without
- * Sentinel" baseline — the control arm's MEASURED ₹-weighted recovery rate applied to the same
+ * Overwatch" baseline — the control arm's MEASURED ₹-weighted recovery rate applied to the same
  * failures. Competitors estimate this line; the Recovery Lab's randomized holdout measures it.
  */
 export function ImpactChart({ data }: { data: ImpactSeries }) {

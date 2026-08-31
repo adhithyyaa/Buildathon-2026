@@ -1,4 +1,4 @@
-# Sentinel AI — Panel Defense Playbook
+# Overwatch — Panel Defense Playbook
 
 How to defend the build under questioning. Every answer here is backed by something running in the
 repo — a panel, a test, or an artifact. Lead with the one-liner, then go as deep as the room wants.
@@ -14,7 +14,7 @@ that proves it's ₹X *more than would have happened anyway*, and can't quietly 
 ## The 30-second open
 
 *"In India a failed payment is usually mechanical — a UPI timeout, a bank blip, a momentary decline —
-not a change of heart, so it's recoverable. Sentinel catches it, the ML picks the safest recovery move
+not a change of heart, so it's recoverable. Overwatch catches it, the ML picks the safest recovery move
 and how likely it is to work, a deterministic policy engine bounds it against RBI/NPCI rules, and an
 allow-listed executor acts. Then — the part nobody else does — we measure the incremental rupees
 against a live 20% control holdout, and prove the whole money path with a signed Razorpay webhook and
@@ -111,7 +111,7 @@ clones and show every tamper caught, then attempt an UPDATE and a DELETE on a re
 rolled-back transaction and show the database refuse both. Not even the app can rewrite history.
 
 **"Doesn't Razorpay already do recovery? Why aren't you redundant?"**
-Razorpay's Optimizer / Intelligent Retry Engine are merchant-configured, static rules. Sentinel **plugs
+Razorpay's Optimizer / Intelligent Retry Engine are merchant-configured, static rules. Overwatch **plugs
 under** them as the measurement + governance layer they don't publish: holdout-measured incremental ₹,
 causal uplift per action, PSI drift monitoring, tamper-evident audit, and India policy-as-code. We don't
 compete with the rails — we make the recovery on them **provable and safe**.

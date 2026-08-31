@@ -110,14 +110,14 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
   access since Mar 2026, on Anthropic's Claude Agent SDK), the **Intelligent Retry Engine** (WhatsApp nudges for failed
   autopay debits), the **RazorpayX Receivables Agent** (invoice follow-up, Jun 2026 beta), **Optimizer** (enterprise ML
   routing) and **Vulcan** (the payments foundation model, Aug 2026). They are real and good.
-- **Rationale:** So we do **not** clone or compete with them — Sentinel *uses* Razorpay's Payment Links, retries and
+- **Rationale:** So we do **not** clone or compete with them — Overwatch *uses* Razorpay's Payment Links, retries and
   webhooks as execution primitives and is designed to **plug under** those agents. The value we add is the layer none of
   them publish: **holdout-measured incremental recovery** (net of cost), **calibrated per-case probabilities**,
   **deterministic error-reason triage before any model**, **India policy-as-code** (retry caps, quiet hours, opt-out,
   ₹-threshold approvals) and an **append-only audit trail** — plus live failure-spike (anomaly) awareness and
   signed-webhook proof. Target user unchanged: **mid-market Indian D2C / subscription merchants at ~₹50L–₹5Cr/month** —
   big enough that 1–2 recovery points is ₹1–10L/month, too small to staff this in-house. Agent Studio and the Intelligent
-  Retry Engine intervene; they don't publish measured, governed, auditable proof — which is exactly the gap Sentinel owns.
+  Retry Engine intervene; they don't publish measured, governed, auditable proof — which is exactly the gap Overwatch owns.
 - **Trade-off:** We depend on Razorpay's primitives and don't own the rails — which is the point: a thin measurement-and-
   governance layer is adoptable in a day and complements the shipped agents, where a rails or agent replacement would
   compete head-on with the panel's own products.
@@ -176,7 +176,7 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
   double-fire retries; the kill switch is DB-backed so the separate worker process actually observes it; and `/approve`
   no longer books fictional recovery on a hand-off case.
 - **Trade-off:** Some remaining gaps are documented, not yet built — owned openly as the production roadmap. *(Follow-up:
-  a bearer-token guard (`SENTINEL_ADMIN_TOKEN`) now protects the operator/destructive endpoints — enforced when set,
+  a bearer-token guard (`OVERWATCH_ADMIN_TOKEN`) now protects the operator/destructive endpoints — enforced when set,
   open for the zero-config demo — and the metrics endpoint was moved to SQL-side aggregation (groupBy/aggregate) so it
   no longer loads whole tables into memory. Still on the roadmap: a real model registry + drift monitoring, a
   transactional-outbox for per-endpoint idempotency, and order-level out-of-order reconciliation.)*
@@ -266,9 +266,9 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
 - **Trade-off:** Fewer captures in the demo than a fabricated set would show — and that honesty is the point under a panel
   that reads code and can tell.
 
-### ADR-026 — Lock the claim numbers to the code, and rebrand Recoup → Sentinel AI *(2026-08-28)*
+### ADR-026 — Lock the claim numbers to the code, and rebrand Recoup → Overwatch *(2026-08-28)*
 - **Context:** Docs drift from code — a metric quoted in a README goes stale after a retrain and quietly becomes a lie.
-  Separately, the project was renamed from "Recoup" to **Sentinel AI** ("Where nothing slips through").
+  Separately, the project was renamed from "Recoup" to **Overwatch** ("Where nothing slips through").
 - **Rationale:** `claims.docs.test.ts` is an **artifact-locked-numbers test**: every headline metric asserted in the docs
   is re-read from the actual ML artifacts / eval JSON at test time, so a number that drifts from the code **fails CI**.
   The rebrand was a mechanical sweep (133 occurrences / 53 files); intentionally preserved were external competitor refs

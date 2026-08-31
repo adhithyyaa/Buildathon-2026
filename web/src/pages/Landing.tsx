@@ -3,7 +3,7 @@ import { Logo } from '../components/Logo';
 import { Icon } from '../components/icons';
 
 /**
- * Marketing landing for Sentinel AI — the revenue-integrity layer that plugs under Razorpay.
+ * Marketing landing for Overwatch — the revenue-integrity layer that plugs under Razorpay.
  * Identity: deep ink + warm paper + a single emerald signal; Fraunces (serif display), Hanken Grotesk
  * (UI), JetBrains Mono (data/proof). Editorial dark/light bands, no gradients-as-crutch, no purple.
  */
@@ -46,7 +46,7 @@ function TopNav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 lg:px-8">
         <Link to="/" className="flex items-center gap-2.5">
           <Logo className="h-8 w-8" />
-          <span className="text-[17px] font-bold tracking-tight text-ink">Sentinel AI</span>
+          <span className="text-[17px] font-bold tracking-tight text-ink">Overwatch</span>
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex">
           <a href="#features" className="transition-colors hover:text-ink">Product</a>
@@ -81,7 +81,7 @@ function Hero() {
             Recover the revenue<br />you already <span className="text-emerald-400">earned.</span>
           </h1>
           <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-slate-300">
-            Sentinel AI catches failed payments, decides the safest recovery move, and proves — against a
+            Overwatch catches failed payments, decides the safest recovery move, and proves — against a
             live control holdout, with a signed webhook — exactly how many{' '}
             <span className="font-semibold text-white">incremental rupees</span> it brought back. Measured, not estimated.
           </p>
@@ -111,7 +111,7 @@ function HeroVisual() {
           <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
           <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
           <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
-          <span className="ml-3 font-mono text-[11px] text-slate-400">app.sentinel.ai / overview</span>
+          <span className="ml-3 font-mono text-[11px] text-slate-400">app.overwatch.ai / overview</span>
         </div>
         <div className="space-y-4 p-5">
           <div className="grid grid-cols-2 gap-3">
@@ -213,7 +213,7 @@ function Problem() {
           <span className="font-semibold text-ink"> wanted to pay</span> — the failure is mechanical and recoverable.
           But blind retries annoy customers and burn gateway cost, and doing nothing leaves real money on the table.
           Recovery is <span className="font-semibold text-ink">decisioning under constraints</span> — exactly what
-          Sentinel AI automates, and proves.
+          Overwatch automates, and proves.
         </p>
       </div>
     </section>
@@ -297,7 +297,7 @@ function Differentiator() {
           <h2 className="mt-4 font-display text-[2rem] font-semibold tracking-[-0.01em] text-ink sm:text-[2.6rem]">Incremental ₹, not gross.</h2>
           <p className="mt-6 text-lg leading-relaxed text-slate-600">
             Every recovery tool reports “we recovered ₹X.” That proves nothing — some customers would have paid anyway.
-            Sentinel AI runs an always-on <span className="font-semibold text-ink">control holdout</span> and reports the
+            Overwatch runs an always-on <span className="font-semibold text-ink">control holdout</span> and reports the
             recovery <span className="font-semibold text-ink">over what would have happened with no action</span>, with a
             95% confidence interval — and auto-suppresses any reason that can’t beat doing nothing.
           </p>
@@ -365,7 +365,7 @@ function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-slate-500 lg:flex-row lg:px-8">
         <div className="flex items-center gap-2.5">
           <Logo className="h-7 w-7" />
-          <span className="font-bold text-ink">Sentinel AI</span>
+          <span className="font-bold text-ink">Overwatch</span>
           <span className="text-slate-300">·</span>
           <span className="font-mono text-[12px]">Where nothing slips through</span>
         </div>

@@ -24,7 +24,7 @@ export interface CaseNarrateInput {
 /** Plain-English "why did the system choose this action" for the ops user. */
 export async function explainCase(c: CaseNarrateInput): Promise<{ text: string; source: 'llm' | 'template' }> {
   const system =
-    "You are Sentinel's analyst. In 2-3 short, plain sentences explain to a merchant operations user WHY the recovery system chose this action for this failed payment. Reference the actual numbers. No jargon, no markdown, no preamble.";
+    "You are Overwatch's analyst. In 2-3 short, plain sentences explain to a merchant operations user WHY the recovery system chose this action for this failed payment. Reference the actual numbers. No jargon, no markdown, no preamble.";
   const user = [
     `Merchant: ${c.merchant}. Amount: ${formatINR(c.amountPaise)}. Failure reason: ${c.reason}. Method: ${c.method ?? 'unknown'}.`,
     `The ML model chose action "${c.action}" with recovery probability ${pct(c.recoveryProbability)}, confidence ${pct(c.confidence)}, escalation risk ${pct(c.escalation)}.`,

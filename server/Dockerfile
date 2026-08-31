@@ -1,8 +1,8 @@
-# Sentinel AI — API (Node/Express + Prisma). Applies migrations on boot, then serves.
+# Overwatch — API (Node/Express + Prisma). Applies migrations on boot, then serves.
 # Build context is the REPO ROOT so the git-tracked ml/*.json evidence reports can be bundled — that
 # lets /api/ml/{uplift,conformal,rct,explore,metrics} serve them even when the optional Python ML
 # service isn't deployed. Build with:
-#   docker build -f server/Dockerfile -t sentinel-api .      (or: az acr build -f server/Dockerfile .)
+#   docker build -f server/Dockerfile -t overwatch-api .      (or: az acr build -f server/Dockerfile .)
 FROM node:20-slim
 WORKDIR /app
 # OpenSSL is required by Prisma's query engine on slim images.

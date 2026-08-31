@@ -8,7 +8,7 @@ import { useAuth } from '../lib/auth';
 type Mode = 'signin' | 'signup';
 
 /**
- * Sign-in / create-account for Sentinel AI. Google uses real Google Identity Services; the email path
+ * Sign-in / create-account for Overwatch. Google uses real Google Identity Services; the email path
  * establishes a local session so the dashboard is always reachable (there is no email backend).
  * Identity matches the landing: ink brand panel, warm-paper form, emerald signal, serif display.
  */
@@ -77,7 +77,7 @@ export function Login() {
       >
         <Link to="/" className="relative flex items-center gap-2.5 text-white">
           <Logo className="h-9 w-9" />
-          <span className="text-xl font-bold tracking-tight">Sentinel AI</span>
+          <span className="text-xl font-bold tracking-tight">Overwatch</span>
         </Link>
         <div className="relative">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-emerald-300">
@@ -126,7 +126,7 @@ export function Login() {
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">
           <Link to="/" className="mb-8 flex items-center gap-2.5 lg:hidden">
             <Logo className="h-9 w-9" />
-            <span className="text-xl font-bold tracking-tight text-ink">Sentinel AI</span>
+            <span className="text-xl font-bold tracking-tight text-ink">Overwatch</span>
           </Link>
 
           <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">{heading}</h1>
@@ -184,7 +184,7 @@ export function Login() {
 
           <p className="mt-6 text-center text-sm text-slate-500">
             {mode === 'signin' ? (
-              <>New to Sentinel AI?{' '}
+              <>New to Overwatch?{' '}
                 <button onClick={() => switchMode('signup')} className="font-semibold text-emerald-600 hover:text-emerald-700">Create an account</button>
               </>
             ) : (

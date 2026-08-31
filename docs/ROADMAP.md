@@ -1,13 +1,13 @@
-# Sentinel — ML v2 Design Record & Forward Roadmap
+# Overwatch — ML v2 Design Record & Forward Roadmap
 
-> **STATUS — this plan shipped.** This document was written as a forward plan to make Sentinel the
+> **STATUS — this plan shipped.** This document was written as a forward plan to make Overwatch the
 > strongest entry in the field on **every** axis (ML model, measurement rigor, code quality, docs). Its
 > **Phase 1 and Phase 2 are now built and tested** — so read §1–§3 as the *design record of what was
 > executed*, not a wishlist. The **shipped ledger** below maps each planned item to the file that
 > implements it and the test that proves it. Genuinely-forward work is collected in **§5 "Still ahead"**.
 >
 > The design was validated against a later, wider code-level scan of the field (see the published
-> competitive analysis linked from [`DEFENSE.md`](./DEFENSE.md)); Sentinel came out first, and the axes
+> competitive analysis linked from [`DEFENSE.md`](./DEFENSE.md)); Overwatch came out first, and the axes
 > below are why.
 
 ## 0. Shipped ledger — plan → code → proof
@@ -39,7 +39,7 @@ originally-planned standalone `docs/ML_DESIGN.md` was folded into those three ra
 
 ---
 
-## 1. The ML crown — "Sentinel Uplift Engine v2"
+## 1. The ML crown — "Overwatch Uplift Engine v2"
 
 ### The insight
 

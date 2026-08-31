@@ -49,7 +49,7 @@ export function BusinessCasePanel({ lab }: { lab: LabReport | null }) {
 
   return (
     <Card
-      title="Business case — what Sentinel recovers for you"
+      title="Business case — what Overwatch recovers for you"
       right={<Pill tone="emerald">ROI calculator</Pill>}
     >
       <p className="text-sm leading-relaxed text-slate-600">

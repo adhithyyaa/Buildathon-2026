@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# reproduce.sh — one command to reproduce Sentinel's verifiable results.
+# reproduce.sh — one command to reproduce Overwatch's verifiable results.
 #
 # Runs on Linux/macOS and on Windows via Git Bash. It installs dependencies, generates the Prisma
 # client, typechecks, and runs the FULL test suite for both the server and the web app. The suite is

@@ -1,4 +1,4 @@
-# Sentinel AI — web (Vite build served by nginx; nginx reverse-proxies /api + /health to the API,
+# Overwatch — web (Vite build served by nginx; nginx reverse-proxies /api + /health to the API,
 # so the app's same-origin relative fetches work with no CORS and no build-time API URL).
 FROM node:20-slim AS build
 WORKDIR /app

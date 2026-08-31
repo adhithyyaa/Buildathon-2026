@@ -2,7 +2,7 @@
 Cross-world TRANSFER evaluation — the panel answer to "every number here comes
 from a synthetic world you authored."
 
-Sentinel ships two INDEPENDENTLY designed synthetic worlds:
+Overwatch ships two INDEPENDENTLY designed synthetic worlds:
 
   world A (worldmodel.py)   reason-dominated: recovery hinges on a reason x action
                             fit matrix. Models trained on it live in ml/artifacts.

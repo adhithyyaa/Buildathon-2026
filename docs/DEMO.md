@@ -1,10 +1,10 @@
-# Sentinel — Panel Demo Runbook
+# Overwatch — Panel Demo Runbook
 
 A click-by-click script for a live panel demo (~9–11 min), verified end-to-end against the running
 dashboard. Everything here was dry-run tested; every beat lands.
 
 > **Open with:** *"In India a failed payment is usually mechanical and recoverable — a UPI timeout, a
-> bank downtime, a momentary decline — not a change of heart. Sentinel is the ML-first recovery layer
+> bank downtime, a momentary decline — not a change of heart. Overwatch is the ML-first recovery layer
 > that decides the safest move, bounds it with deterministic policy, and — uniquely — proves the
 > incremental rupees against a live control arm."*
 
@@ -49,7 +49,7 @@ Everything in the demo is one of those three.
   `+NNpp` chip. *"That last one is the number nobody publishes — recovered versus a live no-action
   control, not gross."*
 - **Measured-impact chart** (the flagship): cumulative recovered ₹ (solid) vs a dotted "without
-  Sentinel" baseline. **"Stripe and Checkout.com estimate that dotted line. Ours is measured from a
+  Overwatch" baseline. **"Stripe and Checkout.com estimate that dotted line. Ours is measured from a
   randomised 20% control holdout."**
 - **Recovery funnel**: Detected → Decided → Attempted → Recovered, with the control-held drop-off
   labelled ("that's the experiment"). **Failure reasons** in Razorpay's own Customer/Bank/Business/
@@ -160,7 +160,7 @@ Everything in the demo is one of those three.
   ML decision). Say so — it's the holdout that makes the Lab honest — and open another case.
 - **A view won't load / API down** → the dashboard degrades gracefully; the pipeline falls back to
   deterministic scoring if ML is unreachable (flagged `source: fallback`). Re-run the API terminal.
-- **A guarded action returns 401** → a `SENTINEL_ADMIN_TOKEN` is set; paste it via the shield icon.
+- **A guarded action returns 401** → a `OVERWATCH_ADMIN_TOKEN` is set; paste it via the shield icon.
 
 ---
 

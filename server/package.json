@@ -1,8 +1,8 @@
 {
-  "name": "sentinel-server",
+  "name": "overwatch-server",
   "version": "0.1.0",
   "private": true,
-  "description": "Sentinel — bounded AI revenue-recovery engine (Razorpay AI Buildathon 2026)",
+  "description": "Overwatch — bounded AI revenue-recovery engine (Razorpay AI Buildathon 2026)",
   "license": "MIT",
   "scripts": {
     "dev": "tsx watch src/index.ts",

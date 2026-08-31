@@ -1,5 +1,5 @@
 """
-Sentinel ML training pipeline.
+Overwatch ML training pipeline.
 
 Trains, on the SAME train/test split:
   Recovery head (binary: recovered | case + action)

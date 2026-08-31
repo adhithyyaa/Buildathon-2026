@@ -1,6 +1,6 @@
 # Compliance — encoded, not just mentioned
 
-Indian payment-recovery rules are safety-critical, so Sentinel encodes them as **code in the money
+Indian payment-recovery rules are safety-critical, so Overwatch encodes them as **code in the money
 path** (the deterministic policy engine + executor), not as prose. This maps each rule to where it
 is enforced. "Encoded" = a code path enforces it; "Framed" = represented honestly in behaviour/docs
 where a real send can't happen in test mode.
@@ -24,7 +24,7 @@ where a real send can't happen in test mode.
 
 ## DPDP Rules 2025 (partial — the honest gap)
 
-Sentinel stores no card data and honours opt-out, but full DPDP data-fiduciary controls
+Overwatch stores no card data and honours opt-out, but full DPDP data-fiduciary controls
 (PII hashing, retention windows, erasure-on-opt-out, breach reporting) are **not yet implemented** —
 customers are stored as coarse synthetic priors. This is the top compliance gap for a real
 deployment and is called out rather than hidden.

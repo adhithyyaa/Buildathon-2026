@@ -52,7 +52,7 @@ export function TokenControl() {
         <div className="absolute right-0 z-30 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
           <div className="text-xs font-bold text-slate-900">Operator token</div>
           <p className="mt-1 text-[11px] leading-relaxed text-slate-500 font-medium">
-            Needed only if the server has <span className="font-mono text-slate-800 font-bold">SENTINEL_ADMIN_TOKEN</span> set. Sent as a bearer token
+            Needed only if the server has <span className="font-mono text-slate-800 font-bold">OVERWATCH_ADMIN_TOKEN</span> set. Sent as a bearer token
             on guarded actions. Stored in this browser only.
           </p>
           <input

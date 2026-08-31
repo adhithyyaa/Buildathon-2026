@@ -1,4 +1,4 @@
-# Data Card — Sentinel synthetic training data
+# Data Card — Overwatch synthetic training data
 
 **There is no real customer or payment data in this repository.** Every model in `ml/` is
 trained on a synthetic "world model". This card describes it honestly, including its limits.

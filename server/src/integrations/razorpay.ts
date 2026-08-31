@@ -49,7 +49,7 @@ export async function createPaymentLink(p: CreatePaymentLinkParams): Promise<Pay
     currency: 'INR',
     description: p.description,
     reference_id: p.referenceId,
-    notify: { sms: false, email: false }, // Sentinel drafts + "sends" its own messages
+    notify: { sms: false, email: false }, // Overwatch drafts + "sends" its own messages
     reminder_enable: false,
     notes: p.notes,
   };

@@ -1,6 +1,6 @@
-# Sentinel — Architecture
+# Overwatch — Architecture
 
-> **Sentinel** is a bounded, **ML-first** operations system that recovers failed Razorpay payments and abandoned
+> **Overwatch** is a bounded, **ML-first** operations system that recovers failed Razorpay payments and abandoned
 > checkouts. Tabular machine-learning models decide *what to do and how likely it is to work*; a deterministic policy
 > engine + executor decide *what is allowed to actually happen*; and a signed Razorpay webhook proves how much money
 > came back — with a full audit trail. An LLM is used only to explain decisions in words, never to make them.
@@ -26,10 +26,10 @@ constraints** — a ranking-and-classification problem, not a language problem.
 
 ## 2. Who is this for (target segment)
 
-Sentinel is built for **mid-market Indian D2C / subscription merchants processing roughly ₹50L–₹5Cr/month on Razorpay**
+Overwatch is built for **mid-market Indian D2C / subscription merchants processing roughly ₹50L–₹5Cr/month on Razorpay**
 — large enough that 1–2 recovery points is real money (₹1–10L/month), too small to staff a data-science team or a
 recovery ops desk. They already get Razorpay's built-in **retries + Payment Links + dunning**, but those are
-*merchant-configured, static rules*. Sentinel is the decision layer on top: it learns *which* recovery move fits *which*
+*merchant-configured, static rules*. Overwatch is the decision layer on top: it learns *which* recovery move fits *which*
 failure for *this* merchant, stays inside hard guardrails, and shows the recovered-rupee proof a founder can trust.
 
 ## 3. What the demo proves in 60 seconds
@@ -245,11 +245,11 @@ Yes — and well. Razorpay ships first-party recovery products a merchant can tu
 Subscription Recovery and Abandoned Cart Conversion agents** (early access since Mar 2026, built on Anthropic's Claude
 Agent SDK), the **Intelligent Retry Engine** (WhatsApp nudges for failed autopay debits), the **RazorpayX Receivables
 Agent** (invoice follow-up, Jun 2026 beta), **Optimizer** (enterprise ML routing on 150+ parameters) and **Vulcan**
-(the payments foundation model, Aug 2026). Sentinel does **not** compete with these. It *uses* Razorpay's Payment Links,
+(the payments foundation model, Aug 2026). Overwatch does **not** compete with these. It *uses* Razorpay's Payment Links,
 retries and webhooks as execution primitives, and is built to **plug under** those agents. What it adds is the
 **measurement-and-governance layer** none of them publish:
 
-| | Agent Studio · Intelligent Retry Engine · Optimizer | Sentinel (plugs under them) |
+| | Agent Studio · Intelligent Retry Engine · Optimizer | Overwatch (plugs under them) |
 |---|---|---|
 | Recovery measurement | Recovery rates not published; no public holdout | **Holdout-measured incremental** ₹ recovered per batch, net of cost |
 | Per-case certainty | Not surfaced | **Calibrated** recovery probability + escalation risk + anomaly score |
@@ -259,7 +259,7 @@ retries and webhooks as execution primitives, and is built to **plug under** tho
 | Incident awareness | Enterprise (Optimizer) | Windowed anomaly detection flags a live bank/UPI failure spike |
 | Proof | Merchant reads reports | Signed-webhook `recovered ₹` with a full **append-only audit trail** |
 
-Sentinel is not a payment gateway or a rival to Agent Studio, and doesn't try to be. It's the thin, auditable brain that
+Overwatch is not a payment gateway or a rival to Agent Studio, and doesn't try to be. It's the thin, auditable brain that
 decides how to *use* those recovery tools well and **proves** what they brought back — the measurement, triage and
 governance layer they leave on the table.
 
@@ -267,7 +267,7 @@ governance layer they leave on the table.
 
 Every recovery product reports **gross** recovered ₹. That number proves nothing: some of those customers would have
 paid anyway. The number that matters — and that neither Razorpay's agents nor the third-party vendors publish — is the
-**incremental** recovery: how much we recovered *over what would have happened with no action*. Sentinel measures it live.
+**incremental** recovery: how much we recovered *over what would have happened with no action*. Overwatch measures it live.
 
 - **Holdout.** At ingest, each case is deterministically assigned an `arm`: **treatment** (the ML+policy pipeline acts)
   or a ~20% **control** (held out, no recovery action). The assignment is a hash of the dedupe key, so a replay

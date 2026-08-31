@@ -18,7 +18,7 @@ const ctx = await browser.newContext({
   deviceScaleFactor: 1,
 });
 // Seed the session BEFORE the app loads so the dashboard is reachable on first paint.
-await ctx.addInitScript((s) => { try { localStorage.setItem('sentinel.session', s); } catch (e) {} }, SESSION);
+await ctx.addInitScript((s) => { try { localStorage.setItem('overwatch.session', s); } catch (e) {} }, SESSION);
 const page = await ctx.newPage();
 
 async function beat(path, { dwell = 2600, scrolls = [] } = {}) {

@@ -1,4 +1,4 @@
-# Sentinel — Setup
+# Overwatch — Setup
 
 Everything runs locally with **no Docker and no cloud account** for the database. Real Razorpay + Claude are optional
 add-ons that light up the "real" paths.
@@ -35,7 +35,7 @@ ml/.venv/Scripts/python ml/src/train.py         # train + calibrate CatBoost/XGB
 
 ## 2. Database (zero-setup local Postgres)
 
-Sentinel ships a real embedded PostgreSQL for local dev — no Docker needed.
+Overwatch ships a real embedded PostgreSQL for local dev — no Docker needed.
 
 ```bash
 cd server

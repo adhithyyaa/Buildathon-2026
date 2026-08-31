@@ -1,5 +1,5 @@
 """
-Second, INDEPENDENT synthetic world for Sentinel — a robustness check on the eval.
+Second, INDEPENDENT synthetic world for Overwatch — a robustness check on the eval.
 
 The primary world (`worldmodel.py`) is *reason-dominated*: the best recovery action is
 almost entirely a function of the failure reason (a `reason x action` fit matrix), so a
