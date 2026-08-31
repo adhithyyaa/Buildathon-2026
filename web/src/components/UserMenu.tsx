@@ -32,7 +32,7 @@ export function UserMenu() {
   const avatar = user.picture ? (
     <img src={user.picture} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full object-cover" />
   ) : (
-    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white">
+    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-white">
       {initials(user)}
     </span>
   );

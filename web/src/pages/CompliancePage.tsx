@@ -38,7 +38,7 @@ export function CompliancePage() {
       {/* Headline */}
       <Card
         title="Red-team compliance console"
-        right={<Pill tone="violet">independent oracles</Pill>}
+        right={<Pill tone="emerald">independent oracles</Pill>}
       >
         <div className="grid gap-5 md:grid-cols-[auto_1fr] md:items-center">
           <div className={cx('rounded-2xl border p-5 text-center', allDefended ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50')}>

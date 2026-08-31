@@ -133,7 +133,7 @@ export function RigorPage() {
 
   return (
     <div className="space-y-6">
-      <Card title="Rigor & trust" right={<Pill tone="violet">every check in one place</Pill>}>
+      <Card title="Rigor & trust" right={<Pill tone="emerald">every check in one place</Pill>}>
         <div className="grid gap-5 md:grid-cols-[auto_1fr] md:items-center">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center">
             <div className="text-4xl font-extrabold tabular-nums text-emerald-700">{green}/{all.length}</div>

@@ -113,7 +113,7 @@ export function QueuePage() {
               {reason && (
                 <button
                   onClick={() => setReason('')}
-                  className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-1.5 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200/60 hover:bg-violet-100"
+                  className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/60 hover:bg-emerald-100"
                 >
                   reason: {titleCase(reason)} ✕
                 </button>

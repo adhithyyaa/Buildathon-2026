@@ -73,7 +73,7 @@ export function ModelPanel() {
               <div key={f.feature} className="flex items-center gap-2 text-xs">
                 <span className="w-28 shrink-0 truncate text-slate-600 font-medium">{f.feature.replace(/_/g, ' ')}</span>
                 <div className="h-1.5 flex-1 rounded-full bg-slate-100">
-                  <div className="h-1.5 rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${(f.importance / maxImp) * 100}%` }} />
+                  <div className="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${(f.importance / maxImp) * 100}%` }} />
                 </div>
               </div>
             ))}

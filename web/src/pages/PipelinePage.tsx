@@ -78,7 +78,7 @@ export function PipelinePage() {
       {/* Breakdowns — metrics that explain what is flowing */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="At-risk by failure reason">{m ? <BarList data={m.byReason} tone="bg-sky-500" /> : <BarSkeleton />}</Card>
-        <Card title="Chosen recovery action">{m ? <BarList data={m.byAction} tone="bg-indigo-500" /> : <BarSkeleton />}</Card>
+        <Card title="Chosen recovery action">{m ? <BarList data={m.byAction} tone="bg-emerald-500" /> : <BarSkeleton />}</Card>
       </div>
     </div>
   );

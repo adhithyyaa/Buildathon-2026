@@ -4,7 +4,7 @@ import { Card, Pill, cx } from './ui';
 import { titleCase } from '../lib/format';
 
 const CATEGORY_TONE: Record<string, string> = {
-  payment: 'text-violet-600',
+  payment: 'text-teal-600',
   customer: 'text-sky-600',
   timing: 'text-amber-600',
   merchant: 'text-emerald-600',
@@ -36,7 +36,7 @@ export function ReasonCodes({ caseId }: { caseId: string }) {
   return (
     <Card
       title="Why this decision — model reason codes"
-      right={ex.recovery_probability != null ? <Pill tone="violet">{Math.round(ex.recovery_probability * 100)}% recovery prob.</Pill> : null}
+      right={ex.recovery_probability != null ? <Pill tone="emerald">{Math.round(ex.recovery_probability * 100)}% recovery prob.</Pill> : null}
     >
       <p className="mb-3.5 text-[11px] leading-relaxed text-slate-400">
         SHAP attribution on the recovery model for <b className="text-slate-600">{titleCase(ex.action ?? '')}</b> — which case

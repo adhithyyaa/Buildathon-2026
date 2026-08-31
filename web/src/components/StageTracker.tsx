@@ -4,7 +4,7 @@ import { cx } from './ui';
 const GLOW: Record<Actor, string> = {
   det: 'ring-slate-300',
   ai: 'ring-sky-300',
-  policy: 'ring-violet-300',
+  policy: 'ring-teal-300',
   act: 'ring-emerald-300',
 };
 
@@ -12,7 +12,7 @@ const GLOW: Record<Actor, string> = {
 const PING: Record<Actor, string> = {
   det: 'bg-slate-300',
   ai: 'bg-sky-300',
-  policy: 'bg-violet-300',
+  policy: 'bg-teal-300',
   act: 'bg-emerald-300',
 };
 

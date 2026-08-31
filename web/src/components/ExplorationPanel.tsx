@@ -33,7 +33,7 @@ export function ExplorationPanel() {
   return (
     <Card
       title="Online exploration — contextual Thompson sampling"
-      right={<Pill tone="violet">roadmap · {e.ts_pct_of_oracle_final}% of oracle</Pill>}
+      right={<Pill tone="slate">roadmap · {e.ts_pct_of_oracle_final}% of oracle</Pill>}
     >
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -49,7 +49,7 @@ export function ExplorationPanel() {
                   </div>
                   <div className="h-2 rounded-full bg-slate-100">
                     <div
-                      className={cx('h-2 rounded-full transition-all duration-500', ours ? 'bg-violet-500' : k === 'oracle' ? 'bg-violet-300' : 'bg-slate-300')}
+                      className={cx('h-2 rounded-full transition-all duration-500', ours ? 'bg-emerald-600' : k === 'oracle' ? 'bg-emerald-200' : 'bg-slate-300')}
                       style={{ width: `${Math.max(1, (pv[k]! / max) * 100)}%` }}
                     />
                   </div>

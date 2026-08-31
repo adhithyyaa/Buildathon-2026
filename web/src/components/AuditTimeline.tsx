@@ -6,7 +6,7 @@ const ACTOR_COLOR: Record<string, string> = {
   system: 'bg-slate-400',
   ai: 'bg-sky-500',
   policy: 'bg-amber-500',
-  executor: 'bg-indigo-500',
+  executor: 'bg-teal-500',
   webhook: 'bg-emerald-500',
   human: 'bg-rose-500',
 };

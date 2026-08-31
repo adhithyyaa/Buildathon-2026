@@ -38,17 +38,17 @@ export function Layout() {
   return (
     <div className="min-h-full bg-[#f8fafc]">
       <CommandPalette />
-      {/* Sidebar (desktop) — ink rail, emerald signal */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-ink-line/60 bg-ink lg:flex">
+      {/* Sidebar (desktop) — light rail, emerald signal */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200/80 bg-white lg:flex">
         {/* Brand */}
         <div className="p-4">
           <Link
             to="/app"
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition-colors hover:border-white/20 hover:bg-white/[0.06]"
+            className="flex items-center gap-3 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xs transition-colors hover:border-slate-300"
           >
             <Logo className="h-9 w-9 shrink-0" />
             <div className="text-left">
-              <div className="text-sm font-bold leading-none text-white">Sentinel AI</div>
+              <div className="text-sm font-bold leading-none text-slate-900">Sentinel AI</div>
               <div className="mt-1 font-mono text-[10px] uppercase leading-none tracking-wider text-slate-400">Where Nothing Slips Through</div>
             </div>
           </Link>
@@ -58,7 +58,7 @@ export function Layout() {
         <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-4">
           {NAV_SECTIONS.map((section) => (
             <div key={section.title}>
-              <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 {section.title}
               </div>
               <div className="mt-1.5 space-y-0.5">
@@ -73,20 +73,20 @@ export function Layout() {
                         // transparent border so switching tabs never shifts the layout (no flicker).
                         'group relative flex items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
                         isActive
-                          ? 'border-emerald-500/30 bg-emerald-500/[0.12] font-semibold text-white'
-                          : 'border-transparent text-slate-300 hover:bg-white/[0.06] hover:text-white',
+                          ? 'border-emerald-200 bg-emerald-50 font-semibold text-emerald-900'
+                          : 'border-transparent text-slate-700 hover:bg-slate-100',
                       )
                     }
                   >
                     {({ isActive }) => (
                       <>
-                        {isActive && <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-emerald-400" />}
+                        {isActive && <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-emerald-500" />}
                         <div className="flex items-center gap-3">
                           <Icon
                             name={item.icon}
                             className={cx(
                               'h-[18px] w-[18px] transition-colors',
-                              isActive ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-300',
+                              isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600',
                             )}
                           />
                           <span>{item.label}</span>
@@ -157,7 +157,7 @@ export function Layout() {
                 className={({ isActive }) =>
                   cx(
                     'flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium',
-                    isActive ? 'bg-ink text-white' : 'text-slate-600 hover:bg-slate-100',
+                    isActive ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100',
                   )
                 }
               >
@@ -240,14 +240,14 @@ function SystemStatus({ health }: { health: HealthInfo | null }) {
     { label: 'Razorpay', ok: !!health?.integrations.razorpay, value: health?.integrations.razorpay ? 'test-mode' : 'simulated' },
   ];
   return (
-    <div className="border-t border-white/10 bg-black/20 px-4 py-3">
-      <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">System</div>
+    <div className="border-t border-slate-200/80 bg-slate-50/50 px-4 py-3">
+      <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">System</div>
       <div className="space-y-1.5">
         {rows.map((r) => (
           <div key={r.label} className="flex items-center gap-2 px-1 text-xs">
-            <span className={cx('h-1.5 w-1.5 rounded-full', r.ok ? 'bg-emerald-400' : 'bg-slate-500')} />
-            <span className="font-medium text-slate-400">{r.label}</span>
-            <span className={cx('ml-auto font-mono text-[11px] font-semibold tabular-nums', r.ok ? 'text-slate-200' : 'text-slate-500')}>
+            <span className={cx('h-1.5 w-1.5 rounded-full', r.ok ? 'bg-emerald-500' : 'bg-slate-400')} />
+            <span className="font-medium text-slate-500">{r.label}</span>
+            <span className={cx('ml-auto font-mono text-[11px] font-semibold tabular-nums', r.ok ? 'text-slate-700' : 'text-slate-400')}>
               {r.value}
             </span>
           </div>

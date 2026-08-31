@@ -70,7 +70,7 @@ export function ModelHealthPanel() {
           <div className="flex h-24 items-end gap-1">
             {h.scoreDistribution.bins.map((n, i) => (
               <div key={i} className="flex-1" title={`${(i * 10)}–${i * 10 + 10}%: ${n}`}>
-                <div className="rounded-t bg-violet-400 transition-all duration-500" style={{ height: `${(n / maxBin) * 100}%`, minHeight: n > 0 ? 2 : 0 }} />
+                <div className="rounded-t bg-emerald-400 transition-all duration-500" style={{ height: `${(n / maxBin) * 100}%`, minHeight: n > 0 ? 2 : 0 }} />
               </div>
             ))}
           </div>

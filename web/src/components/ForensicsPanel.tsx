@@ -22,7 +22,7 @@ export function ForensicsPanel() {
   if (!report) return <Card title="Tamper-evidence forensics"><div className="h-40 animate-pulse rounded-xl bg-slate-100" /></Card>;
   if (report.chainLength === 0) {
     return (
-      <Card title="Tamper-evidence forensics" right={<Pill tone="violet">SHA-256 hash chain</Pill>}>
+      <Card title="Tamper-evidence forensics" right={<Pill tone="slate">SHA-256 hash chain</Pill>}>
         <p className="text-sm text-slate-500">No audit chain yet — seed and process a case, then this panel attacks its ledger live.</p>
       </Card>
     );

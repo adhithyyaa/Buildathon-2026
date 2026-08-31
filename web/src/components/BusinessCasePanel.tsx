@@ -114,7 +114,7 @@ function Slider({ label, value, min, max, step, onChange, fmt }: { label: string
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1.5 w-full accent-violet-600 cursor-pointer"
+        className="mt-1.5 w-full accent-emerald-600 cursor-pointer"
       />
     </div>
   );

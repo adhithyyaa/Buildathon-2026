@@ -30,9 +30,9 @@ export function StateBadge({ state }: { state: string }) {
 
 const ACTION_TONE: Record<string, string> = {
   smart_retry: 'bg-sky-50 text-sky-700 ring-sky-200/80',
-  send_payment_link: 'bg-violet-50 text-violet-700 ring-violet-200/80',
-  send_reminder: 'bg-teal-50 text-teal-700 ring-teal-200/80',
-  offer_incentive: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200/80',
+  send_payment_link: 'bg-teal-50 text-teal-700 ring-teal-200/80',
+  send_reminder: 'bg-amber-50 text-amber-700 ring-amber-200/80',
+  offer_incentive: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
   escalate_to_human: 'bg-rose-50 text-rose-700 ring-rose-200/80',
   no_action: 'bg-slate-100 text-slate-600 ring-slate-200',
 };
@@ -46,14 +46,14 @@ export function ActionBadge({ action }: { action?: string | null }) {
   );
 }
 
-export function Pill({ tone = 'slate', children }: { tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'sky' | 'violet'; children: ReactNode }) {
+export function Pill({ tone = 'slate', children }: { tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'sky' | 'teal'; children: ReactNode }) {
   const tones: Record<string, string> = {
     slate: 'bg-slate-100 text-slate-700 ring-slate-200',
     emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
     amber: 'bg-amber-50 text-amber-700 ring-amber-200/80',
     rose: 'bg-rose-50 text-rose-700 ring-rose-200/80',
     sky: 'bg-sky-50 text-sky-700 ring-sky-200/80',
-    violet: 'bg-violet-50 text-violet-700 ring-violet-200/80',
+    teal: 'bg-teal-50 text-teal-700 ring-teal-200/80',
   };
   return <span className={cx('inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset', tones[tone])}>{children}</span>;
 }

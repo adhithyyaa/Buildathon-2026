@@ -54,19 +54,19 @@ export function caseTerminal(state: string): 'recovered' | 'escalated' | 'expire
 export const ACTOR_FILL: Record<Actor, string> = {
   det: 'bg-slate-400',
   ai: 'bg-sky-400',
-  policy: 'bg-violet-400',
+  policy: 'bg-teal-400',
   act: 'bg-emerald-400',
 };
 export const ACTOR_RING: Record<Actor, string> = {
   det: 'border-slate-400 text-slate-300',
   ai: 'border-sky-400 text-sky-300',
-  policy: 'border-violet-400 text-violet-300',
+  policy: 'border-teal-400 text-teal-300',
   act: 'border-emerald-400 text-emerald-300',
 };
 export const ACTOR_TEXT: Record<Actor, string> = {
   det: 'text-slate-300',
   ai: 'text-sky-300',
-  policy: 'text-violet-300',
+  policy: 'text-teal-300',
   act: 'text-emerald-300',
 };
 

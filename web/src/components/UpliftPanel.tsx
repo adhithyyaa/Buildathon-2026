@@ -51,14 +51,14 @@ export function UpliftPanel() {
   return (
     <Card
       title="Causal uplift engine — incremental effect per action"
-      right={<Pill tone="violet">{u.primary_learner === 't_learner' ? 'T-learner' : 'S-learner'} · v{u.version}</Pill>}
+      right={<Pill tone="slate">{u.primary_learner === 't_learner' ? 'T-learner' : 'S-learner'} · v{u.version}</Pill>}
     >
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Headline: Qini + calibration */}
         <div>
           <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Targeting quality (vs ground truth)</div>
           <div className="flex items-end gap-2">
-            <span className="text-4xl font-extrabold tabular-nums text-violet-700">{rank.qini_coefficient.toFixed(2)}</span>
+            <span className="text-4xl font-extrabold tabular-nums text-emerald-700">{rank.qini_coefficient.toFixed(2)}</span>
             <span className="mb-1 text-xs font-semibold text-slate-500">Qini coefficient</span>
           </div>
           <div className="mt-1 text-[11px] text-slate-400">1.0 = perfect case ranking · 0 = no better than random</div>
@@ -84,7 +84,7 @@ export function UpliftPanel() {
                   <span className="tabular-nums font-bold text-slate-700">+{(a.uplift * 100).toFixed(1)}pp</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100" title={`Qini ${a.qini} · uplift-MAE ${a.mae}`}>
-                  <div className="h-1.5 rounded-full bg-violet-500 transition-all duration-500" style={{ width: `${(a.uplift / maxUplift) * 100}%` }} />
+                  <div className="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${(a.uplift / maxUplift) * 100}%` }} />
                 </div>
               </div>
             ))}
@@ -107,7 +107,7 @@ export function UpliftPanel() {
                   </div>
                   <div className="h-2 rounded-full bg-slate-100">
                     <div
-                      className={cx('h-2 rounded-full transition-all duration-500', isOurs ? 'bg-emerald-500' : isOracle ? 'bg-violet-400' : 'bg-slate-300')}
+                      className={cx('h-2 rounded-full transition-all duration-500', isOurs ? 'bg-emerald-600' : isOracle ? 'bg-emerald-200' : 'bg-slate-300')}
                       style={{ width: `${Math.max(1, (pv[k]! / maxPv) * 100)}%` }}
                     />
                   </div>

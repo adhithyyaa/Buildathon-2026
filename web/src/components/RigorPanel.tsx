@@ -26,7 +26,7 @@ export function RigorPanel() {
   return (
     <Card
       title="External validity & per-case certainty"
-      right={<Pill tone="violet">rigor the field lacks</Pill>}
+      right={<Pill tone="emerald">rigor the field lacks</Pill>}
     >
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Real-RCT external validity */}

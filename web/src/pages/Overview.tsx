@@ -101,7 +101,7 @@ export function Overview() {
             The Incremental ₹ Lift KPI projects this lift over the full at-risk book; this chart counts only recovered cash.
             {impact.events.length > 0 && (
               <>
-                {' '}Markers: <span className="text-amber-600 font-semibold">● failure-spike incidents</span> · <span className="text-violet-600 font-semibold">● model loads</span>.
+                {' '}Markers: <span className="text-amber-600 font-semibold">● failure-spike incidents</span> · <span className="text-teal-600 font-semibold">● model loads</span>.
               </>
             )}
           </p>
@@ -195,7 +195,7 @@ function SectionHead({ title, hint }: { title: string; hint?: string }) {
 function RecoveryFunnel({ funnel }: { funnel: Funnel }) {
   const stages = [
     { key: 'detected', label: 'Detected', stage: funnel.detected, tone: 'bg-slate-700' },
-    { key: 'decided', label: 'Decided', stage: funnel.decided, tone: 'bg-violet-500' },
+    { key: 'decided', label: 'Decided', stage: funnel.decided, tone: 'bg-teal-500' },
     { key: 'attempted', label: 'Attempted', stage: funnel.attempted, tone: 'bg-sky-500' },
     { key: 'recovered', label: 'Recovered', stage: funnel.recovered, tone: 'bg-emerald-500' },
   ];
@@ -259,7 +259,7 @@ function RecoveryFunnel({ funnel }: { funnel: Funnel }) {
 
 const FAULT_TONES: Record<ReasonBreakdownRow['faultOwner'], string> = {
   customer: 'bg-sky-50 text-sky-700 ring-sky-200/60',
-  bank: 'bg-violet-50 text-violet-700 ring-violet-200/60',
+  bank: 'bg-teal-50 text-teal-700 ring-teal-200/60',
   business: 'bg-amber-50 text-amber-700 ring-amber-200/60',
   other: 'bg-slate-100 text-slate-600 ring-slate-200/60',
 };

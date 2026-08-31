@@ -74,8 +74,8 @@ export function ImpactChart({ data }: { data: ImpactSeries }) {
           const incident = e.type === 'incident';
           return (
             <g key={`${e.t}-${idx}`}>
-              <line x1={ex} x2={ex} y1={M.top} y2={y(0)} stroke={incident ? '#f59e0b' : '#8b5cf6'} strokeWidth="1" strokeDasharray="3 3" opacity="0.65" />
-              <circle cx={ex} cy={M.top + 4} r="3.5" fill={incident ? '#f59e0b' : '#8b5cf6'}>
+              <line x1={ex} x2={ex} y1={M.top} y2={y(0)} stroke={incident ? '#f59e0b' : '#14b8a6'} strokeWidth="1" strokeDasharray="3 3" opacity="0.65" />
+              <circle cx={ex} cy={M.top + 4} r="3.5" fill={incident ? '#f59e0b' : '#14b8a6'}>
                 <title>{e.label}</title>
               </circle>
             </g>
