@@ -1,0 +1,180 @@
+name: Azure setup
+
+# One-time infra, and the place configuration lives. Auth is OpenID Connect — GitHub presents a
+# signed claim about which repo/branch is running and Azure trusts it directly; there is no stored
+# key to leak or rotate.
+#
+#   provision  — create the registry, Container Apps environment, and both apps (placeholder image,
+#                fully wired). Run once, before the first deploy.
+#   configure  — (re)apply environment variables and link the two apps. Run whenever a value changes.
+#
+# Recommended first-run order: provision -> configure -> Deploy. Configuring before the first deploy
+# means the real image starts already holding DATABASE_URL, so it never fails a health check the way
+# an unconfigured API (which refuses to boot without a database) would.
+
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: What to run
+        required: true
+        type: choice
+        options: [provision, configure]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  RESOURCE_GROUP: overwatch-rg
+  # UAE North: this subscription allows it, Container Apps is offered there, and it has quota.
+  # ~30-50ms from India vs Mumbai's 10-20ms — noise inside Razorpay's ~5s webhook-ack budget.
+  LOCATION: uaenorth
+  ENVIRONMENT: overwatch-env
+  API_APP: overwatch-api
+  WEB_APP: overwatch-web
+  API_PORT: '8787'          # the Express API's port (internal ingress)
+  WEB_PORT: '80'            # nginx serves the SPA + proxies /api (external ingress)
+  ACR_NAME: ${{ vars.ACR_NAME }}
+
+jobs:
+  provision:
+    if: inputs.step == 'provision'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install the Container Apps extension
+        run: az extension add --name containerapp --upgrade --allow-preview true
+
+      # Checked-for then created, never `|| echo "exists"` — a real create failure has to fail here,
+      # not print a reassuring line and surface three steps later as "resource not found".
+      - name: Registry
+        run: |
+          if az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
+            echo "registry $ACR_NAME already exists"
+          else
+            az acr create -g "$RESOURCE_GROUP" -n "$ACR_NAME" --sku Basic --admin-enabled true --output none
+            echo "created $ACR_NAME"
+          fi
+
+      # --logs-destination none skips the Log Analytics workspace (one more provider a student
+      # subscription can refuse). Recent logs are still readable via `az containerapp logs show`.
+      - name: Container Apps environment
+        run: |
+          if az containerapp env show -n "$ENVIRONMENT" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
+            echo "environment $ENVIRONMENT already exists"
+          else
+            az containerapp env create -n "$ENVIRONMENT" -g "$RESOURCE_GROUP" -l "$LOCATION" \
+              --logs-destination none --output table
+          fi
+
+      # Both apps start on a placeholder image; Deploy swaps in the real one. Registry auth uses the
+      # ACR admin user (reading its password needs only Contributor — the role this workflow holds —
+      # whereas granting a managed identity AcrPull needs role-assignment rights it deliberately lacks).
+      - name: Create the apps
+        run: |
+          ACR_PASSWORD=$(az acr credential show -n "$ACR_NAME" --query "passwords[0].value" -o tsv)
+          echo "::add-mask::$ACR_PASSWORD"
+
+          create() {
+            local NAME=$1 PORT=$2 INGRESS=$3 MIN=$4 MAX=$5
+            if az containerapp show -n "$NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
+              echo "$NAME already exists — leaving it alone"; return
+            fi
+            az containerapp create \
+              -n "$NAME" -g "$RESOURCE_GROUP" --environment "$ENVIRONMENT" \
+              --image mcr.microsoft.com/k8se/quickstart:latest \
+              --target-port "$PORT" --ingress "$INGRESS" \
+              --cpu 0.25 --memory 0.5Gi --min-replicas "$MIN" --max-replicas "$MAX" \
+              --registry-server "$ACR_NAME.azurecr.io" \
+              --registry-username "$ACR_NAME" --registry-password "$ACR_PASSWORD" \
+              --output none
+            echo "created $NAME"
+          }
+
+          # API: internal ingress (only the web app reaches it), and one replica held open so the
+          # in-process retry scheduler keeps running and webhooks hit a warm instance (no cold start
+          # inside Razorpay's ack budget). 0.25 vCPU / 0.5 GiB is the smallest tier and the only line
+          # that bills continuously; step up to 0.5/1.0Gi if the API is ever OOM-killed.
+          create "$API_APP" "$API_PORT" internal 1 1
+          # Web: public nginx SPA that also proxies /api to the API — scales to zero when idle.
+          create "$WEB_APP" "$WEB_PORT" external 0 2
+
+      - name: Report
+        run: echo "Provisioned. Next: run this workflow with **step=configure**, then **Deploy** (or push)." >> "$GITHUB_STEP_SUMMARY"
+
+  configure:
+    if: inputs.step == 'configure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install the Container Apps extension
+        run: az extension add --name containerapp --upgrade --allow-preview true
+
+      # Read back rather than hardcoded, so this keeps working if an app is recreated with a new host.
+      - name: Resolve both URLs
+        run: |
+          API_FQDN=$(az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          WEB_FQDN=$(az containerapp show -n "$WEB_APP" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "API_FQDN=$API_FQDN" >> "$GITHUB_ENV"
+          echo "WEB_URL=https://$WEB_FQDN" >> "$GITHUB_ENV"
+
+      # Secret values arrive through the step environment (not the command text) so nothing lands in a
+      # log line, and the sensitive three are stored as Container Apps *secrets* (secretref), not as
+      # plaintext env vars. WEB_ORIGIN + PUBLIC_BASE_URL are the public web URL (CORS + the Razorpay
+      # payment-link callback). OPENAI_* is optional — empty key => the API uses its template fallback.
+      - name: Configure the API
+        env:
+          DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+          RAZORPAY_KEY_ID: ${{ secrets.APP_RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.APP_RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.APP_RAZORPAY_WEBHOOK_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.APP_OPENAI_API_KEY }}
+        run: |
+          az containerapp secret set -n "$API_APP" -g "$RESOURCE_GROUP" --secrets \
+            db-url="$DATABASE_URL" \
+            rzp-secret="$RAZORPAY_KEY_SECRET" \
+            wh-secret="$RAZORPAY_WEBHOOK_SECRET" \
+            openai-key="$OPENAI_API_KEY" \
+            --output none
+
+          az containerapp update -n "$API_APP" -g "$RESOURCE_GROUP" \
+            --set-env-vars \
+              NODE_ENV=production \
+              PORT="$API_PORT" \
+              WEB_ORIGIN="$WEB_URL" \
+              PUBLIC_BASE_URL="$WEB_URL" \
+              DATABASE_URL=secretref:db-url \
+              RAZORPAY_KEY_ID="$RAZORPAY_KEY_ID" \
+              RAZORPAY_KEY_SECRET=secretref:rzp-secret \
+              RAZORPAY_WEBHOOK_SECRET=secretref:wh-secret \
+              OPENAI_API_KEY=secretref:openai-key \
+              OPENAI_BASE_URL=https://api.groq.com/openai/v1 \
+              OPENAI_MODEL=openai/gpt-oss-120b \
+            --output none
+
+      # nginx proxies /api and /health to the API's internal FQDN (envsubst fills ${API_UPSTREAM}).
+      - name: Configure the web app
+        run: |
+          az containerapp update -n "$WEB_APP" -g "$RESOURCE_GROUP" \
+            --set-env-vars API_UPSTREAM="https://$API_FQDN" \
+            --output none
+
+      - name: Report
+        run: |
+          {
+            echo "### Live"
+            echo ""
+            echo "- Dashboard: $WEB_URL"
+            echo "- Webhook:   $WEB_URL/api/webhooks/razorpay"
+          } >> "$GITHUB_STEP_SUMMARY"

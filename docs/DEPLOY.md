@@ -175,105 +175,92 @@ az containerapp update -g $RG -n overwatch-api --image $ACR_SERVER/overwatch-api
 
 ---
 
-## Path C — CI/CD (GitHub Actions): create infra once, update on every push
+## Path C — CI/CD (GitHub Actions): OIDC, create once, update on every push
 
-The split is deliberate: **infra is created once** by a bootstrap you run by hand; **every push to `main`**
-then only rebuilds the images and rolls the apps. The workflow ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml))
-never touches infra.
+Three moves, cleanly separated:
 
-### Step 1 — one-time bootstrap (Cloud Shell, in the repo root after `git clone`)
+- **`Azure setup` → provision** ([`.github/workflows/azure-setup.yml`](../.github/workflows/azure-setup.yml)) — creates the registry, Container Apps environment, and both apps (placeholder image). Run **once**.
+- **`Azure setup` → configure** — applies env vars and links the two apps. Run whenever a value changes.
+- **`Deploy`** ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)) — on **every push to `main`**, builds both images in ACR (commit-tagged) and swaps them onto the apps. Never touches infra or config.
 
-Creates the resource group, registry, Container Apps env, both apps, and a CI service principal. Paste
-your Supabase URL and Razorpay test keys into the variables first.
+Auth is **OpenID Connect** — GitHub proves its identity to Azure per run; **no Azure key is stored in
+GitHub**. The only manual step is the trust root below (GitHub can't authenticate to Azure until a human
+links the two — that can't come from the repo).
+
+### Step 1 — one-time trust + resource group (Cloud Shell)
+
+Creates the resource group and an OIDC app registration federated to this repo's `main`, with Contributor
+on just that resource group.
 
 ```bash
-RG=overwatch-rg; LOC=uaenorth; ENVN=overwatch-env
-ACR=overwatchacrXXXX                       # pick a globally-unique, lowercase-alphanumeric name
-WEBHOOK_SECRET='whsec_overwatch'
-RZP_KEY_ID='rzp_test_xxx'
-RZP_KEY_SECRET='xxx'
-DATABASE_URL='postgresql://postgres.<ref>:<url-encoded-pw>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require'
+RG=overwatch-rg; LOC=uaenorth
+REPO=adhithyyaa/Buildathon-2026            # owner/repo
 
 az group create -n $RG -l $LOC
-az extension add -n containerapp --upgrade -y
 
-# registry + first images
-az acr create -g $RG -n $ACR --sku Basic --admin-enabled true
-az acr build -r $ACR -t overwatch-api:bootstrap -f server/Dockerfile .
-az acr build -r $ACR -t overwatch-web:bootstrap ./web
-
-# container apps environment
-az containerapp env create -g $RG -n $ENVN -l $LOC
-
-# registry pull creds (stored on the apps; CI later uses the service principal instead)
-ACR_SERVER=$(az acr show -n $ACR --query loginServer -o tsv)
-ACR_USER=$(az acr credential show -n $ACR --query username -o tsv)
-ACR_PASS=$(az acr credential show -n $ACR --query 'passwords[0].value' -o tsv)
-
-# API — internal, scale-to-zero, secrets
-az containerapp create -g $RG -n overwatch-api --environment $ENVN \
-  --image $ACR_SERVER/overwatch-api:bootstrap \
-  --registry-server $ACR_SERVER --registry-username $ACR_USER --registry-password $ACR_PASS \
-  --target-port 8787 --ingress internal --min-replicas 0 --max-replicas 1 --cpu 0.5 --memory 1.0Gi \
-  --secrets db-url="$DATABASE_URL" rzp-secret="$RZP_KEY_SECRET" wh-secret="$WEBHOOK_SECRET" \
-  --env-vars DATABASE_URL=secretref:db-url RAZORPAY_KEY_ID="$RZP_KEY_ID" \
-             RAZORPAY_KEY_SECRET=secretref:rzp-secret RAZORPAY_WEBHOOK_SECRET=secretref:wh-secret \
-             NODE_ENV=production
-API_FQDN=$(az containerapp show -g $RG -n overwatch-api --query properties.configuration.ingress.fqdn -o tsv)
-
-# WEB — external; nginx proxies /api to the API's internal FQDN
-az containerapp create -g $RG -n overwatch-web --environment $ENVN \
-  --image $ACR_SERVER/overwatch-web:bootstrap \
-  --registry-server $ACR_SERVER --registry-username $ACR_USER --registry-password $ACR_PASS \
-  --target-port 80 --ingress external --min-replicas 0 --max-replicas 1 --cpu 0.25 --memory 0.5Gi \
-  --env-vars API_UPSTREAM="https://$API_FQDN"
-WEB_FQDN=$(az containerapp show -g $RG -n overwatch-web --query properties.configuration.ingress.fqdn -o tsv)
-
-# point the API at the public URL (CORS + payment-link callback)
-az containerapp update -g $RG -n overwatch-api \
-  --set-env-vars WEB_ORIGIN="https://$WEB_FQDN" PUBLIC_BASE_URL="https://$WEB_FQDN"
-
-# service principal for CI, scoped to JUST this resource group (least privilege)
+APP_ID=$(az ad app create --display-name overwatch-cicd --query appId -o tsv)
+az ad sp create --id $APP_ID
+az ad app federated-credential create --id $APP_ID --parameters "{
+  \"name\":\"github-main\",
+  \"issuer\":\"https://token.actions.githubusercontent.com\",
+  \"subject\":\"repo:${REPO}:ref:refs/heads/main\",
+  \"audiences\":[\"api://AzureADTokenExchange\"]
+}"
 SUB=$(az account show --query id -o tsv)
-az ad sp create-for-rbac --name overwatch-cicd --role contributor \
-  --scopes /subscriptions/$SUB/resourceGroups/$RG --sdk-auth
+az role assignment create --assignee $APP_ID --role Contributor \
+  --scope /subscriptions/$SUB/resourceGroups/$RG
 
-echo "LIVE:     https://$WEB_FQDN"
-echo "ACR_NAME: $ACR   (add as a GitHub repo Variable)"
+echo "AZURE_CLIENT_ID=$APP_ID"
+echo "AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)"
+echo "AZURE_SUBSCRIPTION_ID=$SUB"
 ```
 
-The `create-for-rbac --sdk-auth` output is a JSON blob — that whole blob is the `AZURE_CREDENTIALS`
-secret below. (`--sdk-auth` prints a deprecation note but still emits the exact JSON `azure/login` wants.
-If your tenant blocks app-registration, an admin must create the SP, or switch to OIDC federation.)
+These three are **IDs, not keys** — nothing secret to rotate. (If your tenant blocks app registration, an
+admin runs this once. For deploys from branches other than `main`, add another federated credential with
+the matching `subject`.)
 
-### Step 2 — add GitHub **secrets** (Settings → Secrets and variables → Actions → Secrets)
+### Step 2 — GitHub secrets + one variable (Settings → Secrets and variables → Actions)
+
+**Secrets:**
 
 | Secret | Value |
 |---|---|
-| `AZURE_CREDENTIALS` | the full JSON from `create-for-rbac --sdk-auth` |
-| `DATABASE_URL` | your Supabase session-pooler URL (URL-encoded password) |
-| `RAZORPAY_KEY_ID` | test-mode key id |
-| `RAZORPAY_KEY_SECRET` | test-mode key secret |
-| `RAZORPAY_WEBHOOK_SECRET` | the same value you used at bootstrap |
+| `AZURE_CLIENT_ID` | the app id printed above |
+| `AZURE_TENANT_ID` | the tenant id printed above |
+| `AZURE_SUBSCRIPTION_ID` | the subscription id printed above |
+| `APP_DATABASE_URL` | your Supabase session-pooler URL (URL-encoded password) |
+| `APP_RAZORPAY_KEY_ID` | test-mode key id |
+| `APP_RAZORPAY_KEY_SECRET` | test-mode key secret |
+| `APP_RAZORPAY_WEBHOOK_SECRET` | your chosen webhook secret |
+| `APP_OPENAI_API_KEY` | *optional* — LLM key for AI notes; empty ⇒ template fallback |
 
-And one **Variable** (Variables tab, not a secret): `ACR_NAME` = the registry name you chose.
+**Variable** (the Variables tab, not a secret): `ACR_NAME` = a globally-unique, lowercase-alphanumeric
+registry name (e.g. `overwatchacr1234`).
 
-With the `gh` CLI instead of the UI:
+With the `gh` CLI:
 
 ```bash
-gh secret set AZURE_CREDENTIALS < creds.json          # paste the SP JSON into creds.json first
-gh secret set DATABASE_URL -b 'postgresql://postgres.<ref>:<enc-pw>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require'
-gh secret set RAZORPAY_KEY_ID -b 'rzp_test_xxx'
-gh secret set RAZORPAY_KEY_SECRET -b 'xxx'
-gh secret set RAZORPAY_WEBHOOK_SECRET -b 'whsec_overwatch'
-gh variable set ACR_NAME -b 'overwatchacrXXXX'
+gh secret set AZURE_CLIENT_ID -b '<app-id>'
+gh secret set AZURE_TENANT_ID -b '<tenant-id>'
+gh secret set AZURE_SUBSCRIPTION_ID -b '<sub-id>'
+gh secret set APP_DATABASE_URL -b 'postgresql://postgres.<ref>:<enc-pw>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require'
+gh secret set APP_RAZORPAY_KEY_ID -b 'rzp_test_xxx'
+gh secret set APP_RAZORPAY_KEY_SECRET -b 'xxx'
+gh secret set APP_RAZORPAY_WEBHOOK_SECRET -b 'whsec_overwatch'
+gh variable set ACR_NAME -b 'overwatchacr1234'
 ```
 
-### Step 3 — push
+### Step 3 — provision, configure, go
 
-Any push to `main` (or a manual **Run workflow**) now builds fresh images tagged with the commit SHA and
-rolls both apps to them. Infra is untouched; the DB and its data (Supabase) persist across deploys. Roll
-back by re-running the workflow on an earlier commit, or `az containerapp update ... --image <acr>/overwatch-api:<old-sha>`.
+In the repo's **Actions** tab:
+
+1. **Azure setup** → *Run workflow* → **step = provision** (creates ACR, env, both apps).
+2. **Azure setup** → *Run workflow* → **step = configure** (applies env + links the apps).
+3. Push to `main` (or run **Deploy** manually) — every push from now on builds and rolls the images.
+
+Configuring **before** the first deploy means the real API image boots already holding `DATABASE_URL`, so
+it never fails a health check. The DB + data on Supabase persist across every deploy. Roll back by
+re-running **Deploy** on an older commit (images are tagged by commit SHA).
 
 ---
 
