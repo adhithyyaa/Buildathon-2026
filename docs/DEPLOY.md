@@ -41,11 +41,14 @@ The least-friction way to be live today: one VM running the same compose file.
    ssh azureuser@<vm-public-ip>
    curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER && newgrp docker
    git clone https://github.com/adhithyyaa/Buildathon-2026.git && cd Buildathon-2026
-   RAZORPAY_KEY_ID=rzp_test_xxx RAZORPAY_KEY_SECRET=xxx RAZORPAY_WEBHOOK_SECRET=whsec_sentinel \
+   PUBLIC_URL=http://<vm-public-ip> WEB_PORT=80 RAZORPAY_WEBHOOK_SECRET=whsec_sentinel \
+     RAZORPAY_KEY_ID=rzp_test_xxx RAZORPAY_KEY_SECRET=xxx \
      docker compose -f docker-compose.deploy.yml up -d --build
    ```
-3. Point a DNS name (or use the VM IP) at port 80. For HTTPS, put [Caddy](https://caddyserver.com) in front
-   or add a TLS-terminating Azure Application Gateway. **You're live.**
+   `PUBLIC_URL` wires CORS + the payment-link callback to your host; `WEB_PORT=80` serves the site on the bare
+   URL. Drop the `RAZORPAY_KEY_*` line to run with fully-functional simulated links.
+3. Open **`http://<vm-public-ip>`** — you're live. For a DNS name + HTTPS, put [Caddy](https://caddyserver.com)
+   in front (auto-TLS) or a TLS-terminating Azure Application Gateway, and set `PUBLIC_URL=https://your.domain`.
 
 ---
 
@@ -79,9 +82,13 @@ The least-friction way to be live today: one VM running the same compose file.
 | `DATABASE_URL` | ✅ | Your managed Postgres URL (`sslmode=require` on Azure). |
 | `RAZORPAY_WEBHOOK_SECRET` | ✅ for real webhooks | The secret you register in the Razorpay dashboard. |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | optional | Test-mode keys — enables real payment links; without them, links are simulated. |
-| `WEB_ORIGIN` / `PUBLIC_BASE_URL` | ✅ | Your public web URL (CORS + link generation). |
+| `WEB_ORIGIN` / `PUBLIC_BASE_URL` | ✅ | Your public web URL (CORS + payment-link callback). |
 | `ML_SERVICE_URL` | optional | Point at the ML app if you deploy it; otherwise the API uses deterministic scoring. |
 | `ANTHROPIC_API_KEY` **or** `OPENAI_API_KEY`+`OPENAI_BASE_URL`+`OPENAI_MODEL` | optional | Enables LLM explanations/drafts; without them, the deterministic fallback is used. |
+
+> **Compose path (A) shortcut:** set a single **`PUBLIC_URL`** (plus optional **`WEB_PORT`**, default `8080`) — the
+> compose file maps it onto both `WEB_ORIGIN` and `PUBLIC_BASE_URL`. On the Container Apps path (B) you set
+> `WEB_ORIGIN`/`PUBLIC_BASE_URL` directly on the API app.
 
 Never bake secrets into the image — the `.dockerignore` files exclude `.env`; pass them at runtime.
 
