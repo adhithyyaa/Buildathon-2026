@@ -39,7 +39,7 @@ env:
 
 jobs:
   provision:
-    if: inputs.step == 'provision'
+    if: ${{ github.event.inputs.step == 'provision' }}
     runs-on: ubuntu-latest
     steps:
       - uses: azure/login@v2
@@ -109,7 +109,7 @@ jobs:
         run: echo "Provisioned. Next: run this workflow with **step=configure**, then **Deploy** (or push)." >> "$GITHUB_STEP_SUMMARY"
 
   configure:
-    if: inputs.step == 'configure'
+    if: ${{ github.event.inputs.step == 'configure' }}
     runs-on: ubuntu-latest
     steps:
       - uses: azure/login@v2
