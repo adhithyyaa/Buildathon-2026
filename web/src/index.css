@@ -2,6 +2,17 @@
 
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Marketing + onboarding identity (scoped to Landing/Login via font-* utilities). */
+  --font-display: 'Fraunces', 'Hanken Grotesk', Georgia, serif;
+  --font-grotesk: 'Hanken Grotesk', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Sentinel brand palette — deep ink, warm paper, emerald signal (no purple, no gradients-as-crutch). */
+  --color-ink: #0b1220;
+  --color-ink-soft: #141d30;
+  --color-ink-line: #26324a;
+  --color-paper: #fbfbf8;
+
   --animate-flow: flow 2.2s linear infinite;
   --animate-rise: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-pop: pop 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
