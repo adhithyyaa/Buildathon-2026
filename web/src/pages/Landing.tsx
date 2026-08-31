@@ -4,8 +4,8 @@ import { Icon } from '../components/icons';
 
 /**
  * Marketing landing for Overwatch — the revenue-integrity layer that plugs under Razorpay.
- * Identity: deep ink + warm paper + a single emerald signal; Fraunces (serif display), Hanken Grotesk
- * (UI), JetBrains Mono (data/proof). Editorial dark/light bands, no gradients-as-crutch, no purple.
+ * Identity: warm paper + ink text + a single emerald signal; Fraunces (serif display), Hanken Grotesk
+ * (UI), JetBrains Mono (data/proof). Light throughout, matching the app chrome; no gradients-as-crutch.
  */
 export function Landing() {
   return (
@@ -30,11 +30,11 @@ const btnPrimary =
 
 function AnnounceBar() {
   return (
-    <Link to="/app" className="block bg-ink text-center text-[12px] text-slate-300 hover:text-white">
+    <Link to="/app" className="block border-b border-emerald-100 bg-emerald-50 text-center text-[12px] text-emerald-800 transition-colors hover:bg-emerald-100/70">
       <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-5 py-2 font-mono">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
         Attack our compliance guardrails live in the demo
-        <Icon name="arrow" className="h-3.5 w-3.5 text-emerald-400" />
+        <Icon name="arrow" className="h-3.5 w-3.5 text-emerald-600" />
       </div>
     </Link>
   );
@@ -55,7 +55,7 @@ function TopNav() {
         </nav>
         <div className="flex items-center gap-2">
           <Link to="/login" className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100">Sign in</Link>
-          <Link to="/login" className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink-soft">Get started</Link>
+          <Link to="/login" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500">Get started</Link>
         </div>
       </div>
     </header>
@@ -65,32 +65,32 @@ function TopNav() {
 function Hero() {
   return (
     <section
-      className="relative overflow-hidden bg-ink text-white"
+      className="relative overflow-hidden border-b border-slate-200/70 bg-paper text-ink"
       style={{
         backgroundImage:
-          'radial-gradient(680px 320px at 78% -5%, rgba(16,185,129,0.14), transparent 70%), linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)',
+          'radial-gradient(680px 320px at 80% -8%, rgba(16,185,129,0.12), transparent 70%), linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px)',
         backgroundSize: 'auto, 46px 46px, 46px 46px',
       }}
     >
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:px-8 lg:py-28">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-emerald-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Revenue-integrity layer · Razorpay
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Revenue-integrity layer · Razorpay
           </span>
-          <h1 className="mt-6 font-display text-[2.7rem] font-semibold leading-[1.03] tracking-[-0.02em] text-white sm:text-6xl">
-            Recover the revenue<br />you already <span className="text-emerald-400">earned.</span>
+          <h1 className="mt-6 font-display text-[2.7rem] font-semibold leading-[1.03] tracking-[-0.02em] text-ink sm:text-6xl">
+            Recover the revenue<br />you already <span className="text-emerald-600">earned.</span>
           </h1>
-          <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-slate-300">
+          <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-slate-600">
             Overwatch catches failed payments, decides the safest recovery move, and proves — against a
             live control holdout, with a signed webhook — exactly how many{' '}
-            <span className="font-semibold text-white">incremental rupees</span> it brought back. Measured, not estimated.
+            <span className="font-semibold text-ink">incremental rupees</span> it brought back. Measured, not estimated.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link to="/login" className={btnPrimary}>
               Start recovering <Icon name="arrow" className="h-4 w-4" />
             </Link>
-            <Link to="/app" className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">
-              <Icon name="play" className="h-3.5 w-3.5" /> See the live demo
+            <Link to="/app" className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50">
+              <Icon name="play" className="h-3.5 w-3.5 text-emerald-600" /> See the live demo
             </Link>
           </div>
           <p className="mt-5 font-mono text-[11px] tracking-wide text-slate-500">
@@ -106,7 +106,7 @@ function Hero() {
 function HeroVisual() {
   return (
     <div className="relative">
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-ink shadow-2xl shadow-black/40">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-ink shadow-xl shadow-slate-900/10">
         <div className="flex items-center gap-1.5 border-b border-slate-100 px-4 py-3">
           <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
           <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
@@ -240,7 +240,7 @@ function Features() {
       <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f) => (
           <div key={f.title} className="group rounded-2xl border border-slate-200/80 bg-white p-6 transition-all duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-900/5">
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-ink text-emerald-400 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
               <Icon name={f.icon} className="h-5 w-5" />
             </span>
             <h3 className="mt-5 text-base font-bold text-ink">{f.title}</h3>
@@ -261,21 +261,21 @@ function HowItWorks() {
   return (
     <section
       id="how"
-      className="bg-ink py-24 text-white"
-      style={{ backgroundImage: 'radial-gradient(600px 300px at 15% 0%, rgba(16,185,129,0.10), transparent 70%)' }}
+      className="border-y border-slate-200/70 bg-white py-24 text-ink"
+      style={{ backgroundImage: 'radial-gradient(600px 300px at 15% 0%, rgba(16,185,129,0.07), transparent 70%)' }}
     >
       <div className="mx-auto max-w-6xl px-5 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-400">How it works</span>
-          <h2 className="mt-4 font-display text-[2rem] font-semibold tracking-[-0.01em] sm:text-[2.6rem]">ML proposes. Deterministic code disposes.</h2>
-          <p className="mt-4 text-slate-300">Every AI suggestion is policy-checked before a single rupee moves — bounded, auditable, and safe to point at production.</p>
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600">How it works</span>
+          <h2 className="mt-4 font-display text-[2rem] font-semibold tracking-[-0.01em] text-ink sm:text-[2.6rem]">ML proposes. Deterministic code disposes.</h2>
+          <p className="mt-4 text-slate-600">Every AI suggestion is policy-checked before a single rupee moves — bounded, auditable, and safe to point at production.</p>
         </div>
         <div className="mt-16 grid gap-10 lg:grid-cols-3">
           {steps.map((s) => (
-            <div key={s.n} className="relative border-t border-white/10 pt-6">
-              <div className="font-mono text-sm font-semibold text-emerald-400">{s.n}</div>
-              <h3 className="mt-3 font-display text-xl font-semibold">{s.t}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">{s.d}</p>
+            <div key={s.n} className="relative border-t border-slate-200 pt-6">
+              <div className="font-mono text-sm font-semibold text-emerald-600">{s.n}</div>
+              <h3 className="mt-3 font-display text-xl font-semibold text-ink">{s.t}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{s.d}</p>
             </div>
           ))}
         </div>
@@ -341,18 +341,18 @@ function FinalCTA() {
   return (
     <section className="px-5 pb-24 lg:px-8">
       <div
-        className="mx-auto max-w-6xl overflow-hidden rounded-3xl border border-ink-line bg-ink px-8 py-16 text-center lg:px-16"
-        style={{ backgroundImage: 'radial-gradient(600px 300px at 50% 0%, rgba(16,185,129,0.16), transparent 70%)' }}
+        className="mx-auto max-w-6xl overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-50 px-8 py-16 text-center lg:px-16"
+        style={{ backgroundImage: 'radial-gradient(600px 300px at 50% 0%, rgba(16,185,129,0.12), transparent 70%)' }}
       >
-        <h2 className="mx-auto max-w-2xl font-display text-[2rem] font-semibold tracking-[-0.01em] text-white sm:text-[2.7rem]">
+        <h2 className="mx-auto max-w-2xl font-display text-[2rem] font-semibold tracking-[-0.01em] text-ink sm:text-[2.7rem]">
           See exactly how much revenue you’re leaving on the table.
         </h2>
-        <p className="mx-auto mt-5 max-w-xl text-slate-300">
+        <p className="mx-auto mt-5 max-w-xl text-slate-600">
           Spin up the live demo in your browser — seed cases, run the pipeline, and watch the recovered rupees move.
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link to="/login" className={btnPrimary}>Get started free</Link>
-          <Link to="/app" className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">Explore the dashboard</Link>
+          <Link to="/app" className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 transition-colors hover:border-emerald-300 hover:text-emerald-700">Explore the dashboard</Link>
         </div>
       </div>
     </section>

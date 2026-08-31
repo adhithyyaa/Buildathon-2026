@@ -10,7 +10,7 @@ type Mode = 'signin' | 'signup';
 /**
  * Sign-in / create-account for Overwatch. Google uses real Google Identity Services; the email path
  * establishes a local session so the dashboard is always reachable (there is no email backend).
- * Identity matches the landing: ink brand panel, warm-paper form, emerald signal, serif display.
+ * Identity matches the landing: light emerald brand panel, warm-paper form, emerald signal, serif display.
  */
 export function Login() {
   const nav = useNavigate();
@@ -68,38 +68,38 @@ export function Login() {
     <div className="grid min-h-screen font-grotesk lg:grid-cols-2">
       {/* Brand panel */}
       <aside
-        className="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col lg:justify-between lg:p-12"
+        className="relative hidden overflow-hidden border-r border-slate-200 bg-emerald-50 text-ink lg:flex lg:flex-col lg:justify-between lg:p-12"
         style={{
           backgroundImage:
-            'radial-gradient(520px 300px at 12% 0%, rgba(16,185,129,0.16), transparent 70%), linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+            'radial-gradient(520px 300px at 12% 0%, rgba(16,185,129,0.16), transparent 70%), linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px)',
           backgroundSize: 'auto, 44px 44px, 44px 44px',
         }}
       >
-        <Link to="/" className="relative flex items-center gap-2.5 text-white">
+        <Link to="/" className="relative flex items-center gap-2.5 text-ink">
           <Logo className="h-9 w-9" />
           <span className="text-xl font-bold tracking-tight">Overwatch</span>
         </Link>
         <div className="relative">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-emerald-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Where nothing slips through
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Where nothing slips through
           </span>
-          <h2 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-[-0.02em] text-white">
-            Recover the revenue<br />you already <span className="text-emerald-400">earned.</span>
+          <h2 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
+            Recover the revenue<br />you already <span className="text-emerald-600">earned.</span>
           </h2>
-          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-slate-300">
+          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-slate-600">
             The revenue-integrity layer for Razorpay — calibrated decisions, bounded execution, and
             holdout-measured proof of every incremental rupee.
           </p>
-          <div className="mt-8 max-w-sm rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur">
-            <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-300">Incremental recovered · vs control</div>
-            <div className="mt-1.5 font-display text-3xl font-semibold tabular-nums text-white">₹3,13,773</div>
-            <div className="mt-1 font-mono text-[11px] text-slate-400">+40.2pp lift · 95% CI · significant</div>
+          <div className="mt-8 max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-700">Incremental recovered · vs control</div>
+            <div className="mt-1.5 font-display text-3xl font-semibold tabular-nums text-ink">₹3,13,773</div>
+            <div className="mt-1 font-mono text-[11px] text-slate-500">+40.2pp lift · 95% CI · significant</div>
           </div>
         </div>
-        <div className="relative flex items-center gap-5 font-mono text-[11px] uppercase tracking-wider text-slate-400">
-          <span className="flex items-center gap-1.5"><Icon name="shield" className="h-4 w-4 text-emerald-400" /> Policy-as-code</span>
-          <span className="flex items-center gap-1.5"><Icon name="link" className="h-4 w-4 text-emerald-400" /> Exactly-once</span>
-          <span className="flex items-center gap-1.5"><Icon name="audit" className="h-4 w-4 text-emerald-400" /> Audited</span>
+        <div className="relative flex items-center gap-5 font-mono text-[11px] uppercase tracking-wider text-slate-500">
+          <span className="flex items-center gap-1.5"><Icon name="shield" className="h-4 w-4 text-emerald-600" /> Policy-as-code</span>
+          <span className="flex items-center gap-1.5"><Icon name="link" className="h-4 w-4 text-emerald-600" /> Exactly-once</span>
+          <span className="flex items-center gap-1.5"><Icon name="audit" className="h-4 w-4 text-emerald-600" /> Audited</span>
         </div>
       </aside>
 
