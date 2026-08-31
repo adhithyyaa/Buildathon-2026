@@ -1,0 +1,73 @@
+name: Deploy to Azure Container Apps
+
+# Every push to main rebuilds the images (in ACR) and rolls the running apps to them.
+# Infra (resource group, ACR, Container Apps env, the two apps) is created ONCE by the bootstrap
+# script in docs/DEPLOY.md (Path C) — this workflow NEVER creates infra, it only updates existing apps.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_RG: overwatch-rg
+  ACR_NAME: ${{ vars.ACR_NAME }}   # repo Variable — the registry name chosen at bootstrap
+
+jobs:
+  # Skip (not fail) until CI/CD is configured, so pushes before setup stay green.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        run: echo "ready=${{ secrets.AZURE_CREDENTIALS != '' && vars.ACR_NAME != '' }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: gate
+    if: needs.gate.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (service principal)
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ensure containerapp CLI extension
+        run: az extension add -n containerapp --upgrade -y
+
+      - name: Resolve ACR login server
+        run: echo "ACR_LOGIN=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)" >> "$GITHUB_ENV"
+
+      - name: Build images in ACR (tagged with the commit SHA)
+        run: |
+          az acr build -r "$ACR_NAME" -t overwatch-api:${{ github.sha }} -f server/Dockerfile .
+          az acr build -r "$ACR_NAME" -t overwatch-web:${{ github.sha }} ./web
+
+      - name: Sync API secrets from GitHub secrets
+        run: |
+          az containerapp secret set -g "$AZURE_RG" -n overwatch-api --secrets \
+            db-url="${{ secrets.DATABASE_URL }}" \
+            rzp-secret="${{ secrets.RAZORPAY_KEY_SECRET }}" \
+            wh-secret="${{ secrets.RAZORPAY_WEBHOOK_SECRET }}"
+
+      - name: Roll API to the new image
+        run: |
+          az containerapp update -g "$AZURE_RG" -n overwatch-api \
+            --image "$ACR_LOGIN/overwatch-api:${{ github.sha }}" \
+            --set-env-vars \
+              RAZORPAY_KEY_ID="${{ secrets.RAZORPAY_KEY_ID }}" \
+              DATABASE_URL=secretref:db-url \
+              RAZORPAY_KEY_SECRET=secretref:rzp-secret \
+              RAZORPAY_WEBHOOK_SECRET=secretref:wh-secret \
+              NODE_ENV=production
+
+      - name: Roll Web to the new image
+        run: |
+          az containerapp update -g "$AZURE_RG" -n overwatch-web \
+            --image "$ACR_LOGIN/overwatch-web:${{ github.sha }}"
+
+      - name: Show the live URL
+        run: |
+          echo "LIVE: https://$(az containerapp show -g "$AZURE_RG" -n overwatch-web --query properties.configuration.ingress.fqdn -o tsv)"
