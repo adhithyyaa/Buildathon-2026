@@ -175,7 +175,7 @@ az containerapp update -g $RG -n overwatch-api --image $ACR_SERVER/overwatch-api
 
 ---
 
-## Path C — CI/CD (GitHub Actions): OIDC, create once, update on every push
+## Path C — CI/CD (GitHub Actions): create once, update on every push
 
 Three moves, cleanly separated:
 
@@ -183,45 +183,29 @@ Three moves, cleanly separated:
 - **`Azure setup` → configure** — applies env vars and links the two apps. Run whenever a value changes.
 - **`Deploy`** ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)) — on **every push to `main`**, builds both images in ACR (commit-tagged) and swaps them onto the apps. Never touches infra or config.
 
-Auth is **OpenID Connect** — GitHub proves its identity to Azure per run; **no Azure key is stored in
-GitHub**. The only manual step is the trust root below (GitHub can't authenticate to Azure until a human
-links the two — that can't come from the repo).
+Auth is a **service principal** stored as one GitHub secret (`AZURE_CREDENTIALS`). The only manual step is
+creating it — GitHub can't authenticate to Azure until a human hands it a credential.
 
-### Step 1 — one-time trust + resource group (Cloud Shell)
+### Step 1 — one-time: resource group + service principal (Cloud Shell)
 
-Creates the resource group and an OIDC app registration federated to this repo's `main`, with Contributor
-on just that resource group.
+Creates the resource group, registers the providers, and creates a CI service principal with Contributor on
+just that resource group. The last command prints a JSON blob — that whole blob is `AZURE_CREDENTIALS`.
 
 ```bash
 RG=overwatch-rg; LOC=uaenorth
-REPO=adhithyyaa/Buildathon-2026            # owner/repo
 
 az group create -n $RG -l $LOC
-
-# Register the providers once (an RG-scoped CI principal can't do this itself).
 az provider register --namespace Microsoft.App --wait
 az provider register --namespace Microsoft.ContainerRegistry --wait
 
-APP_ID=$(az ad app create --display-name overwatch-cicd --query appId -o tsv)
-az ad sp create --id $APP_ID
-az ad app federated-credential create --id $APP_ID --parameters "{
-  \"name\":\"github-main\",
-  \"issuer\":\"https://token.actions.githubusercontent.com\",
-  \"subject\":\"repo:${REPO}:ref:refs/heads/main\",
-  \"audiences\":[\"api://AzureADTokenExchange\"]
-}"
 SUB=$(az account show --query id -o tsv)
-az role assignment create --assignee $APP_ID --role Contributor \
-  --scope /subscriptions/$SUB/resourceGroups/$RG
-
-echo "AZURE_CLIENT_ID=$APP_ID"
-echo "AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)"
-echo "AZURE_SUBSCRIPTION_ID=$SUB"
+az ad sp create-for-rbac --name overwatch-ci --role contributor \
+  --scopes /subscriptions/$SUB/resourceGroups/$RG --sdk-auth
 ```
 
-These three are **IDs, not keys** — nothing secret to rotate. (If your tenant blocks app registration, an
-admin runs this once. For deploys from branches other than `main`, add another federated credential with
-the matching `subject`.)
+Copy the **entire** JSON output (from the opening `{` to the closing `}`). `--sdk-auth` prints a deprecation
+note — ignore it; the JSON is exactly what `azure/login` expects. (If your tenant blocks app registration, an
+admin runs this once.)
 
 ### Step 2 — GitHub secrets + one variable (Settings → Secrets and variables → Actions)
 
@@ -229,9 +213,7 @@ the matching `subject`.)
 
 | Secret | Value |
 |---|---|
-| `AZURE_CLIENT_ID` | the app id printed above |
-| `AZURE_TENANT_ID` | the tenant id printed above |
-| `AZURE_SUBSCRIPTION_ID` | the subscription id printed above |
+| `AZURE_CREDENTIALS` | the full JSON blob from Step 1 |
 | `APP_DATABASE_URL` | your Supabase session-pooler URL (URL-encoded password) |
 | `APP_RAZORPAY_KEY_ID` | test-mode key id |
 | `APP_RAZORPAY_KEY_SECRET` | test-mode key secret |
@@ -244,9 +226,7 @@ registry name (e.g. `overwatchacr1234`).
 With the `gh` CLI:
 
 ```bash
-gh secret set AZURE_CLIENT_ID -b '<app-id>'
-gh secret set AZURE_TENANT_ID -b '<tenant-id>'
-gh secret set AZURE_SUBSCRIPTION_ID -b '<sub-id>'
+gh secret set AZURE_CREDENTIALS < creds.json    # paste the JSON blob into creds.json first
 gh secret set APP_DATABASE_URL -b 'postgresql://postgres.<ref>:<enc-pw>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require'
 gh secret set APP_RAZORPAY_KEY_ID -b 'rzp_test_xxx'
 gh secret set APP_RAZORPAY_KEY_SECRET -b 'xxx'

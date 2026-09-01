@@ -1,16 +1,10 @@
 name: Azure setup
 
-# One-time infra, and the place configuration lives. Auth is OpenID Connect — GitHub presents a
-# signed claim about which repo/branch is running and Azure trusts it directly; there is no stored
-# key to leak or rotate.
-#
-#   provision  — create the registry, Container Apps environment, and both apps (placeholder image,
-#                fully wired). Run once, before the first deploy.
-#   configure  — (re)apply environment variables and link the two apps. Run whenever a value changes.
-#
+# One-time infra, and the place configuration lives. Auth is a service principal (AZURE_CREDENTIALS).
+#   provision  — create the registry, Container Apps environment, and both apps (placeholder image).
+#   configure  — (re)apply environment variables and link the two apps.
 # Recommended first-run order: provision -> configure -> Deploy. Configuring before the first deploy
-# means the real image starts already holding DATABASE_URL, so it never fails a health check the way
-# an unconfigured API (which refuses to boot without a database) would.
+# means the real API image starts already holding DATABASE_URL, so it never fails a health check.
 
 on:
   workflow_dispatch:
@@ -23,18 +17,15 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
   RESOURCE_GROUP: overwatch-rg
-  # UAE North: this subscription allows it, Container Apps is offered there, and it has quota.
-  # ~30-50ms from India vs Mumbai's 10-20ms — noise inside Razorpay's ~5s webhook-ack budget.
   LOCATION: uaenorth
   ENVIRONMENT: overwatch-env
   API_APP: overwatch-api
   WEB_APP: overwatch-web
-  API_PORT: '8787'          # the Express API's port (internal ingress)
-  WEB_PORT: '80'            # nginx serves the SPA + proxies /api (external ingress)
+  API_PORT: '8787'
+  WEB_PORT: '80'
   ACR_NAME: ${{ vars.ACR_NAME }}
 
 jobs:
@@ -42,26 +33,13 @@ jobs:
     if: ${{ github.event.inputs.step == 'provision' }}
     runs-on: ubuntu-latest
     steps:
-      # TEMP diagnostic: print the exact OIDC subject GitHub presents, so the Azure federated
-      # credential can be matched precisely. Remove once login works.
-      - name: Debug — OIDC claims GitHub presents
-        run: |
-          TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r '.value')
-          claims=$(echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+')
-          case $((${#claims} % 4)) in 2) claims="$claims==";; 3) claims="$claims=";; esac
-          echo "$claims" | base64 -d | jq '{sub, aud, iss}'
-
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Install the Container Apps extension
         run: az extension add --name containerapp --upgrade --allow-preview true
 
-      # Checked-for then created, never `|| echo "exists"` — a real create failure has to fail here,
-      # not print a reassuring line and surface three steps later as "resource not found".
       - name: Registry
         run: |
           if az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
@@ -71,8 +49,6 @@ jobs:
             echo "created $ACR_NAME"
           fi
 
-      # --logs-destination none skips the Log Analytics workspace (one more provider a student
-      # subscription can refuse). Recent logs are still readable via `az containerapp logs show`.
       - name: Container Apps environment
         run: |
           if az containerapp env show -n "$ENVIRONMENT" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
@@ -82,18 +58,14 @@ jobs:
               --logs-destination none --output table
           fi
 
-      # Both apps start on a placeholder image; Deploy swaps in the real one. Registry auth uses the
-      # ACR admin user (reading its password needs only Contributor — the role this workflow holds —
-      # whereas granting a managed identity AcrPull needs role-assignment rights it deliberately lacks).
       - name: Create the apps
         run: |
           ACR_PASSWORD=$(az acr credential show -n "$ACR_NAME" --query "passwords[0].value" -o tsv)
           echo "::add-mask::$ACR_PASSWORD"
-
           create() {
             local NAME=$1 PORT=$2 INGRESS=$3 MIN=$4 MAX=$5
             if az containerapp show -n "$NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
-              echo "$NAME already exists — leaving it alone"; return
+              echo "$NAME already exists"; return
             fi
             az containerapp create \
               -n "$NAME" -g "$RESOURCE_GROUP" --environment "$ENVIRONMENT" \
@@ -105,13 +77,9 @@ jobs:
               --output none
             echo "created $NAME"
           }
-
-          # API: internal ingress (only the web app reaches it), and one replica held open so the
-          # in-process retry scheduler keeps running and webhooks hit a warm instance (no cold start
-          # inside Razorpay's ack budget). 0.25 vCPU / 0.5 GiB is the smallest tier and the only line
-          # that bills continuously; step up to 0.5/1.0Gi if the API is ever OOM-killed.
+          # API: internal ingress, one replica kept warm (retry scheduler + no cold-start on webhooks).
           create "$API_APP" "$API_PORT" internal 1 1
-          # Web: public nginx SPA that also proxies /api to the API — scales to zero when idle.
+          # Web: public nginx SPA that proxies /api to the API; scales to zero when idle.
           create "$WEB_APP" "$WEB_PORT" external 0 2
 
       - name: Report
@@ -124,14 +92,11 @@ jobs:
     steps:
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Install the Container Apps extension
         run: az extension add --name containerapp --upgrade --allow-preview true
 
-      # Read back rather than hardcoded, so this keeps working if an app is recreated with a new host.
       - name: Resolve both URLs
         run: |
           API_FQDN=$(az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
@@ -139,10 +104,6 @@ jobs:
           echo "API_FQDN=$API_FQDN" >> "$GITHUB_ENV"
           echo "WEB_URL=https://$WEB_FQDN" >> "$GITHUB_ENV"
 
-      # Secret values arrive through the step environment (not the command text) so nothing lands in a
-      # log line, and the sensitive three are stored as Container Apps *secrets* (secretref), not as
-      # plaintext env vars. WEB_ORIGIN + PUBLIC_BASE_URL are the public web URL (CORS + the Razorpay
-      # payment-link callback). OPENAI_* is optional — empty key => the API uses its template fallback.
       - name: Configure the API
         env:
           DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
@@ -157,7 +118,6 @@ jobs:
             wh-secret="$RAZORPAY_WEBHOOK_SECRET" \
             openai-key="$OPENAI_API_KEY" \
             --output none
-
           az containerapp update -n "$API_APP" -g "$RESOURCE_GROUP" \
             --set-env-vars \
               NODE_ENV=production \
@@ -173,7 +133,6 @@ jobs:
               OPENAI_MODEL=openai/gpt-oss-120b \
             --output none
 
-      # nginx proxies /api and /health to the API's internal FQDN (envsubst fills ${API_UPSTREAM}).
       - name: Configure the web app
         run: |
           az containerapp update -n "$WEB_APP" -g "$RESOURCE_GROUP" \

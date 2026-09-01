@@ -1,8 +1,9 @@
 name: Deploy
 
 # Every push to main rebuilds both images in ACR (tagged with the commit) and swaps them onto the
-# running apps. It does nothing else: the apps' configuration is owned by the "Azure setup" workflow
-# (step=configure), and a push cannot change it. Infra is created once by "Azure setup" (step=provision).
+# running apps. Config lives in "Azure setup" (step=configure); infra is created by "Azure setup"
+# (step=provision). This workflow only ever changes the image.
+
 on:
   push:
     branches: [main]
@@ -10,7 +11,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write        # OIDC — no stored Azure key
 
 env:
   RESOURCE_GROUP: overwatch-rg
@@ -19,14 +19,14 @@ env:
   ACR_NAME: ${{ vars.ACR_NAME }}
 
 jobs:
-  # Skip (not fail) until OIDC + the registry name are configured, so pushes before setup stay green.
+  # Skip (not fail) until the service principal + registry name are configured, so pushes stay green.
   gate:
     runs-on: ubuntu-latest
     outputs:
       ready: ${{ steps.check.outputs.ready }}
     steps:
       - id: check
-        run: echo "ready=${{ secrets.AZURE_CLIENT_ID != '' && vars.ACR_NAME != '' }}" >> "$GITHUB_OUTPUT"
+        run: echo "ready=${{ secrets.AZURE_CREDENTIALS != '' && vars.ACR_NAME != '' }}" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: gate
@@ -37,15 +37,14 @@ jobs:
 
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Install the Container Apps extension
         run: az extension add --name containerapp --upgrade --allow-preview true
 
       - name: Resolve ACR login server
-        run: echo "ACR_LOGIN=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)" >> "$GITHUB_ENV"
+        run: |
+          echo "ACR_LOGIN=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)" >> "$GITHUB_ENV"
 
       - name: Build both images in ACR (tagged with the commit)
         run: |
@@ -62,4 +61,4 @@ jobs:
       - name: Report
         run: |
           WEB_FQDN=$(az containerapp show -g "$RESOURCE_GROUP" -n "$WEB_APP" --query properties.configuration.ingress.fqdn -o tsv)
-          echo "Deployed \`${GITHUB_SHA::7}\` → https://$WEB_FQDN" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployed ${GITHUB_SHA} to https://$WEB_FQDN" >> "$GITHUB_STEP_SUMMARY"
