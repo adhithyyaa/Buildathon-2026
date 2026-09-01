@@ -129,6 +129,7 @@ jobs:
               WEB_ORIGIN="$WEB_URL" \
               PUBLIC_BASE_URL="$WEB_URL" \
               ML_SERVICE_URL="$ML_URL" \
+              ML_TIMEOUT_MS=45000 \
               DATABASE_URL=secretref:db-url \
               RAZORPAY_KEY_ID="$RAZORPAY_KEY_ID" \
               RAZORPAY_KEY_SECRET=secretref:rzp-secret \
