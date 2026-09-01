@@ -42,14 +42,20 @@ jobs:
       - name: Install the Container Apps extension
         run: az extension add --name containerapp --upgrade --allow-preview true
 
-      - name: Resolve ACR login server
+      - name: Build and push both images (runner build)
+        # ACR Tasks (az acr build) is blocked on this subscription, so build on the runner (it has
+        # Docker) and docker push to the registry — a normal registry op, which is permitted.
         run: |
-          echo "ACR_LOGIN=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)" >> "$GITHUB_ENV"
-
-      - name: Build both images in ACR (tagged with the commit)
-        run: |
-          az acr build -r "$ACR_NAME" -t overwatch-api:${{ github.sha }} -f server/Dockerfile .
-          az acr build -r "$ACR_NAME" -t overwatch-web:${{ github.sha }} ./web
+          ACR_LOGIN=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
+          ACR_USER=$(az acr credential show -n "$ACR_NAME" --query username -o tsv)
+          ACR_PASS=$(az acr credential show -n "$ACR_NAME" --query 'passwords[0].value' -o tsv)
+          echo "::add-mask::$ACR_PASS"
+          echo "$ACR_PASS" | docker login "$ACR_LOGIN" -u "$ACR_USER" --password-stdin
+          docker build -t "$ACR_LOGIN/overwatch-api:${{ github.sha }}" -f server/Dockerfile .
+          docker build -t "$ACR_LOGIN/overwatch-web:${{ github.sha }}" ./web
+          docker push "$ACR_LOGIN/overwatch-api:${{ github.sha }}"
+          docker push "$ACR_LOGIN/overwatch-web:${{ github.sha }}"
+          echo "ACR_LOGIN=$ACR_LOGIN" >> "$GITHUB_ENV"
 
       - name: Swap the new images onto the apps
         run: |
