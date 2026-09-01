@@ -20,7 +20,11 @@ permissions:
 
 env:
   RESOURCE_GROUP: overwatch-rg
-  LOCATION: uaenorth
+  # UAE North's single Container Apps environment slot is already used by another project on this
+  # subscription (free-tier cap is 1 env per region), so Overwatch gets its own env in Malaysia West —
+  # allowed + offered + has quota, a documented fallback. Slightly higher latency to India than UAE North,
+  # still comfortably inside Razorpay's ~5s webhook-ack budget.
+  LOCATION: malaysiawest
   ENVIRONMENT: overwatch-env
   API_APP: overwatch-api
   WEB_APP: overwatch-web
