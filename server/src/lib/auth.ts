@@ -22,9 +22,11 @@ function tokenMatches(provided: string, expected: string): boolean {
 export function requireToken(req: Request, res: Response, next: NextFunction): void {
   const expected = env.OVERWATCH_ADMIN_TOKEN;
   if (!expected) {
-    // Fail OPEN only in local dev (zero-config demo). Anywhere else, an unset token means the
-    // operator endpoints are locked, not wide open — refusing is the safe default in prod/staging.
-    if (env.NODE_ENV !== 'development') {
+    // Fail OPEN in local dev, or when a deployment explicitly opts in (a public, test-data demo where
+    // judges click the controls). Otherwise an unset token means the operator endpoints are LOCKED —
+    // refusing is the safe default in prod/staging.
+    const demoOpen = env.OPEN_OPERATOR_ENDPOINTS === 'true';
+    if (env.NODE_ENV !== 'development' && !demoOpen) {
       res.status(503).json({ error: 'operator_auth_unconfigured', message: 'set OVERWATCH_ADMIN_TOKEN to enable operator endpoints' });
       return;
     }

@@ -39,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so we can diff which components changed
 
       - uses: azure/login@v2
         with:
@@ -47,26 +49,48 @@ jobs:
       - name: Install the Container Apps extension
         run: az extension add --name containerapp --upgrade --allow-preview true
 
-      - name: Build and push all images (runner build)
-        # ACR Tasks (az acr build) is blocked on this subscription, so build on the runner (it has
-        # Docker) and docker push to the registry — a normal registry op, which is permitted.
-        # The ML image trains its models during build, so this step takes several minutes.
+      - name: Decide which images changed
+        id: what
+        run: |
+          if [ "${{ github.event_name }}" != "push" ] || ! git rev-parse "${{ github.event.before }}^{commit}" >/dev/null 2>&1; then
+            echo "manual run or unknown base — building all"
+            { echo "api=true"; echo "web=true"; echo "ml=true"; } >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          DIFF=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
+          echo "changed files:"; echo "$DIFF"
+          api=false; web=false; ml=false
+          if grep -qE '^server/' <<<"$DIFF"; then api=true; fi
+          if grep -qE '^ml/[A-Za-z0-9_]+\.json$' <<<"$DIFF"; then api=true; fi   # API bundles the ml/*.json reports
+          if grep -qE '^web/' <<<"$DIFF"; then web=true; fi
+          if grep -qE '^ml/(src/|Dockerfile|requirements\.txt)' <<<"$DIFF"; then ml=true; fi
+          echo "build -> api=$api web=$web ml=$ml"
+          { echo "api=$api"; echo "web=$web"; echo "ml=$ml"; } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push changed images (runner build)
+        # ACR Tasks (az acr build) is blocked on this subscription, so build on the runner and push.
+        # Only changed components rebuild — the ML image trains at build and is slow.
         run: |
           ACR_LOGIN=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
           ACR_USER=$(az acr credential show -n "$ACR_NAME" --query username -o tsv)
           ACR_PASS=$(az acr credential show -n "$ACR_NAME" --query 'passwords[0].value' -o tsv)
           echo "::add-mask::$ACR_PASS"
           echo "$ACR_PASS" | docker login "$ACR_LOGIN" -u "$ACR_USER" --password-stdin
-          docker build -t "$ACR_LOGIN/overwatch-api:${{ github.sha }}" -f server/Dockerfile .
-          docker build -t "$ACR_LOGIN/overwatch-web:${{ github.sha }}" \
-            --build-arg VITE_GOOGLE_CLIENT_ID="${{ vars.APP_GOOGLE_CLIENT_ID }}" ./web
-          docker build -t "$ACR_LOGIN/overwatch-ml:${{ github.sha }}" ./ml
-          docker push "$ACR_LOGIN/overwatch-api:${{ github.sha }}"
-          docker push "$ACR_LOGIN/overwatch-web:${{ github.sha }}"
-          docker push "$ACR_LOGIN/overwatch-ml:${{ github.sha }}"
+          if [ "${{ steps.what.outputs.api }}" = "true" ]; then
+            docker build -t "$ACR_LOGIN/overwatch-api:${{ github.sha }}" -f server/Dockerfile .
+            docker push "$ACR_LOGIN/overwatch-api:${{ github.sha }}"
+          else echo "api unchanged — skip build"; fi
+          if [ "${{ steps.what.outputs.web }}" = "true" ]; then
+            docker build -t "$ACR_LOGIN/overwatch-web:${{ github.sha }}" \
+              --build-arg VITE_GOOGLE_CLIENT_ID="${{ vars.APP_GOOGLE_CLIENT_ID }}" ./web
+            docker push "$ACR_LOGIN/overwatch-web:${{ github.sha }}"
+          else echo "web unchanged — skip build"; fi
+          if [ "${{ steps.what.outputs.ml }}" = "true" ]; then
+            docker build -t "$ACR_LOGIN/overwatch-ml:${{ github.sha }}" ./ml
+            docker push "$ACR_LOGIN/overwatch-ml:${{ github.sha }}"
+          else echo "ml unchanged — skip build"; fi
           echo "ACR_LOGIN=$ACR_LOGIN" >> "$GITHUB_ENV"
 
-      - name: Swap the new images onto the apps
+      - name: Swap the changed images onto the apps
         run: |
           swap() {
             local NAME=$1 IMG=$2
@@ -77,9 +101,9 @@ jobs:
               echo "$NAME not provisioned yet — skipping (run Azure setup -> provision first)"
             fi
           }
-          swap "$API_APP" "$ACR_LOGIN/overwatch-api:${{ github.sha }}"
-          swap "$WEB_APP" "$ACR_LOGIN/overwatch-web:${{ github.sha }}"
-          swap "$ML_APP" "$ACR_LOGIN/overwatch-ml:${{ github.sha }}"
+          if [ "${{ steps.what.outputs.api }}" = "true" ]; then swap "$API_APP" "$ACR_LOGIN/overwatch-api:${{ github.sha }}"; fi
+          if [ "${{ steps.what.outputs.web }}" = "true" ]; then swap "$WEB_APP" "$ACR_LOGIN/overwatch-web:${{ github.sha }}"; fi
+          if [ "${{ steps.what.outputs.ml }}" = "true" ]; then swap "$ML_APP" "$ACR_LOGIN/overwatch-ml:${{ github.sha }}"; fi
 
       - name: Report
         run: |

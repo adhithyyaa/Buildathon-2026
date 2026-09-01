@@ -21,6 +21,10 @@ const EnvSchema = z.object({
   // Bearer token guarding operator/destructive endpoints (pause, reset, dispatch, approve…).
   // If unset, those endpoints are OPEN (zero-config demo); set it in production to enforce auth.
   OVERWATCH_ADMIN_TOKEN: z.string().optional(),
+  // Escape hatch for a public, test-data demo: when 'true', the operator endpoints fail OPEN even in
+  // production (so judges can click the demo controls / view cases without a token). Leave unset for a
+  // real deployment — there, an unset OVERWATCH_ADMIN_TOKEN keeps them locked.
+  OPEN_OPERATOR_ENDPOINTS: z.string().optional(),
 
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default('claude-opus-5'),

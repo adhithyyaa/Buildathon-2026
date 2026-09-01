@@ -124,6 +124,7 @@ jobs:
           az containerapp update -n "$API_APP" -g "$RESOURCE_GROUP" \
             --set-env-vars \
               NODE_ENV=production \
+              OPEN_OPERATOR_ENDPOINTS=true \
               PORT="$API_PORT" \
               WEB_ORIGIN="$WEB_URL" \
               PUBLIC_BASE_URL="$WEB_URL" \
