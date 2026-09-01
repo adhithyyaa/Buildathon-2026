@@ -28,8 +28,10 @@ env:
   ACA_ENV_ID: ${{ vars.ACA_ENV_ID }}
   API_APP: overwatch-api
   WEB_APP: overwatch-web
+  ML_APP: overwatch-ml
   API_PORT: '8787'
   WEB_PORT: '80'
+  ML_PORT: '8899'
   ACR_NAME: ${{ vars.ACR_NAME }}
 
 jobs:
@@ -58,7 +60,7 @@ jobs:
           ACR_PASSWORD=$(az acr credential show -n "$ACR_NAME" --query "passwords[0].value" -o tsv)
           echo "::add-mask::$ACR_PASSWORD"
           create() {
-            local NAME=$1 PORT=$2 INGRESS=$3 MIN=$4 MAX=$5
+            local NAME=$1 PORT=$2 INGRESS=$3 MIN=$4 MAX=$5 CPU=$6 MEM=$7
             if az containerapp show -n "$NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
               echo "$NAME already exists"; return
             fi
@@ -66,16 +68,20 @@ jobs:
               -n "$NAME" -g "$RESOURCE_GROUP" --environment "$ACA_ENV_ID" \
               --image mcr.microsoft.com/k8se/quickstart:latest \
               --target-port "$PORT" --ingress "$INGRESS" \
-              --cpu 0.25 --memory 0.5Gi --min-replicas "$MIN" --max-replicas "$MAX" \
+              --cpu "$CPU" --memory "$MEM" --min-replicas "$MIN" --max-replicas "$MAX" \
               --registry-server "$ACR_NAME.azurecr.io" \
               --registry-username "$ACR_NAME" --registry-password "$ACR_PASSWORD" \
               --output none
             echo "created $NAME"
           }
           # API: internal ingress, one replica kept warm (retry scheduler + no cold-start on webhooks).
-          create "$API_APP" "$API_PORT" internal 1 1
+          create "$API_APP" "$API_PORT" internal 1 1 0.25 0.5Gi
           # Web: public nginx SPA that proxies /api to the API; scales to zero when idle.
-          create "$WEB_APP" "$WEB_PORT" external 0 2
+          create "$WEB_APP" "$WEB_PORT" external 0 2 0.25 0.5Gi
+          # ML: Python/CatBoost inference, internal ingress, scale-to-zero (heavier box for model load;
+          # cold-starts on first prediction, ~free while idle). The API falls back to deterministic
+          # scoring whenever it is down, so this is purely an upgrade.
+          create "$ML_APP" "$ML_PORT" internal 0 1 1.0 2.0Gi
 
       - name: Report
         run: |
@@ -96,8 +102,10 @@ jobs:
         run: |
           API_FQDN=$(az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           WEB_FQDN=$(az containerapp show -n "$WEB_APP" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          ML_FQDN=$(az containerapp show -n "$ML_APP" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           echo "API_FQDN=$API_FQDN" >> "$GITHUB_ENV"
           echo "WEB_URL=https://$WEB_FQDN" >> "$GITHUB_ENV"
+          echo "ML_URL=https://$ML_FQDN" >> "$GITHUB_ENV"
 
       - name: Configure the API
         env:
@@ -119,6 +127,7 @@ jobs:
               PORT="$API_PORT" \
               WEB_ORIGIN="$WEB_URL" \
               PUBLIC_BASE_URL="$WEB_URL" \
+              ML_SERVICE_URL="$ML_URL" \
               DATABASE_URL=secretref:db-url \
               RAZORPAY_KEY_ID="$RAZORPAY_KEY_ID" \
               RAZORPAY_KEY_SECRET=secretref:rzp-secret \

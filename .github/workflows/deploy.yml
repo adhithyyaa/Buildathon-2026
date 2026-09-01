@@ -16,6 +16,7 @@ env:
   RESOURCE_GROUP: overwatch-rg
   API_APP: overwatch-api
   WEB_APP: overwatch-web
+  ML_APP: overwatch-ml
   ACR_NAME: ${{ vars.ACR_NAME }}
 
 jobs:
@@ -42,9 +43,10 @@ jobs:
       - name: Install the Container Apps extension
         run: az extension add --name containerapp --upgrade --allow-preview true
 
-      - name: Build and push both images (runner build)
+      - name: Build and push all images (runner build)
         # ACR Tasks (az acr build) is blocked on this subscription, so build on the runner (it has
         # Docker) and docker push to the registry — a normal registry op, which is permitted.
+        # The ML image trains its models during build, so this step takes several minutes.
         run: |
           ACR_LOGIN=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
           ACR_USER=$(az acr credential show -n "$ACR_NAME" --query username -o tsv)
@@ -52,17 +54,28 @@ jobs:
           echo "::add-mask::$ACR_PASS"
           echo "$ACR_PASS" | docker login "$ACR_LOGIN" -u "$ACR_USER" --password-stdin
           docker build -t "$ACR_LOGIN/overwatch-api:${{ github.sha }}" -f server/Dockerfile .
-          docker build -t "$ACR_LOGIN/overwatch-web:${{ github.sha }}" ./web
+          docker build -t "$ACR_LOGIN/overwatch-web:${{ github.sha }}" \
+            --build-arg VITE_GOOGLE_CLIENT_ID="${{ vars.APP_GOOGLE_CLIENT_ID }}" ./web
+          docker build -t "$ACR_LOGIN/overwatch-ml:${{ github.sha }}" ./ml
           docker push "$ACR_LOGIN/overwatch-api:${{ github.sha }}"
           docker push "$ACR_LOGIN/overwatch-web:${{ github.sha }}"
+          docker push "$ACR_LOGIN/overwatch-ml:${{ github.sha }}"
           echo "ACR_LOGIN=$ACR_LOGIN" >> "$GITHUB_ENV"
 
       - name: Swap the new images onto the apps
         run: |
-          az containerapp update -g "$RESOURCE_GROUP" -n "$API_APP" \
-            --image "$ACR_LOGIN/overwatch-api:${{ github.sha }}" --output none
-          az containerapp update -g "$RESOURCE_GROUP" -n "$WEB_APP" \
-            --image "$ACR_LOGIN/overwatch-web:${{ github.sha }}" --output none
+          swap() {
+            local NAME=$1 IMG=$2
+            if az containerapp show -n "$NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
+              az containerapp update -g "$RESOURCE_GROUP" -n "$NAME" --image "$IMG" --output none
+              echo "rolled $NAME"
+            else
+              echo "$NAME not provisioned yet — skipping (run Azure setup -> provision first)"
+            fi
+          }
+          swap "$API_APP" "$ACR_LOGIN/overwatch-api:${{ github.sha }}"
+          swap "$WEB_APP" "$ACR_LOGIN/overwatch-web:${{ github.sha }}"
+          swap "$ML_APP" "$ACR_LOGIN/overwatch-ml:${{ github.sha }}"
 
       - name: Report
         run: |
