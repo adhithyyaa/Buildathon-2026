@@ -220,8 +220,17 @@ admin runs this once.)
 | `APP_RAZORPAY_WEBHOOK_SECRET` | your chosen webhook secret |
 | `APP_OPENAI_API_KEY` | *optional* — LLM key for AI notes; empty ⇒ template fallback |
 
-**Variable** (the Variables tab, not a secret): `ACR_NAME` = a globally-unique, lowercase-alphanumeric
-registry name (e.g. `overwatchacr1234`).
+**Variables** (the Variables tab, not secrets):
+
+- `ACR_NAME` = a globally-unique, lowercase-alphanumeric registry name (e.g. `overwatchacr1234`).
+- `ACA_ENV_ID` = the resource id of the Container Apps **environment** the apps join. The workflow does not
+  create an environment (a subscription may cap them — Azure for Students allows only **one env total**), so
+  point it at an existing one and grant the CI principal access:
+  ```bash
+  ENV_ID=$(az containerapp env show -n <env-name> -g <env-rg> --query id -o tsv)
+  az role assignment create --assignee <sp-client-id> --role Contributor --scope "$ENV_ID"
+  echo "$ENV_ID"   # ← paste as the ACA_ENV_ID variable
+  ```
 
 With the `gh` CLI:
 

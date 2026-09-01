@@ -20,12 +20,12 @@ permissions:
 
 env:
   RESOURCE_GROUP: overwatch-rg
-  # UAE North's single Container Apps environment slot is already used by another project on this
-  # subscription (free-tier cap is 1 env per region), so Overwatch gets its own env in Malaysia West —
-  # allowed + offered + has quota, a documented fallback. Slightly higher latency to India than UAE North,
-  # still comfortably inside Razorpay's ~5s webhook-ack budget.
-  LOCATION: malaysiawest
-  ENVIRONMENT: overwatch-env
+  # This subscription (Azure for Students) allows only ONE Container Apps environment total — already used
+  # by another live project — so Overwatch SHARES that environment: its two apps join it while the other
+  # project's apps stay untouched (each app scales/bills independently). ACA_ENV_ID is that environment's
+  # full resource id (a repo Variable); the CI principal is granted access to it. Overwatch's own resources
+  # (registry, the two apps) still live in overwatch-rg.
+  ACA_ENV_ID: ${{ vars.ACA_ENV_ID }}
   API_APP: overwatch-api
   WEB_APP: overwatch-web
   API_PORT: '8787'
@@ -53,15 +53,6 @@ jobs:
             echo "created $ACR_NAME"
           fi
 
-      - name: Container Apps environment
-        run: |
-          if az containerapp env show -n "$ENVIRONMENT" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
-            echo "environment $ENVIRONMENT already exists"
-          else
-            az containerapp env create -n "$ENVIRONMENT" -g "$RESOURCE_GROUP" -l "$LOCATION" \
-              --logs-destination none --output table
-          fi
-
       - name: Create the apps
         run: |
           ACR_PASSWORD=$(az acr credential show -n "$ACR_NAME" --query "passwords[0].value" -o tsv)
@@ -72,7 +63,7 @@ jobs:
               echo "$NAME already exists"; return
             fi
             az containerapp create \
-              -n "$NAME" -g "$RESOURCE_GROUP" --environment "$ENVIRONMENT" \
+              -n "$NAME" -g "$RESOURCE_GROUP" --environment "$ACA_ENV_ID" \
               --image mcr.microsoft.com/k8se/quickstart:latest \
               --target-port "$PORT" --ingress "$INGRESS" \
               --cpu 0.25 --memory 0.5Gi --min-replicas "$MIN" --max-replicas "$MAX" \
