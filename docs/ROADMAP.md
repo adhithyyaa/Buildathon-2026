@@ -276,3 +276,14 @@ The honest forward list — what a real merchant deployment needs that a 12-day 
   The top compliance gap, owned openly ([`COMPLIANCE.md`](./COMPLIANCE.md), ADR-016).
 - **Cross-merchant network intelligence** — deliberately deferred as off-thesis for a per-merchant
   decision layer; noted so the decision is a choice, not an oversight.
+- **Database co-location (planned).** The hosted stack runs the API in Azure UAE North against Supabase
+  in Mumbai (`ap-south-1`) — Supabase has no Middle East region, so Mumbai is already its closest to
+  UAE. The ~40ms cross-region round-trip (plus the Supavisor pooler hop) is the dominant cost of the
+  bulk demo controls; `/process` is DB-round-trip-bound, not ML-bound. The fix is to co-locate the DB in
+  the *same* region as the API — **Azure Database for PostgreSQL Flexible Server (B1ms) in UAE North**,
+  which removes both the geography and the pooler hop (round-trips ~40ms → ~1ms) and should take
+  `/process` from ~14s to ~2–3s and every other control proportionally. No app code changes (only
+  `APP_DATABASE_URL` + a `configure` re-run; the API auto-migrates + seeds on boot), and it's on Azure
+  for Students' 12-month free tier (B1ms 750h + 32GB). Parked deliberately: it's a latency nicety, not
+  a scored dimension, and a full DB cutover close to a deadline is the wrong risk for a demo that is
+  already correct and live — a post-buildathon improvement, not a buildathon one.
