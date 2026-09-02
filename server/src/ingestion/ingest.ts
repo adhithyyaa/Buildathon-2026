@@ -65,14 +65,28 @@ export interface IngestResult {
 /** Fraction of at-risk cases held out as a no-action CONTROL arm for the Recovery Lab. */
 const CONTROL_FRACTION = 0.2;
 
-/** Deterministic arm assignment (hash of the dedupe key) so a replay reproduces the same split. */
-export function assignArm(seed: string): 'treatment' | 'control' {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+/**
+ * Deterministic arm assignment (a hash of the dedupe key → [0,1)) so a replay reproduces the same
+ * split. Uses cyrb53 (a well-distributed 53-bit string hash): the earlier FNV-1a under-mixed on the
+ * structured demo dedupe keys, so the realized control share drifted to ≈9% instead of the intended
+ * CONTROL_FRACTION, starving the Recovery Lab's control arm and widening its CI. cyrb53 avalanches
+ * cleanly, so the split lands on CONTROL_FRACTION.
+ */
+function cyrb53(str: string): number {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
   }
-  return (h >>> 0) / 4294967296 < CONTROL_FRACTION ? 'control' : 'treatment';
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0); // 53-bit unsigned
+}
+
+export function assignArm(seed: string): 'treatment' | 'control' {
+  return cyrb53(seed) / 9007199254740992 < CONTROL_FRACTION ? 'control' : 'treatment';
 }
 
 /**
