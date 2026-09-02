@@ -12,7 +12,7 @@ import { mapLimit } from '../lib/concurrency';
 
 // Per-case retry/expiry work is independent across cases, so run it with bounded concurrency to overlap
 // cross-region round-trips (kept at/under the Prisma pool size — see lib/prisma.ts).
-const TICK_CONCURRENCY = 12;
+const TICK_CONCURRENCY = 10;
 
 export interface TickResult {
   dueRetries: number;

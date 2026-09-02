@@ -22,7 +22,9 @@ import { mapLimit } from '../lib/concurrency';
 // (e.g. Supabase in Mumbai while the app runs in UAE North), so throughput is round-trip-bound; running
 // cases concurrently overlaps those round-trips. Kept at/under the Prisma pool size (see lib/prisma.ts)
 // so workers don't starve on connections, and modest enough not to swamp the single ML replica.
-const PROCESS_CONCURRENCY = 12;
+// Kept safely below the Prisma pool (see lib/prisma.ts) so the fan-out never starves concurrent
+// health/status polls of a connection — the source of occasional pool-timeout case failures.
+const PROCESS_CONCURRENCY = 10;
 
 /** Upsert the (few, shared) merchants and return a name→id map so bulk ingest needs no per-row lookup. */
 async function ensureMerchants(names: Array<string | undefined>): Promise<Map<string, string>> {

@@ -13,7 +13,7 @@ function datasourceUrl(): string | undefined {
   if (!raw) return undefined;
   try {
     const u = new URL(raw);
-    if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', '12');
+    if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', '15');
     if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', '30');
     return u.toString();
   } catch {

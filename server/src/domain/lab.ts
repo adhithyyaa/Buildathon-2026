@@ -1,6 +1,11 @@
 import { prisma } from '../lib/prisma';
 import { markRecovered, markExpired } from './recovery';
 import { recovers } from './world';
+import { mapLimit } from '../lib/concurrency';
+
+// Per-case outcome draws are independent, so resolve them with bounded concurrency (kept under the
+// Prisma pool — see lib/prisma.ts) to overlap the cross-region writes.
+const RESOLVE_CONCURRENCY = 10;
 
 /**
  * Recovery Lab — a live counterfactual holdout that measures INCREMENTAL recovered-₹.
@@ -20,21 +25,20 @@ export async function resolveOutcomes(now: Date = new Date()): Promise<{ resolve
     where: { state: { in: ['waiting_for_outcome', 'manual_escalation'] }, outcome: { is: null } },
     select: { id: true, reasonTag: true, assignedAction: true, arm: true, amount: true },
   });
-  let recovered = 0;
-  let expired = 0;
-  for (const c of pending) {
+  const results = await mapLimit(pending, RESOLVE_CONCURRENCY, async (c) => {
     // Control → natural (no-action) rate. Treatment → its dispatched action's rate; a treatment
     // case that was escalated/blocked took no automated action, so it also gets the no-action
     // rate (intent-to-treat, which keeps the comparison honest).
     const action = c.arm === 'control' || !c.assignedAction || c.assignedAction === 'no_action' ? 'no_action' : c.assignedAction;
     if (recovers(c.id, c.reasonTag, action, 'lab')) {
       await markRecovered(c.id, { recoveredAmountPaise: c.amount, source: 'demo', paymentRef: 'lab_outcome', now });
-      recovered++;
-    } else {
-      await markExpired(c.id, now);
-      expired++;
+      return 'recovered' as const;
     }
-  }
+    await markExpired(c.id, now);
+    return 'expired' as const;
+  });
+  const recovered = results.filter((r) => r === 'recovered').length;
+  const expired = results.filter((r) => r === 'expired').length;
   // Learn: recompute the incremental lift and persist which reasons to auto-suppress next cycle.
   const suppressed = await refreshSuppression();
   return { resolved: pending.length, recovered, expired, suppressed };
