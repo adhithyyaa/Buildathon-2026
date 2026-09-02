@@ -18,7 +18,7 @@ import { mapLimit } from '../lib/concurrency';
 // overlapping them cuts seed/process/spike from ~a minute to a few seconds. Kept modest so we don't
 // exhaust the connection pool or hammer the single ML replica.
 const INGEST_CONCURRENCY = 10;
-const PROCESS_CONCURRENCY = 6;
+const PROCESS_CONCURRENCY = 8;
 
 /** Create the (few, shared) merchants up front so the parallel ingest only ever reads them. */
 async function ensureMerchants(names: Array<string | undefined>): Promise<void> {
@@ -149,20 +149,13 @@ demoRouter.post(
 demoRouter.post(
   '/reset',
   ah(async (_req, res) => {
-    // ML tables first: Prediction has a FK to Case, so it must go before cases.
-    await prisma.prediction.deleteMany({});
-    await prisma.anomalyFlag.deleteMany({});
-    await prisma.modelRun.deleteMany({});
-    // AuditLog is append-only (a BEFORE DELETE trigger rejects row deletes), so a full reset clears the
-    // whole ledger with TRUNCATE — the sanctioned wipe — rather than surgical row deletion.
-    await prisma.$executeRawUnsafe('TRUNCATE TABLE "AuditLog"');
-    await prisma.action.deleteMany({});
-    await prisma.decision.deleteMany({});
-    await prisma.outcome.deleteMany({});
-    await prisma.case.deleteMany({});
-    await prisma.event.deleteMany({});
-    await prisma.customer.deleteMany({});
-    await prisma.merchant.deleteMany({});
+    // One TRUNCATE ... CASCADE clears the whole demo graph in a single statement — far fewer round-trips
+    // than per-table deletes (which matter when the DB is cross-region), and TRUNCATE bypasses the
+    // append-only AuditLog trigger (that trigger only guards row DELETE/UPDATE). Setting and
+    // ProcessedWebhook are intentionally preserved (kill switch, tick lease, webhook idempotency).
+    await prisma.$executeRawUnsafe(
+      'TRUNCATE TABLE "AuditLog","Outcome","Action","Decision","Prediction","AnomalyFlag","ModelRun","Case","Event","Customer","Merchant" RESTART IDENTITY CASCADE',
+    );
     res.json({ ok: true });
   }),
 );
