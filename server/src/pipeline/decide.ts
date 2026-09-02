@@ -1,5 +1,5 @@
 import { ActionType, Channel, ReasonTag } from '@prisma/client';
-import { mlPredict } from '../ml/client';
+import { mlPredict, type MlPrediction } from '../ml/client';
 import { buildFeatures, type FeatureArgs } from '../ml/features';
 import { fallbackPlan } from '../ai/fallback';
 import { templateMessage } from '../ai/messages';
@@ -44,9 +44,15 @@ function incentiveFor(recoveryProbability: number, maxPct: number): number {
   return Math.max(1, Math.min(maxPct, scaled));
 }
 
-export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs): Promise<DecideResult> {
+/**
+ * `precomputedMl` lets a batch caller (e.g. /process) score every case's features in ONE round-trip and
+ * inject the result here, instead of each case paying a serial ML call. Semantics: `undefined` → fetch
+ * per-case (the single-case path); an object → use it; `null` → treat ML as unreachable → deterministic
+ * fallback. Behaviour is otherwise identical to fetching inline.
+ */
+export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs, precomputedMl?: MlPrediction | null): Promise<DecideResult> {
   const started = Date.now();
-  const ml = await mlPredict(buildFeatures(fargs));
+  const ml = precomputedMl !== undefined ? precomputedMl : await mlPredict(buildFeatures(fargs));
 
   if (ml) {
     const action = ml.action_class as ActionType;

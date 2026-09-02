@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { ah } from '../lib/asyncHandler';
-import { runCase } from '../pipeline/runCase';
+import { prepareCase, finishCase, type PreparedCase } from '../pipeline/runCase';
+import { mlPredictBatch } from '../ml/client';
 import { markRecovered, markExpired } from '../domain/recovery';
 import { generateSyntheticCases, generateSpikeBurst } from '../seed/dataset';
 import { normalizeAtRiskInput } from '../ingestion/normalize';
@@ -166,23 +167,50 @@ demoRouter.post(
   '/process',
   ah(async (req, res) => {
     const limit = Math.min(Number(req.body?.limit) || 500, 1000);
+    const now = new Date();
     const atRisk = await prisma.case.findMany({
       where: { state: 'at_risk' },
       select: { id: true },
       orderBy: [{ riskScore: 'desc' }],
       take: limit,
     });
-    const outcomes = await mapLimit(atRisk, PROCESS_CONCURRENCY, async (c) => {
+
+    // Phase 1 — score + analyze every case in parallel. Control cases finish here; treatment cases
+    // return "ready" carrying their ML features.
+    let processed = 0;
+    let failed = 0;
+    const ready: PreparedCase[] = [];
+    const prepped = await mapLimit(atRisk, PROCESS_CONCURRENCY, async (c) => {
       try {
-        await runCase(c.id);
+        return await prepareCase(c.id, now);
+      } catch (e) {
+        logger.error('process.prepare_failed', { caseId: c.id, error: toMessage(e) });
+        return null;
+      }
+    });
+    for (const p of prepped) {
+      if (p === null) failed++;
+      else if ('done' in p) processed++;
+      else ready.push(p.ready);
+    }
+
+    // Phase 2 — score ALL ready cases in ONE batched round-trip, instead of a serial ML call per case.
+    // This is the win: the single ML replica amortizes its per-request overhead across the whole set.
+    const predictions = await mlPredictBatch(ready.map((r) => r.features));
+
+    // Phase 3 — deterministic policy + execute per case, in parallel.
+    const finals = await mapLimit(ready, PROCESS_CONCURRENCY, async (prep, i) => {
+      try {
+        await finishCase(prep, predictions[i] ?? null, now);
         return true;
       } catch (e) {
-        logger.error('process.case_failed', { caseId: c.id, error: toMessage(e) });
+        logger.error('process.finish_failed', { caseId: prep.caseId, error: toMessage(e) });
         return false;
       }
     });
-    const processed = outcomes.filter(Boolean).length;
-    const failed = outcomes.length - processed;
+    processed += finals.filter(Boolean).length;
+    failed += finals.length - finals.filter(Boolean).length;
+
     res.json({ processed, failed });
   }),
 );

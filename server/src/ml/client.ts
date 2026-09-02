@@ -84,6 +84,25 @@ export function mlPredict(features: Record<string, unknown>): Promise<MlPredicti
   });
 }
 
+/**
+ * Explicitly score a whole list of cases in as few round-trips as possible — the /process hot path.
+ * Splits into chunks (the ML service loops per item; a huge single POST would risk the timeout) and
+ * preserves input order. A failed chunk yields nulls for its slice so those cases fall back to
+ * deterministic scoring, exactly like a per-case miss. This is what turns ~N serial ML calls (each
+ * paying the replica's per-request overhead) into a handful of batched ones.
+ */
+const PREDICT_BATCH_CHUNK = 60;
+export async function mlPredictBatch(featuresList: Array<Record<string, unknown>>): Promise<Array<MlPrediction | null>> {
+  const out: Array<MlPrediction | null> = [];
+  for (let i = 0; i < featuresList.length; i += PREDICT_BATCH_CHUNK) {
+    const chunk = featuresList.slice(i, i + PREDICT_BATCH_CHUNK);
+    const res = await post<{ predictions: Array<MlPrediction | null> }>('/predict/batch', { items: chunk });
+    const preds = res?.predictions ?? [];
+    for (let j = 0; j < chunk.length; j++) out.push(preds[j] ?? null);
+  }
+  return out;
+}
+
 export interface ReasonFactor {
   feature: string;
   label: string;

@@ -12,6 +12,8 @@ import { execute } from '../domain/executor';
 import { activeIncidentReasons } from '../domain/incidents';
 import { getSuppressedReasons } from '../domain/lab';
 import { decideCase } from './decide';
+import { mlPredict, type MlPrediction } from '../ml/client';
+import { buildFeatures, type FeatureArgs } from '../ml/features';
 import type { DecisionContext, PolicyEnvelope } from '../ai/context';
 
 export const ALLOWED_ACTIONS = [
@@ -44,19 +46,32 @@ export interface RunResult {
   source?: 'ml' | 'fallback';
 }
 
+/** A case scored and moved to `analyzed`, carrying everything the ML/decision step needs — the
+ *  boundary between the two pipeline phases so `/process` can batch the ML call across many cases. */
+export interface PreparedCase {
+  caseId: string;
+  kase: Awaited<ReturnType<typeof loadCase>>;
+  ctx: DecisionContext;
+  fargs: FeatureArgs;
+  features: Record<string, unknown>;
+}
+
+function loadCase(caseId: string) {
+  return prisma.case.findUniqueOrThrow({ where: { id: caseId }, include: { event: true, customer: true, merchant: true } });
+}
+
 /**
- * Run the full recovery pipeline for one case that is currently `at_risk`:
- *   score (deterministic) -> ML decision -> deterministic policy -> execute.
- * Persists a Prediction + Decision and drives all state transitions + audit logs.
+ * Phase 1 of the pipeline: load, deterministically score, persist scores, move `at_risk → analyzed`,
+ * and — for a held-out control case — run the whole no-action control path and finish here. For a
+ * treatment case it builds the decision context + ML features and returns them, WITHOUT calling ML,
+ * so a batch caller can score many cases in one round-trip. Returns `{done}` when the case is finished
+ * (not-at-risk or control) or `{ready}` when it awaits an ML decision.
  */
-export async function runCase(caseId: string, now: Date = new Date()): Promise<RunResult> {
-  const kase = await prisma.case.findUniqueOrThrow({
-    where: { id: caseId },
-    include: { event: true, customer: true, merchant: true },
-  });
+export async function prepareCase(caseId: string, now: Date = new Date()): Promise<{ done: RunResult } | { ready: PreparedCase }> {
+  const kase = await loadCase(caseId);
 
   if (kase.state !== 'at_risk') {
-    return { caseId, ranPipeline: false };
+    return { done: { caseId, ranPipeline: false } };
   }
 
   const reasonTag: ReasonTag = kase.reasonTag ?? 'unknown';
@@ -98,10 +113,10 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
     await transition(caseId, 'action_dispatched', { step: 'control_holdout', actor: 'system', details: { arm: 'control' } });
     await transition(caseId, 'waiting_for_outcome', { step: 'awaiting_outcome', actor: 'system' });
     logger.info('pipeline.control', { caseId });
-    return { caseId, ranPipeline: true, action: 'no_action', outcome: 'control', finalState: 'waiting_for_outcome', source: 'fallback' };
+    return { done: { caseId, ranPipeline: true, action: 'no_action', outcome: 'control', finalState: 'waiting_for_outcome', source: 'fallback' } };
   }
 
-  // 2. ML decision (CatBoost) — or deterministic fallback if the ML service is down.
+  // 2. Build the decision context + ML features (no ML call yet — the caller decides how to fetch it).
   const ctx: DecisionContext = {
     merchantName: kase.merchant.name,
     amountPaise: kase.amount,
@@ -123,7 +138,7 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
   const priorActions = await prisma.action.findMany({ where: { caseId }, orderBy: { createdAt: 'desc' }, take: 5 });
   const lastAction = priorActions[0];
 
-  const result = await decideCase(ctx, {
+  const fargs: FeatureArgs = {
     amountPaise: kase.amount,
     currency: kase.currency,
     reasonTag,
@@ -141,7 +156,20 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
     lastActionType: lastAction ? lastAction.actionType : 'none',
     lastActionOutcome: lastAction ? (lastAction.deliveryStatus ?? lastAction.status) : 'none',
     allowedActions: ALLOWED_ACTIONS,
-  });
+  };
+
+  return { ready: { caseId, kase, ctx, fargs, features: buildFeatures(fargs) } };
+}
+
+/**
+ * Phase 2 of the pipeline: given a prepared case and its ML prediction (or `null` if ML was
+ * unreachable → deterministic fallback), run the deterministic policy, persist Prediction + Decision,
+ * drive the remaining transitions + audit, and execute. Split from Phase 1 so the ML call in between
+ * can be batched.
+ */
+export async function finishCase(prep: PreparedCase, ml: MlPrediction | null, now: Date = new Date()): Promise<RunResult> {
+  const { caseId, kase, ctx, fargs } = prep;
+  const result = await decideCase(ctx, fargs, ml);
   const plan = result.plan;
 
   const suggestedRetryAt =
@@ -256,4 +284,16 @@ export async function runCase(caseId: string, now: Date = new Date()): Promise<R
     finalState: exec.finalState,
     source: result.source,
   };
+}
+
+/**
+ * Run the full recovery pipeline for one `at_risk` case: score → ML decision → deterministic policy →
+ * execute. This is the single-case entry point (worker / tick / one-off); `/process` instead calls
+ * prepareCase + a batched predict + finishCase across the whole at-risk set. Behaviour is identical.
+ */
+export async function runCase(caseId: string, now: Date = new Date()): Promise<RunResult> {
+  const prepared = await prepareCase(caseId, now);
+  if ('done' in prepared) return prepared.done;
+  const ml = await mlPredict(prepared.ready.features);
+  return finishCase(prepared.ready, ml, now);
 }
