@@ -36,9 +36,52 @@ async function post<T>(path: string, body: unknown): Promise<T | null> {
   }
 }
 
-/** Predict for one case. Returns null if the ML service is unreachable → caller falls back. */
+// Predict-request coalescing. /process fans out over a whole at-risk batch, and each ML call pays a
+// fixed per-request overhead (network hop + framework + model dispatch) that dwarfs the actual compute
+// — so N cases cost ~N×120ms serialized on the single ML replica. Instead, concurrent mlPredict() calls
+// are collected within a tiny window and sent as ONE /predict/batch round-trip, amortizing that overhead
+// across the batch. Transparent to callers: mlPredict keeps the same signature and per-case semantics,
+// and any failure still resolves to null so the caller falls back to deterministic scoring.
+interface PendingPredict {
+  features: Record<string, unknown>;
+  resolve: (v: MlPrediction | null) => void;
+}
+const PREDICT_BATCH_WINDOW_MS = 15;
+const PREDICT_BATCH_MAX = 64;
+let predictQueue: PendingPredict[] = [];
+let predictTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushPredict(): void {
+  if (predictTimer) {
+    clearTimeout(predictTimer);
+    predictTimer = null;
+  }
+  const batch = predictQueue;
+  predictQueue = [];
+  if (batch.length === 0) return;
+  // A lone call keeps the plain /predict path (lowest latency for one-off predictions).
+  if (batch.length === 1) {
+    post<MlPrediction>('/predict', batch[0]!.features)
+      .then((r) => batch[0]!.resolve(r))
+      .catch(() => batch[0]!.resolve(null));
+    return;
+  }
+  post<{ predictions: (MlPrediction | null)[] }>('/predict/batch', { items: batch.map((b) => b.features) })
+    .then((res) => {
+      const preds = res?.predictions ?? [];
+      batch.forEach((b, i) => b.resolve(preds[i] ?? null));
+    })
+    .catch(() => batch.forEach((b) => b.resolve(null)));
+}
+
+/** Predict for one case. Returns null if the ML service is unreachable → caller falls back.
+ *  Concurrent calls are coalesced into one /predict/batch round-trip (see note above). */
 export function mlPredict(features: Record<string, unknown>): Promise<MlPrediction | null> {
-  return post<MlPrediction>('/predict', features);
+  return new Promise((resolve) => {
+    predictQueue.push({ features, resolve });
+    if (predictQueue.length >= PREDICT_BATCH_MAX) flushPredict();
+    else if (!predictTimer) predictTimer = setTimeout(flushPredict, PREDICT_BATCH_WINDOW_MS);
+  });
 }
 
 export interface ReasonFactor {

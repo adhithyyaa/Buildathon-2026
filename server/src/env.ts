@@ -25,6 +25,11 @@ const EnvSchema = z.object({
   // production (so judges can click the demo controls / view cases without a token). Leave unset for a
   // real deployment — there, an unset OVERWATCH_ADMIN_TOKEN keeps them locked.
   OPEN_OPERATOR_ENDPOINTS: z.string().optional(),
+  // Run the retry/expiry scheduler inside the API process (setInterval loop) instead of as a separate
+  // `npm run worker`. Lets a single always-on API container advance retries/expiries on its own — no
+  // second container — which is how the hosted deployment gets the same automatic progression as local.
+  // The tick holds a single-flight DB lease, so enabling it on multiple replicas is still safe.
+  RUN_WORKER: z.string().optional(),
 
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default('claude-opus-5'),

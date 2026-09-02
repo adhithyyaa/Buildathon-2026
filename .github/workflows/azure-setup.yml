@@ -125,6 +125,7 @@ jobs:
             --set-env-vars \
               NODE_ENV=production \
               OPEN_OPERATOR_ENDPOINTS=true \
+              RUN_WORKER=true \
               PORT="$API_PORT" \
               WEB_ORIGIN="$WEB_URL" \
               PUBLIC_BASE_URL="$WEB_URL" \

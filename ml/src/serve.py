@@ -198,6 +198,21 @@ def predict(inp: CaseInput):
     }
 
 
+class BatchInput(BaseModel):
+    items: list[CaseInput]
+
+
+@app.post("/predict/batch")
+def predict_batch(inp: BatchInput):
+    """Score many cases in one round-trip. The per-request overhead (network hop, framework/validation,
+    model warmup) dominates a single /predict, so scoring a whole at-risk batch case-by-case pays it
+    N times; batching pays it once. Reuses predict() per item and preserves input order, so the result
+    is identical to N separate calls — just far fewer round-trips (the /process hot path)."""
+    if M is None:
+        raise HTTPException(503, "models not loaded")
+    return {"predictions": [predict(it) for it in inp.items]}
+
+
 class ExplainInput(CaseInput):
     action: Optional[str] = None  # explain this action; default = the recommended (EV-optimal allowed) action
 
