@@ -66,7 +66,7 @@ export interface IngestResult {
 const CONTROL_FRACTION = 0.2;
 
 /** Deterministic arm assignment (hash of the dedupe key) so a replay reproduces the same split. */
-function assignArm(seed: string): 'treatment' | 'control' {
+export function assignArm(seed: string): 'treatment' | 'control' {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) {
     h ^= seed.charCodeAt(i);

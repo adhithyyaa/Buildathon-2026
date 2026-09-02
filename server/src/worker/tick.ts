@@ -8,6 +8,11 @@ import { detectFailureSpikes } from '../domain/incidents';
 import { isPaused } from '../domain/killswitch';
 import { runCase } from '../pipeline/runCase';
 import { toMessage } from '../lib/errors';
+import { mapLimit } from '../lib/concurrency';
+
+// Per-case retry/expiry work is independent across cases, so run it with bounded concurrency to overlap
+// cross-region round-trips (kept at/under the Prisma pool size — see lib/prisma.ts).
+const TICK_CONCURRENCY = 12;
 
 export interface TickResult {
   dueRetries: number;
@@ -67,40 +72,40 @@ export async function tick(opts: { now?: Date; fastForward?: boolean } = {}): Pr
 
   const due = await prisma.case.findMany({ where: dueWhere });
 
-  for (const c of due) {
-   try {
-    if (c.assignedAction === 'no_action') {
-      await transition(c.id, 'at_risk', { step: 'revisit', actor: 'system', details: { from: 'no_action' } });
-      await runCase(c.id, now);
-      reQueued++;
-      continue;
-    }
+  // Each case is independent (distinct id; per-case audit chains) so fire them with bounded concurrency.
+  const outcomes = await mapLimit(due, TICK_CONCURRENCY, async (c) => {
+    try {
+      if (c.assignedAction === 'no_action') {
+        await transition(c.id, 'at_risk', { step: 'revisit', actor: 'system', details: { from: 'no_action' } });
+        await runCase(c.id, now);
+        return 'requeued' as const;
+      }
 
-    // smart_retry: the INDEPENDENT world (a fixed per-reason true rate, NOT the model's own
-    // prediction) decides whether the retried payment succeeds — so recovered-₹ isn't the model
-    // grading itself. Deterministic in (caseId, attempt) for reproducible replays.
-    if (retrySucceeds(c.id, c.reasonTag, c.attempts)) {
-      await markRecovered(c.id, { recoveredAmountPaise: c.amount, source: 'retry', paymentRef: 'auto_retry', now });
-      recovered++;
-    } else {
+      // smart_retry: the INDEPENDENT world (a fixed per-reason true rate, NOT the model's own
+      // prediction) decides whether the retried payment succeeds — so recovered-₹ isn't the model
+      // grading itself. Deterministic in (caseId, attempt) for reproducible replays.
+      if (retrySucceeds(c.id, c.reasonTag, c.attempts)) {
+        await markRecovered(c.id, { recoveredAmountPaise: c.amount, source: 'retry', paymentRef: 'auto_retry', now });
+        return 'recovered' as const;
+      }
       await logAudit({ caseId: c.id, step: 'retry_failed', actor: 'system', details: { attempts: c.attempts } });
       await transition(c.id, 'at_risk', { step: 'retry_failed_requeue', actor: 'system', details: { attempts: c.attempts } });
       await runCase(c.id, now); // re-decide (will retry until cap, then escalate)
-      reQueued++;
-    }
-   } catch (e) {
+      return 'requeued' as const;
+    } catch (e) {
       logger.error('tick.case_failed', { caseId: c.id, error: toMessage(e) });
-   }
-  }
+      return 'failed' as const;
+    }
+  });
+  recovered = outcomes.filter((o) => o === 'recovered').length;
+  reQueued = outcomes.filter((o) => o === 'requeued').length;
 
   const overdue = await prisma.case.findMany({
     where: { state: 'waiting_for_outcome', expiresAt: { lt: now } },
     select: { id: true },
   });
-  for (const c of overdue) {
-    await markExpired(c.id, now);
-    expired++;
-  }
+  await mapLimit(overdue, TICK_CONCURRENCY, (c) => markExpired(c.id, now));
+  expired = overdue.length;
 
   logger.info('worker.tick', { due: due.length, recovered, reQueued, expired, fastForward: ff });
   return { dueRetries: due.length, recovered, reQueued, expired };

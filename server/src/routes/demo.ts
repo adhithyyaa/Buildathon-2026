@@ -5,7 +5,12 @@ import { runCase } from '../pipeline/runCase';
 import { markRecovered, markExpired } from '../domain/recovery';
 import { generateSyntheticCases, generateSpikeBurst } from '../seed/dataset';
 import { normalizeAtRiskInput } from '../ingestion/normalize';
-import { ingestEvent } from '../ingestion/ingest';
+import { assignArm } from '../ingestion/ingest';
+import { classifyReason } from '../domain/reasons';
+import { chainHash, rowContent, GENESIS } from '../domain/audit';
+import type { NormalizedEvent } from '../ingestion/normalize';
+import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { tick } from '../worker/tick';
 import { detectFailureSpikes } from '../domain/incidents';
 import { formatINR } from '../lib/money';
@@ -13,31 +18,136 @@ import { logger } from '../lib/logger';
 import { toMessage } from '../lib/errors';
 import { mapLimit } from '../lib/concurrency';
 
-// Bounded parallelism for the demo's per-row DB work. The DB is often in another region (e.g. Supabase
-// in Mumbai while the app runs in UAE North), so sequential awaits are dominated by round-trip latency;
-// overlapping them cuts seed/process/spike from ~a minute to a few seconds. Kept modest so we don't
-// exhaust the connection pool or hammer the single ML replica.
-const INGEST_CONCURRENCY = 10;
-const PROCESS_CONCURRENCY = 8;
+// Bounded parallelism for the pipeline fan-out in /process and /tick. The DB is often in another region
+// (e.g. Supabase in Mumbai while the app runs in UAE North), so throughput is round-trip-bound; running
+// cases concurrently overlaps those round-trips. Kept at/under the Prisma pool size (see lib/prisma.ts)
+// so workers don't starve on connections, and modest enough not to swamp the single ML replica.
+const PROCESS_CONCURRENCY = 12;
 
-/** Create the (few, shared) merchants up front so the parallel ingest only ever reads them. */
-async function ensureMerchants(names: Array<string | undefined>): Promise<void> {
+/** Upsert the (few, shared) merchants and return a name→id map so bulk ingest needs no per-row lookup. */
+async function ensureMerchants(names: Array<string | undefined>): Promise<Map<string, string>> {
   const distinct = [...new Set(names.map((n) => n?.trim() || 'Demo Merchant'))];
-  for (const name of distinct) {
-    await prisma.merchant.upsert({ where: { name }, create: { name }, update: {} });
-  }
+  await Promise.all(distinct.map((name) => prisma.merchant.upsert({ where: { name }, create: { name }, update: {} })));
+  const rows = await prisma.merchant.findMany({ where: { name: { in: distinct } }, select: { id: true, name: true } });
+  return new Map(rows.map((r) => [r.name, r.id]));
 }
 
 export const demoRouter = Router();
 
+/**
+ * Bulk ingest a synthetic batch (seed / spike). Instead of ~10 round-trips per case (the per-row live
+ * ingestion path), this generates ids client-side, builds every row in memory, and writes the whole
+ * batch with four createMany calls — turning a cross-region, latency-bound loop into a handful of round
+ * trips. It reproduces the live path's end state exactly: the same Event/Customer/Case rows, and each
+ * case's two-row audit chain (ingested → normalized) hashed with the SAME functions the live path uses,
+ * so tamper-evidence verification still passes. Idempotent: events whose dedupeKey already exists are
+ * skipped (so a replay is a no-op), matching the live path's dedupe.
+ */
+async function bulkIngest(events: NormalizedEvent[]): Promise<{ total: number; created: number; deduped: number }> {
+  if (events.length === 0) return { total: 0, created: 0, deduped: 0 };
+
+  // Skip anything already ingested — one round-trip.
+  const existing = await prisma.event.findMany({ where: { dedupeKey: { in: events.map((e) => e.dedupeKey) } }, select: { dedupeKey: true } });
+  const seen = new Set(existing.map((e) => e.dedupeKey));
+  const fresh = events.filter((e) => !seen.has(e.dedupeKey));
+  const deduped = events.length - fresh.length;
+  if (fresh.length === 0) return { total: events.length, created: 0, deduped };
+
+  const merchantIds = await ensureMerchants(fresh.map((e) => e.merchantName));
+
+  const customers: Prisma.CustomerCreateManyInput[] = [];
+  const eventRows: Prisma.EventCreateManyInput[] = [];
+  const caseRows: Prisma.CaseCreateManyInput[] = [];
+  const auditRows: Prisma.AuditLogCreateManyInput[] = [];
+  const custIdByKey = new Map<string, string>(); // intra-batch customer dedupe (externalId/email), as the live path does
+  const auditBase = Date.now();
+
+  fresh.forEach((n, i) => {
+    const merchantName = n.merchantName?.trim() || 'Demo Merchant';
+    const merchantId = merchantIds.get(merchantName)!;
+
+    const c = n.customer;
+    let customerId: string | null = null;
+    if (c && (c.externalId || c.email || c.phone || c.name)) {
+      const key = c.externalId ? `x:${merchantId}:${c.externalId}` : c.email ? `e:${merchantId}:${c.email}` : null;
+      const reuse = key ? custIdByKey.get(key) : undefined;
+      if (reuse) {
+        customerId = reuse;
+      } else {
+        customerId = randomUUID();
+        if (key) custIdByKey.set(key, customerId);
+        customers.push({
+          id: customerId,
+          merchantId,
+          externalId: c.externalId,
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          optedOut: c.optedOut ?? false,
+          priorPayments: c.priorPayments ?? 0,
+          priorConversions: c.priorConversions ?? 0,
+        });
+      }
+    }
+
+    const reasonTag = classifyReason({ failureReason: n.failureReason, failureCode: n.failureCode, method: n.method, eventType: n.eventType });
+    const eventId = randomUUID();
+    const caseId = randomUUID();
+
+    eventRows.push({
+      id: eventId,
+      merchantId,
+      customerId,
+      eventType: n.eventType,
+      externalOrderId: n.externalOrderId,
+      externalPaymentId: n.externalPaymentId,
+      amount: n.amountPaise,
+      currency: n.currency,
+      method: n.method,
+      failureReason: n.failureReason,
+      failureCode: n.failureCode,
+      channel: n.channel,
+      retryCount: n.retryCount,
+      dedupeKey: n.dedupeKey,
+      raw: n.raw as Prisma.InputJsonValue,
+      ...(n.occurredAt ? { createdAt: n.occurredAt } : {}),
+    });
+
+    caseRows.push({
+      id: caseId,
+      eventId,
+      merchantId,
+      customerId,
+      amount: n.amountPaise,
+      currency: n.currency,
+      reasonTag,
+      arm: assignArm(n.dedupeKey),
+      state: 'at_risk',
+      ...(n.occurredAt ? { createdAt: n.occurredAt } : {}),
+    });
+
+    // Two-row audit chain, identical to ingestEvent + transition(new→at_risk). ingested gets an earlier
+    // createdAt than normalized so verifyCaseChain (orders by createdAt, then id) walks them in order.
+    const ing = { step: 'ingested', actor: 'system', beforeState: null, afterState: 'new', details: { source: n.source, dedupeKey: n.dedupeKey, reasonTag } };
+    const h1 = chainHash(GENESIS, rowContent(ing));
+    const norm = { step: 'normalized', actor: 'system', beforeState: 'new', afterState: 'at_risk', details: { reasonTag, amount: n.amountPaise } };
+    const h2 = chainHash(h1, rowContent(norm));
+    auditRows.push({ id: randomUUID(), caseId, step: 'ingested', actor: 'system', beforeState: null, afterState: 'new', details: ing.details as Prisma.InputJsonValue, prevHash: GENESIS, hash: h1, createdAt: new Date(auditBase + i * 2) });
+    auditRows.push({ id: randomUUID(), caseId, step: 'normalized', actor: 'system', beforeState: 'new', afterState: 'at_risk', details: norm.details as Prisma.InputJsonValue, prevHash: h1, hash: h2, createdAt: new Date(auditBase + i * 2 + 1) });
+  });
+
+  // Four bulk writes, FK order: customers → events → cases → audit.
+  if (customers.length) await prisma.customer.createMany({ data: customers });
+  await prisma.event.createMany({ data: eventRows });
+  await prisma.case.createMany({ data: caseRows });
+  await prisma.auditLog.createMany({ data: auditRows });
+
+  return { total: events.length, created: fresh.length, deduped };
+}
+
 async function seedDemo(count: number) {
   const events = generateSyntheticCases(count).map((row) => normalizeAtRiskInput(row, 'demo'));
-  await ensureMerchants(events.map((n) => n.merchantName));
-  const results = await mapLimit(events, INGEST_CONCURRENCY, (n) => ingestEvent(n));
-  let created = 0;
-  let deduped = 0;
-  for (const r of results) r.deduped ? deduped++ : created++;
-  return { total: events.length, created, deduped };
+  return bulkIngest(events);
 }
 
 /** POST /api/demo/seed { count? } — load a reproducible synthetic batch. */
@@ -87,11 +197,7 @@ demoRouter.post(
     // 60 clears the detector's z≥2.5 bar over the trained 4h baseline (mean ~17, σ ~12) with margin.
     const count = Math.min(Number(req.body?.count) || 60, 120);
     const events = generateSpikeBurst(reason, count, Date.now() % 1_000_000_000).map((row) => normalizeAtRiskInput(row, 'demo'));
-    await ensureMerchants(events.map((n) => n.merchantName));
-    const results = await mapLimit(events, INGEST_CONCURRENCY, (n) => ingestEvent(n));
-    let created = 0;
-    let deduped = 0;
-    for (const r of results) r.deduped ? deduped++ : created++;
+    const { created, deduped } = await bulkIngest(events);
     const det = await detectFailureSpikes();
     res.json({ created, deduped, anomaly: det.anomaly, reasons: det.reasons });
   }),

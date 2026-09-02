@@ -12,7 +12,7 @@ import { prisma } from '../lib/prisma';
  * history would destroy the property it exists to provide.
  */
 
-const GENESIS = 'genesis';
+export const GENESIS = 'genesis';
 
 export interface ChainRow {
   id: string;
