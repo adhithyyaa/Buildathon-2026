@@ -7,7 +7,11 @@ import type { NormalizedEvent } from './normalize';
 
 async function findOrCreateMerchant(name?: string) {
   const merchantName = name?.trim() || 'Demo Merchant';
-  // Atomic upsert on the unique name — two concurrent ingests can't create duplicate merchants.
+  // Read first: under parallel ingest many rows share a merchant, and a plain read avoids row-lock
+  // contention on that one row. Fall back to an atomic upsert (unique name) so concurrent creates of a
+  // not-yet-existing merchant still can't duplicate.
+  const existing = await prisma.merchant.findUnique({ where: { name: merchantName } });
+  if (existing) return existing;
   return prisma.merchant.upsert({ where: { name: merchantName }, create: { name: merchantName }, update: {} });
 }
 

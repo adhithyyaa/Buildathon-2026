@@ -11,19 +11,33 @@ import { detectFailureSpikes } from '../domain/incidents';
 import { formatINR } from '../lib/money';
 import { logger } from '../lib/logger';
 import { toMessage } from '../lib/errors';
+import { mapLimit } from '../lib/concurrency';
+
+// Bounded parallelism for the demo's per-row DB work. The DB is often in another region (e.g. Supabase
+// in Mumbai while the app runs in UAE North), so sequential awaits are dominated by round-trip latency;
+// overlapping them cuts seed/process/spike from ~a minute to a few seconds. Kept modest so we don't
+// exhaust the connection pool or hammer the single ML replica.
+const INGEST_CONCURRENCY = 10;
+const PROCESS_CONCURRENCY = 6;
+
+/** Create the (few, shared) merchants up front so the parallel ingest only ever reads them. */
+async function ensureMerchants(names: Array<string | undefined>): Promise<void> {
+  const distinct = [...new Set(names.map((n) => n?.trim() || 'Demo Merchant'))];
+  for (const name of distinct) {
+    await prisma.merchant.upsert({ where: { name }, create: { name }, update: {} });
+  }
+}
 
 export const demoRouter = Router();
 
 async function seedDemo(count: number) {
-  const rows = generateSyntheticCases(count);
+  const events = generateSyntheticCases(count).map((row) => normalizeAtRiskInput(row, 'demo'));
+  await ensureMerchants(events.map((n) => n.merchantName));
+  const results = await mapLimit(events, INGEST_CONCURRENCY, (n) => ingestEvent(n));
   let created = 0;
   let deduped = 0;
-  for (const row of rows) {
-    const n = normalizeAtRiskInput(row, 'demo');
-    const r = await ingestEvent(n);
-    r.deduped ? deduped++ : created++;
-  }
-  return { total: rows.length, created, deduped };
+  for (const r of results) r.deduped ? deduped++ : created++;
+  return { total: events.length, created, deduped };
 }
 
 /** POST /api/demo/seed { count? } — load a reproducible synthetic batch. */
@@ -46,17 +60,17 @@ demoRouter.post(
       orderBy: [{ riskScore: 'desc' }],
       take: limit,
     });
-    let processed = 0;
-    let failed = 0;
-    for (const c of atRisk) {
+    const outcomes = await mapLimit(atRisk, PROCESS_CONCURRENCY, async (c) => {
       try {
         await runCase(c.id);
-        processed++;
+        return true;
       } catch (e) {
-        failed++;
         logger.error('process.case_failed', { caseId: c.id, error: toMessage(e) });
+        return false;
       }
-    }
+    });
+    const processed = outcomes.filter(Boolean).length;
+    const failed = outcomes.length - processed;
     res.json({ processed, failed });
   }),
 );
@@ -72,14 +86,12 @@ demoRouter.post(
     const reason = req.body?.reason === 'bank_downtime' ? 'bank_downtime' : 'upi_collect_timeout';
     // 60 clears the detector's z≥2.5 bar over the trained 4h baseline (mean ~17, σ ~12) with margin.
     const count = Math.min(Number(req.body?.count) || 60, 120);
-    const rows = generateSpikeBurst(reason, count, Date.now() % 1_000_000_000);
+    const events = generateSpikeBurst(reason, count, Date.now() % 1_000_000_000).map((row) => normalizeAtRiskInput(row, 'demo'));
+    await ensureMerchants(events.map((n) => n.merchantName));
+    const results = await mapLimit(events, INGEST_CONCURRENCY, (n) => ingestEvent(n));
     let created = 0;
     let deduped = 0;
-    for (const row of rows) {
-      const n = normalizeAtRiskInput(row, 'demo');
-      const r = await ingestEvent(n);
-      r.deduped ? deduped++ : created++;
-    }
+    for (const r of results) r.deduped ? deduped++ : created++;
     const det = await detectFailureSpikes();
     res.json({ created, deduped, anomaly: det.anomaly, reasons: det.reasons });
   }),
