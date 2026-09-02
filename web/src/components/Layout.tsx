@@ -19,9 +19,18 @@ export function Layout() {
   const page = pageForPath(location.pathname);
   const { live, setLive, version, poll } = useRefresh();
 
+  // Poll health + kill-switch on an interval (not once on mount): the ML service is scale-to-zero, so a
+  // page load while it is cold would otherwise pin the sidebar to "offline" forever. Re-polling lets the
+  // indicator self-heal once ML warms — and, because each poll pings ML's /health, it keeps ML warm while
+  // the dashboard is open (it still scales back to zero when nobody is watching).
   useEffect(() => {
-    api.health().then(setHealth).catch(() => setHealth(null));
-    api.killSwitch().then((s) => setPaused(s.paused)).catch(() => {});
+    const load = () => {
+      api.health().then(setHealth).catch(() => setHealth(null));
+      api.killSwitch().then((s) => setPaused(s.paused)).catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 15_000);
+    return () => clearInterval(id);
   }, []);
 
   // Live failure-spike awareness — refreshed with the rest of the app so the strip appears
