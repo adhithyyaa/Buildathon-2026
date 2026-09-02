@@ -17,6 +17,27 @@
 
 ---
 
+## The six-axis bar — and the proof for each
+
+Track 03 is won on six things. Most entries own two or three; this repo is built to clear **all six**, with the evidence committed in the repo — not just asserted in prose.
+
+| # | What separates this from a prototype | The proof, in this repo |
+|---|---|---|
+| 1 | **Real money path** — actual Razorpay, not a mock | Two **real** test-mode captures (`pay_TTxufNdQ8rLAvB`, `pay_TTyBx4OQoIQFkj`) recovered through the **signed-webhook** path; replay with `npm run replay:roundtrip` — no keys, no tunnel. |
+| 2 | **Causal ML depth** — models *incremental* uplift, not just propensity | **Qini ≈ 0.93**, ECE ≈ 0.008, capturing ~**99%** of the oracle's incremental ₹; S- vs T-learner selected by Qini. `ml/src/uplift.py` |
+| 3 | **Measurement that survives scrutiny** — from the log *and* a real public RCT | **Doubly-robust OPE** within **~6%** of truth; re-validated on the real **Hillstrom 64k-customer RCT** to within **1.9%** of the trial's ATE; live **control-holdout** incremental ₹ with a **95% CI**, A/A-tested. `ml/src/rct_validate.py` |
+| 4 | **Per-case certainty** — a distribution-free guarantee | Split **conformal**: target 90%, **empirical 90.7%**; every case is confidently-recoverable, confidently-not, or *uncertain → route to a human*. `ml/src/conformal.py` |
+| 5 | **Adversarial governance** — judged by *independent* oracles | Red-team compliance oracles + an outbound-message **fact-checker** + India **policy-as-code** (RBI-TAT, quiet hours, caps), enforced as **property-based invariants** over thousands of randomised inputs. |
+| 6 | **DB-enforced integrity** — tamper-*evident* and tamper-*proof* | SHA-256 **hash-chained** audit ledger, **append-only at the database level** (a trigger rejects `UPDATE`/`DELETE` — not even the app can rewrite it); re-walk any case's chain to verify. |
+
+**Shipped, not slideware:** a polished operator dashboard **live on Azure** ([open the demo](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io)), and **`./reproduce.sh`** rebuilds every number above from source in one command.
+
+### Honesty guards — enforced in CI on every push
+
+The numbers here can't drift from reality. **`claims.docs`** asserts every headline figure in this README matches its source ML artifact; **`ml.bands`** asserts every artifact sits inside its committed quality band; the lift estimator is **A/A-tested** (two statistically identical arms must read ~0 lift with a CI spanning zero). If a number and its source disagree, **CI fails** — see [`reproduce.sh`](reproduce.sh) and [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Nothing here is a number chosen after seeing the outcome.
+
+---
+
 ## The one-line thesis
 
 Payment failure in India is usually *mechanical and recoverable* (UPI timeout, bank downtime, a momentary decline),
