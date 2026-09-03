@@ -13,7 +13,9 @@ function datasourceUrl(): string | undefined {
   if (!raw) return undefined;
   try {
     const u = new URL(raw);
-    if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', '15');
+    // Kept well under half the Supabase pooler size (30) so a rolling deploy — where the old and new
+    // revisions run at once — never exhausts the pool and fails the new revision's boot-time migrate.
+    if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', '12');
     if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', '30');
     return u.toString();
   } catch {
