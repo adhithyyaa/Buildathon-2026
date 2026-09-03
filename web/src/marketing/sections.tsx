@@ -195,7 +195,7 @@ export function UnifyDark({ proof }: { proof: LiveProof }) {
           <Reveal className="rounded-2xl border border-hair bg-white p-6 shadow-2xl shadow-black/20">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-forest">Recovery overview</div>
-              <span className="rounded-full bg-fern/15 px-2.5 py-1 text-[11px] font-semibold text-moss">This month</span>
+              <span className="rounded-full bg-fern/15 px-2.5 py-1 text-[11px] font-semibold text-moss">This month{proof.live ? '' : ' \u00b7 illustrative'}</span>
             </div>
             <div className="mt-4 font-display text-4xl font-semibold tabular-nums text-forest">{formatINR(proof.recoveredPaise)}</div>
             <div className="mt-1 text-[12px] text-fog">{proof.recoveredCount} recovered · {proof.liftPct > 0 ? '+' : ''}{proof.liftPct}pp vs control</div>
@@ -222,7 +222,7 @@ export function CashPosition({ proof }: { proof: LiveProof }) {
             <PhoneFrame>
               <div className="p-4">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-fog">Recovered today</span>
+                  <span className="font-mono text-[10px] text-fog">Recovered today{proof.live ? '' : ' \u00b7 illustrative'}</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-fern/15 px-2 py-0.5 text-[10px] font-semibold text-moss"><Icon name="trendUp" className="h-3 w-3" /> {proof.liftPct > 0 ? '+' : ''}{proof.liftPct}pp</span>
                 </div>
                 <div className="mt-2 font-display text-[1.9rem] font-semibold tabular-nums text-forest">{formatINR(proof.recoveredPaise)}</div>

@@ -32,7 +32,7 @@ Answer each in one breath, then open the proof.
   measurement + governance layer that plugs under Razorpay, not another retry toggle. *Incremental ₹, not gross.*
 
 - **Build quality — does it run, is it structured, would you trust it?** Real money path (exactly-once under
-  concurrency, proven by a test), 80 tests incl. property-based invariants, a tamper-evident **+ DB-enforced
+  concurrency, proven by a test), 85 tests incl. property-based invariants, a tamper-evident **+ DB-enforced
   append-only** ledger, `reproduce.sh` + CI, clean commit history. It runs from a clone; the numbers are
   pinned to their source artifacts so you can trust them by construction, not by our say-so.
 

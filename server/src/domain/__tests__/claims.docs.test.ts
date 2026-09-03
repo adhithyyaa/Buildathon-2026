@@ -134,6 +134,15 @@ const CLAIMS: Claim[] = [
     docs: ['README.md', 'docs/PROOF.md'],
   },
 
+  // ── Recovery model (ml/metrics.json) ──────────────────────────────────────────
+  {
+    label: 'Recovery ROC-AUC (primary calibrated model)',
+    artifact: 'ml/metrics.json',
+    value: (j) => j.recovery.catboost_calibrated.roc_auc,
+    render: (v) => Number(v).toFixed(2), // "0.75"
+    docs: ['README.md', 'docs/PROOF.md'],
+  },
+
   // ── Conformal per-case certainty (ml/conformal.json) ─────────────────────────────────────────
   {
     label: 'Conformal empirical coverage',

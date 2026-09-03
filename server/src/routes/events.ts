@@ -23,9 +23,13 @@ eventsRouter.post(
         results.push({ ok: false, error: parsed.error.flatten() });
         continue;
       }
-      const normalized = normalizeAtRiskInput(parsed.data, 'demo');
-      const r = await ingestEvent(normalized);
-      results.push({ ok: true, ...r });
+      try {
+        const normalized = normalizeAtRiskInput(parsed.data, 'demo');
+        const r = await ingestEvent(normalized);
+        results.push({ ok: true, ...r });
+      } catch (e) {
+        results.push({ ok: false, error: e instanceof Error ? e.message : 'ingest failed' });
+      }
     }
 
     res.json({ count: results.length, results });

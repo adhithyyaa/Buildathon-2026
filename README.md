@@ -86,7 +86,7 @@ Say it before a judge does — every one of these is stated on the artifact or t
 - **The control arm is 20% of each batch** (n≈60–80 on a 300–400-case demo). We show the whole CI and print "not yet significant" when it isn't; the estimator is A/A-tested (it reads ~0 on identical arms), so a narrow interval isn't an estimator artifact. Volume tightens it.
 - **"Projected incremental ₹" is a projection** — the measured lift rate applied to the at-risk ₹ book, labelled as such. Total Recovered and the impact chart count only cash actually banked.
 - **The two real captures are ₹1 each**, on purpose: real order, real hosted-Checkout 3DS, real capture, replayed through the real signed-webhook path. Small amounts, no theatre.
-- **CatBoost's edge over logistic regression is small** (+0.014 ROC-AUC); it's primary for calibration and native categoricals, not a headline gap — and the action head learns from deliberately noisy labels (≈70% raw accuracy), stated as a real learning problem.
+- **CatBoost's edge over logistic regression is small** (+0.013 ROC-AUC); it's primary for calibration and native categoricals, not a headline gap — and the action head learns from deliberately noisy labels (≈70% raw accuracy), stated as a real learning problem.
 - **The test suite is compact by count and property-based where it matters** — each policy invariant is fuzzed over thousands of generated inputs; exactly-once, A/A, tamper detection and the two honesty guards are what it proves.
 - **DPDP data-fiduciary controls are the top compliance gap**, owned openly in [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
 - **We pre-registered one pilot — and it missed a gate.** The protocol ([`docs/PILOT_PROTOCOL.md`](docs/PILOT_PROTOCOL.md)) was committed and git-tagged `pilot-preregistered-v1` *before* the run; the results ([`docs/PILOT_RESULTS.md`](docs/PILOT_RESULTS.md)) are reported gate by gate: **6 of 7 met**, G7 missed. The rest of the evaluation plan was not pre-registered; this run is the one whose ordering we can prove.
@@ -174,7 +174,7 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
 - **ML that actually decides.** Every case is scored by CatBoost (benchmarked vs XGBoost + a LogReg baseline) over a
   shared 21-feature schema, producing six outputs: **calibrated** recovery probability, chosen action + per-action odds, escalation
   risk, anomaly score, action confidence, and reason. The dashboard shows a model card with the reliability curve.
-- **Honest numbers.** Recovery ROC-AUC ≈ **0.76** (95% CI reported; CatBoost's edge over the baseline is real but small,
+- **Honest numbers.** Recovery ROC-AUC ≈ **0.75** (95% CI reported; CatBoost's edge over the baseline is real but small,
   so it's justified on *calibration + native categoricals*, not a headline gap). Action head ≈ **70%** accuracy on
   *deliberately noisy* labels (≈**84%** agreement with the EV-optimal action) — a real learning problem, stated as such.
   Failure-spike detection ≈ **87.5%**. Metrics are on synthetic data, and we say so.
@@ -195,7 +195,7 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
 - **Tested where it matters.** The money path (exactly-once recovery under concurrent webhook redelivery), the policy
   guardrails as **property-based invariants** (fast-check — opt-out never contacted, RBI-TAT always held, retry cap
   respected, decisions deterministic, over thousands of randomised inputs), the incremental-lift estimator's **A/A null
-  test**, and the audit chain's tamper detection — **85 tests across 10 suites**, 18 of them property invariants fuzzed at
+  test**, and the audit chain's tamper detection — **85 tests across 10 suites**, 9 of them property invariants fuzzed at
   500–1,000 runs each, plus the two honesty guards that fail CI on any drift.
 
 ### Real captured round-trip (not just a self-test)

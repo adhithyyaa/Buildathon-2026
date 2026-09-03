@@ -25,11 +25,14 @@ export async function resolveOutcomes(now: Date = new Date()): Promise<{ resolve
     where: { state: { in: ['waiting_for_outcome', 'manual_escalation'] }, outcome: { is: null } },
     select: { id: true, reasonTag: true, assignedAction: true, arm: true, amount: true },
   });
+  // Intent-to-treat: only outreach/retry actions we actually DISPATCHED earn their own recovery rate.
+  // A treatment case that was escalated to a human, blocked, or left as no_action took no automated
+  // action, so it falls back to the no-action baseline too — the honest comparison credits only the
+  // automation we truly sent, never a human hand-off.
+  const DISPATCHED_ACTIONS = new Set(['smart_retry', 'offer_incentive', 'send_payment_link', 'send_reminder']);
   const results = await mapLimit(pending, RESOLVE_CONCURRENCY, async (c) => {
-    // Control → natural (no-action) rate. Treatment → its dispatched action's rate; a treatment
-    // case that was escalated/blocked took no automated action, so it also gets the no-action
-    // rate (intent-to-treat, which keeps the comparison honest).
-    const action = c.arm === 'control' || !c.assignedAction || c.assignedAction === 'no_action' ? 'no_action' : c.assignedAction;
+    // Control → natural (no-action) rate. Treatment → its dispatched action's rate, else no-action.
+    const action = c.arm === 'treatment' && c.assignedAction && DISPATCHED_ACTIONS.has(c.assignedAction) ? c.assignedAction : 'no_action';
     if (recovers(c.id, c.reasonTag, action, 'lab')) {
       await markRecovered(c.id, { recoveredAmountPaise: c.amount, source: 'demo', paymentRef: 'lab_outcome', now });
       return 'recovered' as const;

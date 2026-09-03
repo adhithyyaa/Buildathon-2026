@@ -8,6 +8,7 @@ import { DemoMenu } from './DemoMenu';
 import { TokenControl } from './TokenControl';
 import { UserMenu } from './UserMenu';
 import { CommandPalette } from './CommandPalette';
+import { ErrorBoundary } from './ErrorBoundary';
 import { useRefresh } from '../lib/refresh';
 import { cx } from './ui';
 
@@ -181,7 +182,7 @@ export function Layout() {
         {incidents && incidents.active.length > 0 && <IncidentStrip incidents={incidents} />}
 
         {/* Content Area */}
-        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8"><Outlet /></main>
+        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8"><ErrorBoundary><Outlet /></ErrorBoundary></main>
       </div>
     </div>
   );

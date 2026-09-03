@@ -129,14 +129,16 @@ async function bulkIngest(events: NormalizedEvent[]): Promise<{ total: number; c
       ...(n.occurredAt ? { createdAt: n.occurredAt } : {}),
     });
 
-    // Two-row audit chain, identical to ingestEvent + transition(new→at_risk). ingested gets an earlier
-    // createdAt than normalized so verifyCaseChain (orders by createdAt, then id) walks them in order.
+    // Two-row audit chain, identical to ingestEvent + transition(new→at_risk). Both rows are stamped
+    // just before the seed instant — and thus before every later pipeline row's DB-clock createdAt —
+    // with ingested < normalized, so per-case verifyCaseChain (orders by createdAt, then id) walks them
+    // in logical order regardless of app/DB clock skew or batch size.
     const ing = { step: 'ingested', actor: 'system', beforeState: null, afterState: 'new', details: { source: n.source, dedupeKey: n.dedupeKey, reasonTag } };
     const h1 = chainHash(GENESIS, rowContent(ing));
     const norm = { step: 'normalized', actor: 'system', beforeState: 'new', afterState: 'at_risk', details: { reasonTag, amount: n.amountPaise } };
     const h2 = chainHash(h1, rowContent(norm));
-    auditRows.push({ id: randomUUID(), caseId, step: 'ingested', actor: 'system', beforeState: null, afterState: 'new', details: ing.details as Prisma.InputJsonValue, prevHash: GENESIS, hash: h1, createdAt: new Date(auditBase + i * 2) });
-    auditRows.push({ id: randomUUID(), caseId, step: 'normalized', actor: 'system', beforeState: 'new', afterState: 'at_risk', details: norm.details as Prisma.InputJsonValue, prevHash: h1, hash: h2, createdAt: new Date(auditBase + i * 2 + 1) });
+    auditRows.push({ id: randomUUID(), caseId, step: 'ingested', actor: 'system', beforeState: null, afterState: 'new', details: ing.details as Prisma.InputJsonValue, prevHash: GENESIS, hash: h1, createdAt: new Date(auditBase - 2) });
+    auditRows.push({ id: randomUUID(), caseId, step: 'normalized', actor: 'system', beforeState: 'new', afterState: 'at_risk', details: norm.details as Prisma.InputJsonValue, prevHash: h1, hash: h2, createdAt: new Date(auditBase - 1) });
   });
 
   // Four bulk writes, FK order: customers → events → cases → audit.
