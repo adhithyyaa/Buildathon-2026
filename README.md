@@ -18,10 +18,10 @@
 ## Judge this in 60 seconds
 
 - **What it does.** Catches failed Razorpay payments and abandoned checkouts, decides the safest recovery action with calibrated ML, executes it under a deterministic policy engine, and measures *incremental* ₹ against a randomised 20% no-action control, with a 95% CI.
-- **The one number.** On the real Hillstrom 64,000-customer RCT, our causal machinery recovers the trial's ground-truth ATE to within 1.9%. (Its in-world targeting quality, Qini ≈ 0.93, is measured on a synthetic world we built and disclose on every artifact.)
+- **The one number.** On the real Hillstrom 64,000-customer RCT, our causal machinery recovers the trial's ground-truth ATE to within 1.9% — an e-mail RCT, so it validates the estimator, not payment recovery itself; every in-world ML figure below is on a synthetic world we built and disclose on each artifact.
 - **The one command.** `./reproduce.sh` rebuilds every number, and `claims.docs` fails CI if this README ever drifts from its artifacts. Every claim → artifact → test → endpoint: [`docs/PROOF.md`](docs/PROOF.md).
 
-![Overwatch — product walkthrough: Overview + ROI, causal uplift + real-RCT, red-team compliance, tamper-evident evidence, and the 15/15 rigor scorecard](docs/assets/walkthrough.gif)
+![Overwatch — product walkthrough: Overview + ROI, causal uplift + real-RCT, red-team compliance, tamper-evident evidence, and the rigor scorecard](docs/assets/walkthrough.gif)
 
 **▶ Live demo:** **[overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io)** _(Azure Container Apps · UAE North)_ &nbsp;·&nbsp; **Run it yourself:** [`./reproduce.sh`](reproduce.sh) or the [Quickstart](#quickstart) &nbsp;·&nbsp; **Deploy:** [`docs/DEPLOY.md`](docs/DEPLOY.md) &nbsp;·&nbsp; **Re-record this walkthrough:** `node web/e2e/walkthrough.mjs` (Playwright → `docs/assets/walkthrough.gif`)
 
@@ -122,11 +122,10 @@ append-only audit trail — a layer a merchant doesn't get from the recovery pro
 
 ## The standout: a live Recovery Lab (incremental ₹, not gross)
 
-Every recovery tool claims "we recovered ₹X". The number that actually matters — and that neither Razorpay nor the
-vendors publish — is **₹X *more* than would have happened anyway**. Overwatch runs an always-on **holdout**: a random 20%
+Every recovery tool claims "we recovered ₹X". The number that actually matters is **₹X *more* than would have happened anyway**. Overwatch runs an always-on **holdout**: a random 20%
 of cases are a no-action **control** arm, and the dashboard shows the **incremental** recovered ₹ (treatment − control)
-with a **95% bootstrap CI**, sliced per failure reason. In the demo the treatment arm recovers **~48%** vs a much lower
-control — a large, **significant** lift. It doubles as a live A/B / drift signal on the model, and it closes the loop:
+with a **95% bootstrap CI**, sliced per failure reason. In a demo batch (synthetic cases, a live randomised holdout) the treatment arm recovers roughly half its cases against
+a small fraction for the control — the Lab shows the whole 95% CI and calls it significant only when it is. It doubles as a live A/B / drift signal on the model, and it closes the loop:
 any reason where treatment doesn't beat control is flagged for **auto-suppression** (stop wasting actions there). The
 lift estimator itself is **A/A-tested** — on two statistically identical arms it must read ~0 lift with a CI spanning
 zero (`server/src/domain/__tests__/lab.aa.test.ts`), so the headline number can't be an artifact of the estimator. This
