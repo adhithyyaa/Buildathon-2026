@@ -36,14 +36,23 @@ export function RigorPanel() {
             <p className="text-xs text-slate-500">
               The same uplift + doubly-robust OPE, run on the real <b className="text-slate-700">{rct.dataset.name}</b> ({rct.dataset.rows.toLocaleString('en-IN')} randomised).
             </p>
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Metric label="True ATE" value={`+${(rct.ate_ground_truth.diff_in_means * 100).toFixed(1)}pp`} />
               <Metric label="DR-recovered" value={`+${(rct.ate_recovered.doubly_robust * 100).toFixed(1)}pp`} />
               <Metric label="DR error" value={rct.ate_recovered.dr_error_vs_truth_pct != null ? `${rct.ate_recovered.dr_error_vs_truth_pct}%` : '—'} good />
+              {rct.uplift_learners?.[rct.best_learner] && (
+                <Metric
+                  label="Top-30% targeting"
+                  value={`+${(rct.uplift_learners[rct.best_learner]!.uplift_at_30pct * 100).toFixed(1)}pp vs ATE`}
+                  good={rct.uplift_learners[rct.best_learner]!.uplift_at_30pct > 0}
+                />
+              )}
             </div>
             <p className="mt-2 text-[10.5px] leading-relaxed text-slate-400">
               Our doubly-robust estimator recovers the trial's ground-truth ATE within {rct.ate_recovered.dr_error_vs_truth_pct}% on real noisy
-              randomised data — external validity, not just the synthetic world. Best learner: <b className="text-slate-600">{rct.best_learner.replace('_', '-')}</b>.
+              randomised data — external validity, not just the synthetic world. And the <b className="text-slate-600">ranking</b> holds on real data: targeting the{' '}
+              <b className="text-slate-600">{rct.best_learner.replace('_', '-')}</b>'s top-30% yields more uplift than treating everyone
+              {Object.values(rct.uplift_learners ?? {}).every((l) => l.qini > 0) ? '; all learners beat random by Qini' : ''}.
             </p>
           </div>
         )}

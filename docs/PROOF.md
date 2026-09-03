@@ -24,6 +24,7 @@
 | Causal uplift ranks cases by *incremental* effect (S- vs T-learner, selected by Qini) | Qini ≈ **0.93**, ECE ≈ **0.008**, uplift policy captures ~**99%** of the oracle's incremental ₹ | `ml/.venv/Scripts/python ml/src/uplift.py` | `ml/uplift.json` | `claims.docs`, `ml.bands` |
 | Doubly-robust off-policy value, from the log alone | DR **₹3,276**/case vs logging **₹2,442**; within ~**6%** of ground truth | same | `ml/uplift.json` | `claims.docs` |
 | External validity on a real public RCT (Hillstrom e-mail RCT, **64,000** randomised customers) | ground-truth ATE **+6.1pp** recovered within **1.9%**; best learner **x-learner** | `ml/.venv/Scripts/python ml/src/rct_validate.py` | `ml/rct_validation.json` | `claims.docs` |
+| Uplift **ranking** on real data (same RCT) | targeting the best learner's top-30% yields **+2.0pp** more uplift than treating everyone (x-learner; S-learner **+2.5pp**) over the +6.1pp ATE; all learners' Qini > 0 | same | `ml/rct_validation.json` → `uplift_learners` | `claims.docs` |
 | Per-case certainty with a distribution-free guarantee (split conformal) | target **90%**, empirical **90.7%** on a fresh split | `ml/.venv/Scripts/python ml/src/conformal.py` | `ml/conformal.json` | `claims.docs`, `ml.bands` |
 | Cross-world transfer (frozen model on an independently designed world) | ROC-AUC ≈ 0.68 both directions (chance 0.50) | `ml/.venv/Scripts/python ml/src/transfer.py` | `ml/transfer.json` | `ml.bands` |
 | Online exploration (contextual Thompson sampling) | ~93% of oracle, learned online | `ml/.venv/Scripts/python ml/src/explore.py` | `ml/explore.json` | `claims.docs` (demo) |
@@ -65,3 +66,15 @@
 | synthetic provenance | every ML payload and report is stamped `"synthetic": true` where it applies | `ml/*.json` |
 
 See also: [`docs/DEFENSE.md`](./DEFENSE.md) (the hard questions, answered) · [`DATA_CARD.md`](../DATA_CARD.md) (what the synthetic world is and isn't) · [`docs/COMPLIANCE.md`](./COMPLIANCE.md) (the rules, and the DPDP gap we own).
+
+## One command
+
+`cd server && npm run prove` re-derives every row above in-process and prints PASS / FAIL with the observed values; `SELFTEST_BASE=https://<host> npm run prove` adds the live checks (health, forensics + append-only on real rows, the control-measured lift, the ML-served rate). Exit code is non-zero on any FAIL.
+
+## Pre-registered pilot — ordering you can verify in git
+
+| Claim | Evidence | How to check |
+|---|---|---|
+| The gates were fixed **before** the run | tag `pilot-preregistered-v1` on the protocol commit | `git log -1 --format=%cI pilot-preregistered-v1` vs the commit adding `docs/PILOT_RESULTS.md` |
+| The run is reported gate by gate, misses included | [`PILOT_RESULTS.md`](./PILOT_RESULTS.md): 6 of 7 met, G7 missed | read the Observed column; every number is an API read-out |
+| The miss is the system working | the trailing reason is a Lab suppression candidate and the policy stops spending on it | Recovery Lab page → suppression candidates |

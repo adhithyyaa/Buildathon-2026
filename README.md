@@ -31,6 +31,7 @@
 |---|---|---|
 | Does treatment beat a randomised no-action control? | Measured live on the running system — the Lab shows the whole 95% CI per reason and prints "not yet significant" when it isn't | `/app/lab` · `lab.aa.test.ts` |
 | Does the causal uplift policy beat rules-only and always-retry? | Yes — it captures ~99% of the oracle's incremental ₹ against known ground truth (synthetic world) | `ml/uplift.json` |
+| Does the uplift *ranking* hold on data we didn't generate? | Yes — on the real Hillstrom RCT, targeting the x-learner's top-30% yields +2.0pp more uplift than treating everyone (S-learner +2.5pp) over a +6.1pp ATE; all three learners beat random by Qini | `ml/rct_validation.json` |
 | Does the online Thompson sampler beat the deterministic rules? | **No.** It reaches ~93% of oracle learning from nothing — and still trails the rules. Reported, not tuned away | `ml/explore.json` |
 
 **Reviewer paths:** verify every number → [`docs/PROOF.md`](docs/PROOF.md) · attack the guardrails → [Compliance](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io/app/compliance) · see the real capture → [Evidence](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io/app/evidence) · the math → [ML Model](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io/app/model) · the hard questions → [`docs/DEFENSE.md`](docs/DEFENSE.md) · what broke → [`POSTMORTEM.md`](POSTMORTEM.md)
@@ -53,11 +54,13 @@ Track 03 asks for an agent that detects revenue at risk, diagnoses it, decides a
 
 ## Reproduce every number
 
+**One command, in-process:** `cd server && npm run prove` re-derives the claims below from code and artifacts and prints PASS / FAIL with the observed values (the real captures, ledger forensics, A/A null + A/B power, the 20% holdout, the red-team defence, the message fact-checker, the ML bands, the doc-locked numbers, the pre-registered pilot). Point `SELFTEST_BASE` at the hosted URL and it proves the live system as well. A check that cannot run is printed as NOT RUN with the reason, never skipped.
+
 | Claim | Value | Command | Artifact / guard |
 |---|---|---|---|
 | Causal uplift ranks by incremental effect | Qini ≈ 0.93 · ECE ≈ 0.008 · ~99% of oracle ₹ | `ml/.venv/Scripts/python ml/src/uplift.py` | `ml/uplift.json` · `claims.docs`, `ml.bands` |
 | Doubly-robust OPE, from the log alone | ₹3,276/case (logging ₹2,442) · within ~6% of truth | same | `ml/uplift.json` · `claims.docs` |
-| Real-RCT external validity (Hillstrom, 64,000 customers) | ATE +6.1pp recovered within 1.9% · best learner x-learner | `ml/.venv/Scripts/python ml/src/rct_validate.py` | `ml/rct_validation.json` · `claims.docs` |
+| Real-RCT external validity (Hillstrom, 64,000 customers) | ATE +6.1pp recovered within 1.9% · ranking holds: top-30% targeting +2.0pp over the ATE (x-learner; S-learner +2.5pp) | `ml/.venv/Scripts/python ml/src/rct_validate.py` | `ml/rct_validation.json` · `claims.docs` |
 | Conformal per-case guarantee | target 90% · empirical 90.7% | `ml/.venv/Scripts/python ml/src/conformal.py` | `ml/conformal.json` · `claims.docs`, `ml.bands` |
 | Cross-world transfer | ROC-AUC ≈ 0.68 both ways | `ml/.venv/Scripts/python ml/src/transfer.py` | `ml/transfer.json` · `ml.bands` |
 | Live incremental lift + 95% CI | *live* | Demo: Seed → Run pipeline → Advance retries → Resolve outcomes · `GET /api/lab` | `lab.aa.test.ts` |
@@ -79,15 +82,26 @@ The numbers here can't drift from their artifacts. **`claims.docs`** asserts eve
 
 Say it before a judge does — every one of these is stated on the artifact or the page it concerns.
 
-- **The ML metrics are on a synthetic world we built**, and every artifact is stamped `"synthetic": true`. The external check is the real Hillstrom RCT (our machinery recovers its ATE within 1.9%); proving the uplift *ranking* on a merchant book whose mechanism we didn't design is the first thing a pilot measures — it's on the roadmap, not claimed here.
+- **The ML metrics are on a synthetic world we built**, and every artifact is stamped `"synthetic": true`. The external check is the real Hillstrom RCT: our machinery recovers its ATE within 1.9%, and the uplift *ranking* holds on that real data too (targeting the model's top-30% yields +2.0pp more uplift than treating everyone). What we still don't claim is that the ranking transfers to a real *payments* book — that's the first thing a pilot measures.
 - **The control arm is 20% of each batch** (n≈60–80 on a 300–400-case demo). We show the whole CI and print "not yet significant" when it isn't; the estimator is A/A-tested (it reads ~0 on identical arms), so a narrow interval isn't an estimator artifact. Volume tightens it.
 - **"Projected incremental ₹" is a projection** — the measured lift rate applied to the at-risk ₹ book, labelled as such. Total Recovered and the impact chart count only cash actually banked.
 - **The two real captures are ₹1 each**, on purpose: real order, real hosted-Checkout 3DS, real capture, replayed through the real signed-webhook path. Small amounts, no theatre.
 - **CatBoost's edge over logistic regression is small** (+0.014 ROC-AUC); it's primary for calibration and native categoricals, not a headline gap — and the action head learns from deliberately noisy labels (≈70% raw accuracy), stated as a real learning problem.
 - **The test suite is compact by count and property-based where it matters** — each policy invariant is fuzzed over thousands of generated inputs; exactly-once, A/A, tamper detection and the two honesty guards are what it proves.
 - **DPDP data-fiduciary controls are the top compliance gap**, owned openly in [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
-- **We did not pre-register the evaluation plan.** Our guard is a different thing, and we say so: every number is locked to its artifact and CI fails on drift — that prevents a stale or altered claim, not a cherry-picked design.
+- **We pre-registered one pilot — and it missed a gate.** The protocol ([`docs/PILOT_PROTOCOL.md`](docs/PILOT_PROTOCOL.md)) was committed and git-tagged `pilot-preregistered-v1` *before* the run; the results ([`docs/PILOT_RESULTS.md`](docs/PILOT_RESULTS.md)) are reported gate by gate: **6 of 7 met**, G7 missed. The rest of the evaluation plan was not pre-registered; this run is the one whose ordering we can prove.
 - **What broke, and how we recovered:** [`POSTMORTEM.md`](POSTMORTEM.md) — the specific failures, left honest rather than tidied away.
+
+### What's real and what's simulated
+
+| Real | Simulated — and labelled as such |
+|---|---|
+| Razorpay test-mode API calls: orders, payment links, and the two hosted-Checkout + 3DS captures, fetched back from the Razorpay API | The case stream: merchants, customers and failure events are a synthetic world ([`DATA_CARD.md`](DATA_CARD.md)) |
+| Signed webhooks: HMAC verification, exactly-once recovery, replayable end-to-end | Demo outcomes: whether a retry or link "pays" is drawn from an independent world model — never from the ML's own prediction |
+| The ledger: SHA-256 hash chain, Postgres append-only trigger, live forensics | ML training data: 30,000 synthetic cases, every metric stamped `"synthetic": true` |
+| The policy engine, red-team oracles and message fact-checker: deterministic code, tested | The demo payment page: a stand-in for Checkout when a link is "paid" inside the demo |
+| The Hillstrom RCT: 64,000 real randomised customers, validating the estimator *and* the uplift ranking | The failure spike: injected on demand to exercise the IsolationForest detector |
+| The control holdout: a real randomised 20% no-action arm on the running system | — |
 - **The LLM never decides or moves money.** It explains, drafts and summarises — off the money path, fact-checked, with template fallback.
 
 ---
@@ -181,7 +195,7 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
 - **Tested where it matters.** The money path (exactly-once recovery under concurrent webhook redelivery), the policy
   guardrails as **property-based invariants** (fast-check — opt-out never contacted, RBI-TAT always held, retry cap
   respected, decisions deterministic, over thousands of randomised inputs), the incremental-lift estimator's **A/A null
-  test**, and the audit chain's tamper detection — **58 tests across 9 suites**, 18 of them property invariants fuzzed at
+  test**, and the audit chain's tamper detection — **61 tests across 10 suites**, 18 of them property invariants fuzzed at
   500–1,000 runs each, plus the two honesty guards that fail CI on any drift.
 
 ### Real captured round-trip (not just a self-test)

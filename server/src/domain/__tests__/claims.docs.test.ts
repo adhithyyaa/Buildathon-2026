@@ -118,6 +118,21 @@ const CLAIMS: Claim[] = [
     render: (v) => String(v).replace('_', '-'), // "x-learner"
     docs: ['README.md', 'docs/DEMO.md'],
   },
+  {
+    // The ranking result on REAL data: uplift among the best learner's top-30% minus the population ATE.
+    label: 'Real-RCT top-30% targeting gain (best learner)',
+    artifact: 'ml/rct_validation.json',
+    value: (j) => j.uplift_learners[j.best_learner].uplift_at_30pct,
+    render: (v) => `+${pp(Number(v))}`, // "+2.0pp"
+    docs: ['README.md', 'docs/PROOF.md'],
+  },
+  {
+    label: 'Real-RCT top-30% targeting gain (S-learner)',
+    artifact: 'ml/rct_validation.json',
+    value: (j) => j.uplift_learners.s_learner.uplift_at_30pct,
+    render: (v) => `+${pp(Number(v))}`, // "+2.5pp"
+    docs: ['README.md', 'docs/PROOF.md'],
+  },
 
   // ── Conformal per-case certainty (ml/conformal.json) ─────────────────────────────────────────
   {
