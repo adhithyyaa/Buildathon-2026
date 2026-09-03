@@ -402,12 +402,58 @@ export function FinalCta() {
                 rupees move against a real control holdout.
               </Lead>
               <div className="mt-7 flex flex-wrap items-center gap-3">
-                <CTA to="/login" variant="cream" size="lg">Start for free</CTA>
-                <CTA to="/app" variant="darkghost" size="lg">Explore the dashboard</CTA>
+                <CTA to="/app" variant="cream" size="lg">Open the Console</CTA>
+                <CTA to="/app/rigor" variant="darkghost" size="lg">See the proof</CTA>
               </div>
               <div className="mt-5 font-mono text-[12px] text-cream/60">hello@overwatch.dev</div>
             </div>
           </div>
+        </div>
+      </Container>
+    </Section>
+  );
+}
+
+/* ─────────────────────────  Console tour (replaces pricing)  ─────────────── */
+const MODULES = [
+  { icon: 'overview', name: 'Overview', to: '/app', body: 'Live recovery metrics, funnel and banked-vs-baseline impact at a glance.' },
+  { icon: 'lab', name: 'Recovery Lab', to: '/app/lab', body: 'The 20% control holdout and per-reason incremental lift, with 95% CIs.' },
+  { icon: 'evidence', name: 'Rigor', to: '/app/rigor', body: 'Real-RCT external validity and conformal per-case certainty.' },
+  { icon: 'shield', name: 'Compliance', to: '/app/compliance', body: 'Red-team the policy engine live and watch every attack get defended.' },
+  { icon: 'receipt', name: 'Evidence', to: '/app/evidence', body: 'Genuine Razorpay test-mode captures, each linked to its recovered case.' },
+  { icon: 'pipeline', name: 'Pipeline', to: '/app/pipeline', body: 'Every decision, action and signed outcome, streaming in real time.' },
+] as const;
+
+export function ConsoleTour() {
+  return (
+    <Section tone="oat">
+      <Container>
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-end">
+          <div>
+            <Eyebrow icon="spark">See it live</Eyebrow>
+            <Heading className="mt-4">Everything runs in one console</Heading>
+          </div>
+          <Lead className="lg:pb-2">
+            No slide-deck and no sandbox theatre. Seed cases, run the pipeline, and inspect every proof
+            surface yourself — the same console your team would run in production.
+          </Lead>
+        </div>
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {MODULES.map((m) => (
+            <Link key={m.name} to={m.to} className="group rounded-2xl border border-hair bg-white p-6 transition-all hover:-translate-y-1 hover:border-pine/25 hover:shadow-lg hover:shadow-forest/5">
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-fern/12 text-moss transition-colors group-hover:bg-pine group-hover:text-cream">
+                <Icon name={m.icon} className="h-5 w-5" />
+              </span>
+              <h3 className="mt-5 flex items-center gap-1.5 text-base font-bold text-forest">
+                {m.name}
+                <Icon name="arrow" className="h-4 w-4 text-moss opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-bark">{m.body}</p>
+            </Link>
+          ))}
+        </div>
+        <div className="mt-10 text-center">
+          <CTA to="/app" size="lg">Open the Console</CTA>
         </div>
       </Container>
     </Section>

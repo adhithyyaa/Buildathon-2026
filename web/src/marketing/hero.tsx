@@ -29,7 +29,7 @@ export function Hero({ proof }: { proof: LiveProof }) {
         </p>
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-          <CTA to="/login" size="lg">Start for free</CTA>
+          <CTA to="/app" size="lg">Open the Console</CTA>
           <CTA to="/app" variant="ghost" size="lg" icon="play">Watch demo</CTA>
         </div>
         <p className="mt-5 font-mono text-[11px] tracking-wide text-fog">Razorpay test-mode · no card required · set up in minutes</p>

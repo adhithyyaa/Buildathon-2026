@@ -10,7 +10,6 @@ import { api } from '../lib/api';
 export const NAV = [
   { label: 'Home', to: '/' },
   { label: 'Features', to: '/features' },
-  { label: 'Pricing', to: '/pricing' },
   { label: 'About', to: '/about' },
 ] as const;
 
@@ -121,39 +120,6 @@ export const PRINCIPLES = [
   { initials: 'AW', who: 'Anomaly Watch', quote: 'Retries defer the moment a bank or UPI spike is detected, and resume automatically when it clears.' },
 ] as const;
 
-export const PLANS = [
-  {
-    name: 'Starter',
-    tagline: 'For test-mode pilots and first recoveries.',
-    monthly: 0,
-    yearly: 0,
-    cta: 'Start free',
-    to: '/login',
-    featured: false,
-    features: ['Up to 500 cases / month', 'ML decisioning + policy engine', 'Recovery Lab with control holdout', 'Signed webhooks, exactly-once', 'Community support'],
-  },
-  {
-    name: 'Growth',
-    tagline: 'For live recovery at production scale.',
-    monthly: 12000,
-    yearly: 9600,
-    cta: 'Start free',
-    to: '/login',
-    featured: true,
-    features: ['Unlimited cases', 'Per-reason lift + auto-suppression', 'Anomaly detection + incident defer', 'Tamper-evident ledger export', 'Priority support & onboarding'],
-  },
-  {
-    name: 'Enterprise',
-    tagline: 'For platforms and marketplaces.',
-    monthly: null,
-    yearly: null,
-    cta: 'Contact sales',
-    to: '/login',
-    featured: false,
-    features: ['SSO + granular roles', 'Custom policy envelopes', 'On-prem / VPC deployment', 'Dedicated SLA & security review', 'Solutions engineer'],
-  },
-] as const;
-
 export const FAQS = [
   {
     q: 'What does Overwatch do?',
@@ -200,9 +166,9 @@ export const FAQS = [
 export const FOOTER_COLS = [
   { title: 'Product', links: [
     { label: 'Features', to: '/features' },
-    { label: 'Pricing', to: '/pricing' },
     { label: 'Live demo', to: '/app' },
     { label: 'Recovery Lab', to: '/app/lab' },
+    { label: 'Rigor & proof', to: '/app/rigor' },
   ] },
   { title: 'Company', links: [
     { label: 'About', to: '/about' },

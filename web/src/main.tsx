@@ -1,6 +1,6 @@
 import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './index.css';
 import { RefreshProvider } from './lib/refresh';
 import { ToastProvider } from './lib/toast';
@@ -11,7 +11,6 @@ import { Layout } from './components/Layout';
 import { MarketingLayout } from './marketing/MarketingLayout';
 import { Home } from './pages/Home';
 import { Features } from './pages/Features';
-import { Pricing } from './pages/Pricing';
 import { About } from './pages/About';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
@@ -46,7 +45,6 @@ createRoot(document.getElementById('root')!).render(
               <Route element={<MarketingLayout />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/features" element={<Features />} />
-                <Route path="/pricing" element={<Pricing />} />
                 <Route path="/about" element={<About />} />
               </Route>
               <Route path="/login" element={<Login />} />
@@ -64,6 +62,7 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="cases/:id" element={<CasePage />} />
                 </Route>
               </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </ErrorBoundary>
           </ToastProvider>

@@ -5,7 +5,7 @@ import { Icon } from '../components/icons';
 
 /**
  * Marketing design-system primitives — the warm-paper / deep-pine identity shared by the public pages
- * (Home, Features, Pricing, About). Serif display (Fraunces) for headings, grotesk for everything else.
+ * (Home, Features, About). Serif display (DM Serif Display) for headings, grotesk for everything else.
  * Kept separate from components/ui.tsx, which is the dashboard's slate/emerald system.
  */
 
@@ -25,7 +25,7 @@ export function Eyebrow({ children, dark = false, icon }: { children: ReactNode;
   );
 }
 
-/** Fraunces serif heading. `dark` renders cream for pine sections. */
+/** DM Serif Display heading. `dark` renders cream for pine sections. */
 export function Heading({
   children,
   as: Tag = 'h2',

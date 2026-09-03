@@ -20,7 +20,7 @@ export function Features() {
             toggle leaves on the table.
           </Lead>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <CTA to="/login" size="lg">Start for free</CTA>
+            <CTA to="/app" size="lg">Open the Console</CTA>
             <CTA to="/app" variant="ghost" size="lg" icon="play">Watch demo</CTA>
           </div>
         </Container>

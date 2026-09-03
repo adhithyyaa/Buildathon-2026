@@ -48,7 +48,7 @@ export function Nav() {
             <Link to="/login" className="rounded-full px-3.5 py-2 text-sm font-semibold text-forest transition-colors hover:bg-forest/5">
               Sign in
             </Link>
-            <CTA to="/login" icon={null}>Start for free</CTA>
+            <CTA to="/app" icon={null}>Open the Console</CTA>
           </div>
 
           <button
@@ -80,7 +80,7 @@ export function Nav() {
                 <Link to="/login" onClick={() => setOpen(false)} className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold text-forest ring-1 ring-inset ring-hair">
                   Sign in
                 </Link>
-                <CTA to="/login" icon={null} className="flex-1" onClick={() => setOpen(false)}>Start for free</CTA>
+                <CTA to="/app" icon={null} className="flex-1" onClick={() => setOpen(false)}>Open the Console</CTA>
               </div>
             </Container>
           </div>

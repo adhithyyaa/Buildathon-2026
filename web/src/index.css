@@ -3,7 +3,7 @@
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   /* Marketing + onboarding identity (scoped to Landing/Login via font-* utilities). */
-  --font-display: 'Fraunces', 'Hanken Grotesk', Georgia, serif;
+  --font-display: 'DM Serif Display', 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-grotesk: 'Hanken Grotesk', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
@@ -89,6 +89,12 @@ html[data-mkt] body {
   background-color: var(--color-cream);
   background-image: none;
   color: var(--color-bark);
+}
+
+/* DM Serif Display ships a single (regular) weight; render all display text at 400 so headings never
+   fall back to a smeared synthetic bold. Unlayered so it wins over Tailwind's font-weight utilities. */
+.font-display {
+  font-weight: 400;
 }
 html[data-mkt][data-loaded] .animate-floaty { /* keep ambient float after first load */ }
 
