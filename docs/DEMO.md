@@ -35,6 +35,24 @@ at **watch**. You're ready. *(Do NOT trigger a failure spike yet — that's the 
 
 ---
 
+### 0b. Hosted demo — zero local setup
+
+Everything in this runbook also runs against the hosted deployment, with nothing installed:
+
+1. Open **https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io** about 30 s before
+   you present — the sidebar's health poll warms the scale-to-zero ML tier so it reads *online*.
+2. Sign in (any email + a 6-character password) → you land on `/app`.
+3. **Demo** menu, in order: **Reset all data → Seed 120 cases → Run pipeline → Advance retries →
+   Resolve outcomes.** *Resolve* is what draws the control arm's outcomes — skip it and the Lab shows a
+   fake-looking +100pp with an empty control.
+4. Trigger the **failure spike** only for the finale (§8).
+
+Hosted timings: seed ~2 s · pipeline ~15–40 s (pre-run it before you go on) · retries / resolve ~5 s
+each · reset < 1 s. To re-link the real-capture evidence on the hosted site, run the replay against it
+with *its* webhook secret: `SELFTEST_BASE=<url> RAZORPAY_WEBHOOK_SECRET=<secret> npm run replay:roundtrip`.
+
+---
+
 ## 1. The one sentence
 
 **"ML decides, deterministic policy disposes, and a real control arm proves the incremental rupees."**
