@@ -8,7 +8,11 @@ import { AuthProvider } from './lib/auth';
 import { RequireAuth } from './components/RequireAuth';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
-import { Landing } from './pages/Landing';
+import { MarketingLayout } from './marketing/MarketingLayout';
+import { Home } from './pages/Home';
+import { Features } from './pages/Features';
+import { Pricing } from './pages/Pricing';
+import { About } from './pages/About';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
 import { QueuePage } from './pages/QueuePage';
@@ -38,8 +42,13 @@ createRoot(document.getElementById('root')!).render(
           <ToastProvider>
             <ErrorBoundary>
             <Routes>
-              {/* Marketing */}
-              <Route path="/" element={<Landing />} />
+              {/* Marketing site — public pages behind the shared cream/pine shell */}
+              <Route element={<MarketingLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/features" element={<Features />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/about" element={<About />} />
+              </Route>
               <Route path="/login" element={<Login />} />
               {/* App — the dashboard lives under /app, gated by sign-in, behind the sidebar shell */}
               <Route element={<RequireAuth />}>

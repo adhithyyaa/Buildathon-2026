@@ -13,10 +13,30 @@
   --color-ink-line: #26324a;
   --color-paper: #fbfbf8;
 
+  /* Marketing site palette — warm paper + deep pine + a mossy signal (the Finvora-inspired identity,
+     scoped to the public pages via html[data-mkt]). Distinct names so they never clash with the
+     dashboard's slate/emerald tokens above. */
+  --color-cream: #f4f1ea;
+  --color-oat: #eae3d6;
+  --color-pine: #1f3d33;
+  --color-pine-700: #2b5348;
+  --color-pine-900: #14291f;
+  --color-pineline: #35544a;
+  --color-moss: #4f7a62;
+  --color-fern: #6aa984;
+  --color-mint: #a7d8ba;
+  --color-forest: #16241d;
+  --color-bark: #414c44;
+  --color-fog: #79837b;
+  --color-hair: #e4ddce;
+  --color-gold: #d7ac5f;
+
   --animate-flow: flow 2.2s linear infinite;
   --animate-rise: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-pop: pop 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-travel: travel 2.4s ease-in-out infinite;
+  --animate-marquee: marquee 30s linear infinite;
+  --animate-floaty: floaty 5.5s ease-in-out infinite;
 }
 
 /* Moving sheen along a filled progress rail. */
@@ -48,9 +68,29 @@ html[data-loaded] .animate-rise {
   animation: none;
 }
 
+/* Logo-cloud / rail marquee — track holds two copies, slides one full copy left. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+/* Ambient hover for floating hero cards. */
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
 :root {
   color-scheme: light;
 }
+
+/* Marketing pages paint a warm cream ground (the dashboard's slate gradient is dropped while a
+   public page is mounted; MarketingLayout toggles data-mkt on <html>). */
+html[data-mkt] body {
+  background-color: var(--color-cream);
+  background-image: none;
+  color: var(--color-bark);
+}
+html[data-mkt][data-loaded] .animate-floaty { /* keep ambient float after first load */ }
 
 html,
 body,
