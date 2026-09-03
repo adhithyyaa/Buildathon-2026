@@ -147,8 +147,8 @@ measures — it's on the roadmap, not in the README as a number.
 
 **"The control arm is small — that CI is wide."**
 It's 20% of every batch by design (n≈60–80 on a 300–400-case demo). We show the *whole* CI and print
-"not yet significant" when it isn't; the estimator is A/A-tested so a narrow interval could never be
-invented. Volume tightens it — a mid-market merchant feeds it thousands of cases a month. We would
+"not yet significant" when it isn't; the estimator is A/A-tested (it reads ~0 on identical arms), so a narrow interval isn't an
+estimator artifact. Volume tightens it — a mid-market merchant feeds it thousands of cases a month. We would
 rather show a wide honest interval than a narrow fabricated one.
 
 **"Your incremental ₹ is bigger than gross recovered — that's a bug."**
