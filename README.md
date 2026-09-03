@@ -126,7 +126,7 @@ a deterministic **executor** moves the money, and an **LLM is used only to expla
 **Mid-market Indian D2C / subscription merchants at ~₹50L–₹5Cr/month on Razorpay** — big enough that 1–2 recovery
 points is ₹1–10L/month, too small to build a recovery/data-science team. Razorpay already ships real, capable recovery
 products these merchants can turn on: **Agent Studio's Subscription Recovery and Abandoned Cart Conversion agents**
-(early access since Mar 2026, built on Anthropic's Claude Agent SDK), the **Intelligent Retry Engine** (WhatsApp nudges
+(early access since Mar 2026), the **Intelligent Retry Engine** (WhatsApp nudges
 for failed autopay debits), the **RazorpayX Receivables Agent** (invoice follow-up, Jun 2026 beta), **Optimizer**
 (enterprise ML routing) and **Vulcan** (the payments foundation model, Aug 2026). Overwatch doesn't compete with any of
 them — it's the **measurement-and-governance layer that plugs *under* them**: holdout-measured incremental recovery,
@@ -277,7 +277,7 @@ A single role-scoped React console, built to read as a real product:
 
 TypeScript money path — Node + Express + Prisma + **embedded PostgreSQL** (real PG 18, no Docker) · React + Vite +
 Tailwind dashboard · **Python ML tier — FastAPI + CatBoost + XGBoost + scikit-learn** · provider-agnostic LLM
-(Anthropic *or* any OpenAI-compatible provider) for narration only · Razorpay test-mode APIs.
+(any OpenAI-compatible provider) for narration only · Razorpay test-mode APIs.
 
 ## Repo layout
 

@@ -1,13 +1,13 @@
 # Overwatch — Setup
 
-Everything runs locally with **no Docker and no cloud account** for the database. Real Razorpay + Claude are optional
+Everything runs locally with **no Docker and no cloud account** for the database. Real Razorpay + an LLM provider are optional
 add-ons that light up the "real" paths.
 
 ## 0. Prerequisites
 
 - Node 20+ and npm
 - **Python 3.11+** (for the ML decision tier)
-- (optional) A Razorpay account for test-mode keys, and an LLM key (Anthropic or any OpenAI-compatible provider)
+- (optional) A Razorpay account for test-mode keys, and an LLM key (any OpenAI-compatible provider)
 
 ## 1. Install
 
@@ -60,7 +60,7 @@ npm run db:seed               # load 120 synthetic cases (optional; the UI can a
 
 | Variable | What it does | Where |
 |---|---|---|
-| `ANTHROPIC_API_KEY` *or* `LLM_API_KEY`/`LLM_BASE_URL` | Turns on the LLM **narrator** (explanations, drafted messages). The **decision is ML** either way; without a key, narration falls back to templates. | [console.anthropic.com](https://console.anthropic.com/settings/keys) or any OpenAI-compatible provider |
+| `LLM_API_KEY`/`LLM_BASE_URL` | Turns on the LLM **narrator** (explanations, drafted messages). The **decision is ML** either way; without a key, narration falls back to templates. | any OpenAI-compatible provider |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Creates **real test-mode payment links** | Razorpay Dashboard → **Test Mode** → Settings → API Keys |
 | `RAZORPAY_WEBHOOK_SECRET` | Verifies inbound webhooks (recovered-money proof) | set when you create the webhook (step 5) |
 

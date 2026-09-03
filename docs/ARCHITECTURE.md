@@ -242,8 +242,7 @@ Each evaluation records which rules passed/failed and a human-readable "why bloc
 ## 12. Doesn't Razorpay already do recovery? (Agent Studio, the Intelligent Retry Engine, …)
 
 Yes — and well. Razorpay ships first-party recovery products a merchant can turn on today: **Agent Studio's
-Subscription Recovery and Abandoned Cart Conversion agents** (early access since Mar 2026, built on Anthropic's Claude
-Agent SDK), the **Intelligent Retry Engine** (WhatsApp nudges for failed autopay debits), the **RazorpayX Receivables
+Subscription Recovery and Abandoned Cart Conversion agents** (early access since Mar 2026), the **Intelligent Retry Engine** (WhatsApp nudges for failed autopay debits), the **RazorpayX Receivables
 Agent** (invoice follow-up, Jun 2026 beta), **Optimizer** (enterprise ML routing on 150+ parameters) and **Vulcan**
 (the payments foundation model, Aug 2026). Overwatch does **not** compete with these. It *uses* Razorpay's Payment Links,
 retries and webhooks as execution primitives, and is built to **plug under** those agents. What it adds is the
@@ -336,5 +335,5 @@ regenerates every artifact from scratch and `.github/workflows/ci.yml` runs the 
 
 TypeScript money path — Node/Express + Prisma + PostgreSQL (embedded, no Docker) · React/Vite/Tailwind dashboard ·
 **Python ML tier — FastAPI + CatBoost + XGBoost + scikit-learn** · Razorpay test-mode (Orders + Payment Links +
-Webhooks) · provider-agnostic LLM (OpenAI-compatible or Anthropic) used only for narration · an in-process scheduler
+Webhooks) · provider-agnostic LLM (OpenAI-compatible) used only for narration · an in-process scheduler
 for retries (a durable queue is the production upgrade).

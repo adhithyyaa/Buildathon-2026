@@ -107,7 +107,7 @@ Format: **Decision → Context → Rationale → Trade-off / what we'd change at
 ### ADR-014 — We are the measurement-and-governance layer *under* Razorpay's recovery agents, not a competitor to them *(2026-08-24)*
 - **Context:** "Doesn't Razorpay already do this?" — the first skeptical question, and a fair one. By 2026 Razorpay ships
   first-party recovery products: **Agent Studio's Subscription Recovery and Abandoned Cart Conversion agents** (early
-  access since Mar 2026, on Anthropic's Claude Agent SDK), the **Intelligent Retry Engine** (WhatsApp nudges for failed
+  access since Mar 2026), the **Intelligent Retry Engine** (WhatsApp nudges for failed
   autopay debits), the **RazorpayX Receivables Agent** (invoice follow-up, Jun 2026 beta), **Optimizer** (enterprise ML
   routing) and **Vulcan** (the payments foundation model, Aug 2026). They are real and good.
 - **Rationale:** So we do **not** clone or compete with them — Overwatch *uses* Razorpay's Payment Links, retries and
