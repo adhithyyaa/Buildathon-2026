@@ -235,8 +235,9 @@ async function liveChecks() {
     report('NOT RUN', `live: ${BASE} did not answer /health`, 'set SELFTEST_BASE to a running API (local, or the hosted deployment) to prove the live system too');
     return;
   }
-  const integ = health.integrations ?? {};
-  check('live: API is healthy with its integrations', health.ok !== false, `${BASE} → db ${integ.db ?? '?'} · ml ${integ.ml ?? '?'} · razorpay ${integ.razorpay ?? '?'}`);
+  const integ: Record<string, unknown> = health.integrations ?? {};
+  const integLine = Object.entries(integ).map(([k, v]) => `${k} ${String(v)}`).join(' · ') || 'no integrations reported';
+  check('live: API is healthy with its integrations', health.ok !== false, `${BASE} → ${integLine}`);
 
   const fo = await get('/api/audit/forensics', 90_000);
   if (fo && typeof fo.allCaught === 'boolean') {
