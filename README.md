@@ -18,7 +18,7 @@
 ## Judge this in 60 seconds
 
 - **What it does.** Catches failed Razorpay payments and abandoned checkouts, decides the safest recovery action with calibrated ML, executes it under a deterministic policy engine, and measures *incremental* ₹ against a randomised 20% no-action control, with a 95% CI.
-- **The one number.** Causal uplift Qini ≈ 0.93 — on a synthetic world we built and disclose on every artifact; the same machinery, run on the real Hillstrom 64,000-customer RCT, recovers the trial's ATE to within 1.9%.
+- **The one number.** On the real Hillstrom 64,000-customer RCT, our causal machinery recovers the trial's ground-truth ATE to within 1.9%. (Its in-world targeting quality, Qini ≈ 0.93, is measured on a synthetic world we built and disclose on every artifact.)
 - **The one command.** `./reproduce.sh` rebuilds every number, and `claims.docs` fails CI if this README ever drifts from its artifacts. Every claim → artifact → test → endpoint: [`docs/PROOF.md`](docs/PROOF.md).
 
 ![Overwatch — product walkthrough: Overview + ROI, causal uplift + real-RCT, red-team compliance, tamper-evident evidence, and the 15/15 rigor scorecard](docs/assets/walkthrough.gif)
@@ -34,27 +34,6 @@
 | Does the online Thompson sampler beat the deterministic rules? | **No.** It reaches ~93% of oracle learning from nothing — and still trails the rules. Reported, not tuned away | `ml/explore.json` |
 
 **Reviewer paths:** verify every number → [`docs/PROOF.md`](docs/PROOF.md) · attack the guardrails → [Compliance](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io/app/compliance) · see the real capture → [Evidence](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io/app/evidence) · the math → [ML Model](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io/app/model) · the hard questions → [`docs/DEFENSE.md`](docs/DEFENSE.md) · what broke → [`POSTMORTEM.md`](POSTMORTEM.md)
-
----
-
-## The six-axis bar — and the proof for each
-
-Track 03 is won on six things; this repo is built to clear **all six**, with the evidence committed in the repo — not just asserted in prose.
-
-| # | What separates this from a prototype | The proof, in this repo |
-|---|---|---|
-| 1 | **Real Razorpay path** — genuine test-mode captures, not a mock | Two **real** test-mode captures (`pay_TTxufNdQ8rLAvB`, `pay_TTyBx4OQoIQFkj`) recovered through the **signed-webhook** path; replay with `npm run replay:roundtrip` — no keys, no tunnel. |
-| 2 | **Causal ML depth** — models *incremental* uplift, not just propensity | **Qini ≈ 0.93**, ECE ≈ 0.008, capturing ~**99%** of the oracle's incremental ₹; S- vs T-learner selected by Qini. `ml/src/uplift.py` |
-| 3 | **Measurement that survives scrutiny** — from the log *and* a real public RCT | **Doubly-robust OPE** within **~6%** of truth; re-validated on the real **Hillstrom 64k-customer RCT** to within **1.9%** of the trial's ATE; live **control-holdout** incremental ₹ with a **95% CI**, A/A-tested. `ml/src/rct_validate.py` |
-| 4 | **Per-case certainty** — a distribution-free guarantee | Split **conformal**: target 90%, **empirical 90.7%**; every case is confidently-recoverable, confidently-not, or *uncertain → route to a human*. `ml/src/conformal.py` |
-| 5 | **Adversarial governance** — judged by *independent* oracles | Red-team compliance oracles + an outbound-message **fact-checker** + India **policy-as-code** (RBI-TAT, quiet hours, caps), enforced as **property-based invariants** over thousands of randomised inputs. |
-| 6 | **DB-enforced integrity** — tamper-*evident* and tamper-*proof* | SHA-256 **hash-chained** audit ledger, **append-only at the database level** (a trigger rejects `UPDATE`/`DELETE` — not even the app can rewrite it); re-walk any case's chain to verify. |
-
-**Shipped, not slideware:** a polished operator dashboard **live on Azure** ([open the demo](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io)), and **`./reproduce.sh`** rebuilds every number above from source in one command.
-
-### Honesty guards — enforced in CI on every push
-
-The numbers here can't drift from reality. **`claims.docs`** asserts every headline figure in this README matches its source ML artifact; **`ml.bands`** asserts every artifact sits inside its committed quality band; the lift estimator is **A/A-tested** (two statistically identical arms must read ~0 lift with a CI spanning zero). If a number and its source disagree, **CI fails** — see [`reproduce.sh`](reproduce.sh) and [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Nothing here can drift from its artifact unnoticed.
 
 ---
 
@@ -76,21 +55,25 @@ Track 03 asks for an agent that detects revenue at risk, diagnoses it, decides a
 
 | Claim | Value | Command | Artifact / guard |
 |---|---|---|---|
-| Causal uplift ranks by incremental effect | Qini ≈ **0.93** · ECE ≈ **0.008** · ~**99%** of oracle ₹ | `ml/.venv/Scripts/python ml/src/uplift.py` | `ml/uplift.json` · `claims.docs`, `ml.bands` |
-| Doubly-robust OPE, from the log alone | **₹3,276**/case (logging **₹2,442**) · within ~**6%** of truth | same | `ml/uplift.json` · `claims.docs` |
-| Real-RCT external validity (Hillstrom, **64,000** customers) | ATE **+6.1pp** recovered within **1.9%** · best learner **x-learner** | `ml/.venv/Scripts/python ml/src/rct_validate.py` | `ml/rct_validation.json` · `claims.docs` |
-| Conformal per-case guarantee | target **90%** · empirical **90.7%** | `ml/.venv/Scripts/python ml/src/conformal.py` | `ml/conformal.json` · `claims.docs`, `ml.bands` |
+| Causal uplift ranks by incremental effect | Qini ≈ 0.93 · ECE ≈ 0.008 · ~99% of oracle ₹ | `ml/.venv/Scripts/python ml/src/uplift.py` | `ml/uplift.json` · `claims.docs`, `ml.bands` |
+| Doubly-robust OPE, from the log alone | ₹3,276/case (logging ₹2,442) · within ~6% of truth | same | `ml/uplift.json` · `claims.docs` |
+| Real-RCT external validity (Hillstrom, 64,000 customers) | ATE +6.1pp recovered within 1.9% · best learner x-learner | `ml/.venv/Scripts/python ml/src/rct_validate.py` | `ml/rct_validation.json` · `claims.docs` |
+| Conformal per-case guarantee | target 90% · empirical 90.7% | `ml/.venv/Scripts/python ml/src/conformal.py` | `ml/conformal.json` · `claims.docs`, `ml.bands` |
 | Cross-world transfer | ROC-AUC ≈ 0.68 both ways | `ml/.venv/Scripts/python ml/src/transfer.py` | `ml/transfer.json` · `ml.bands` |
 | Live incremental lift + 95% CI | *live* | Demo: Seed → Run pipeline → Advance retries → Resolve outcomes · `GET /api/lab` | `lab.aa.test.ts` |
 | Real Razorpay round-trip | 2 captures → 2 recovered cases | `npm run replay:roundtrip` | `server/fixtures/razorpay/live-captures.json` |
 | Exactly-once money path | 6 concurrent redeliveries → 1 recovery | `npm test` | `webhooks.moneypath.test.ts` |
 | Tamper-evidence + DB append-only | 4/4 tampers caught · `UPDATE`/`DELETE` rejected | `GET /api/audit/forensics` | `audit.chain.test.ts` · live probe |
-| Red-team compliance | **8/8** defended by independent oracles | `/app/compliance` → *Re-run all attacks* | `compliance.redteam.test.ts` |
-| **Everything above** | — | [`./reproduce.sh`](reproduce.sh) | CI, every push |
+| Red-team compliance | 8/8 defended by independent oracles | `/app/compliance` → *Re-run all attacks* | `compliance.redteam.test.ts` |
+| Everything above | — | [`./reproduce.sh`](reproduce.sh) | CI, every push |
 
 Full evidence stack, with what each row proves: [`docs/PROOF.md`](docs/PROOF.md).
 
 **Three ways to falsify this README:** (1) run [`./reproduce.sh`](reproduce.sh) — any number that no longer matches its artifact fails `claims.docs`; (2) run `npm run replay:roundtrip` — if the real capture doesn't recover a case, the money path is a story; (3) open [Compliance](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io/app/compliance) → *Re-run all attacks* and [Evidence](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io/app/evidence) → forensics — if a guardrail or the ledger fails live, the governance claim is false.
+
+## Honesty guards — enforced in CI on every push
+
+The numbers here can't drift from their artifacts. **`claims.docs`** asserts every headline figure in this README matches its source ML artifact; **`ml.bands`** asserts every artifact sits inside its committed quality band; the lift estimator is **A/A-tested** (two statistically identical arms must read ~0 lift with a CI spanning zero). If a number and its source disagree, **CI fails** — see [`reproduce.sh`](reproduce.sh) and [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Nothing here can drift from its artifact unnoticed.
 
 ## What we're honest about
 
@@ -103,7 +86,7 @@ Say it before a judge does — every one of these is stated on the artifact or t
 - **CatBoost's edge over logistic regression is small** (+0.014 ROC-AUC); it's primary for calibration and native categoricals, not a headline gap — and the action head learns from deliberately noisy labels (≈70% raw accuracy), stated as a real learning problem.
 - **The test suite is compact by count and property-based where it matters** — each policy invariant is fuzzed over thousands of generated inputs; exactly-once, A/A, tamper detection and the two honesty guards are what it proves.
 - **DPDP data-fiduciary controls are the top compliance gap**, owned openly in [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
-- **We did not pre-register the evaluation plan** (some entries git-tag theirs before any data). Our guard is a different thing and we say so: every number is locked to its artifact and CI fails on drift — that prevents a stale or altered claim, not a cherry-picked design.
+- **We did not pre-register the evaluation plan.** Our guard is a different thing, and we say so: every number is locked to its artifact and CI fails on drift — that prevents a stale or altered claim, not a cherry-picked design.
 - **What broke, and how we recovered:** [`POSTMORTEM.md`](POSTMORTEM.md) — the specific failures, left honest rather than tidied away.
 - **The LLM never decides or moves money.** It explains, drafts and summarises — off the money path, fact-checked, with template fallback.
 
