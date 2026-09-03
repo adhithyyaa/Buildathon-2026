@@ -8,9 +8,10 @@ import { useAuth } from '../lib/auth';
 type Mode = 'signin' | 'signup';
 
 /**
- * Sign-in / create-account for Overwatch. Google uses real Google Identity Services; the email path
- * establishes a local session so the dashboard is always reachable (there is no email backend).
- * Identity matches the landing: light emerald brand panel, warm-paper form, emerald signal, serif display.
+ * Sign-in / create-account for Overwatch — the onboarding surface, matched to the marketing identity:
+ * a deep-pine brand panel + warm-cream form, DM Serif display headings, a mossy signal, pill buttons.
+ * Google uses real Google Identity Services; the email path establishes a local session so the console
+ * is always reachable (there is no email backend).
  */
 export function Login() {
   const nav = useNavigate();
@@ -29,6 +30,13 @@ export function Login() {
   useEffect(() => {
     if (user) nav(from, { replace: true });
   }, [user, from, nav]);
+
+  // Paint the warm cream ground while onboarding is mounted (drops the dashboard's slate gradient).
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-mkt', '');
+    return () => root.removeAttribute('data-mkt');
+  }, []);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -59,64 +67,66 @@ export function Login() {
   };
 
   const heading = mode === 'signin' ? 'Welcome back' : 'Create your account';
-  const sub = mode === 'signin' ? 'Sign in to your recovery workspace.' : 'Start recovering revenue in minutes.';
+  const sub = mode === 'signin' ? 'Sign in to your recovery console.' : 'Start recovering revenue in minutes.';
 
   const field =
-    'w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-slate-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20';
+    'w-full rounded-xl border border-hair bg-white px-3.5 py-2.5 text-sm text-forest placeholder:text-fog transition-colors focus:border-fern focus:outline-none focus:ring-2 focus:ring-fern/25';
 
   return (
-    <div className="grid min-h-screen font-grotesk lg:grid-cols-2">
+    <div className="grid min-h-screen bg-cream font-grotesk text-bark lg:grid-cols-2">
       {/* Brand panel */}
       <aside
-        className="relative hidden overflow-hidden border-r border-slate-200 bg-emerald-50 text-ink lg:flex lg:flex-col lg:justify-between lg:p-12"
+        className="relative hidden overflow-hidden bg-pine text-cream lg:flex lg:flex-col lg:justify-between lg:p-12"
         style={{
           backgroundImage:
-            'radial-gradient(520px 300px at 12% 0%, rgba(16,185,129,0.16), transparent 70%), linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px)',
-          backgroundSize: 'auto, 44px 44px, 44px 44px',
+            'radial-gradient(560px 320px at 12% 0%, rgba(167,216,186,0.16), transparent 70%), radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)',
+          backgroundSize: 'auto, 22px 22px',
         }}
       >
-        <Link to="/" className="relative flex items-center gap-2.5 text-ink">
+        <Link to="/" className="relative flex items-center gap-2.5">
           <Logo className="h-9 w-9" />
-          <span className="text-xl font-bold tracking-tight">Overwatch</span>
+          <span className="text-xl font-bold tracking-tight text-cream">Overwatch</span>
         </Link>
+
         <div className="relative">
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-emerald-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Where nothing slips through
+          <span className="inline-flex items-center gap-2 rounded-full bg-cream/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-mint ring-1 ring-inset ring-cream/15">
+            <span className="h-1.5 w-1.5 rounded-full bg-mint" /> Where nothing slips through
           </span>
-          <h2 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
-            Recover the revenue<br />you already <span className="text-emerald-600">earned.</span>
+          <h2 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-[-0.02em] text-cream">
+            Recover the revenue<br />you already <span className="text-mint">earned.</span>
           </h2>
-          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-slate-600">
+          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-cream/70">
             The revenue-integrity layer for Razorpay — calibrated decisions, bounded execution, and
-            holdout-measured proof of every incremental rupee.
+            holdout-measured proof of every recovered rupee.
           </p>
-          <div className="mt-8 max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-700">Incremental recovered · vs control</div>
-            <div className="mt-1.5 font-display text-3xl font-semibold tabular-nums text-ink">₹3,13,773</div>
-            <div className="mt-1 font-mono text-[11px] text-slate-500">+40.2pp lift · 95% CI · significant</div>
+          <div className="mt-8 max-w-sm rounded-2xl bg-cream/[0.06] p-5 ring-1 ring-inset ring-cream/12">
+            <div className="font-mono text-[11px] uppercase tracking-wider text-mint">Incremental recovered · vs control · illustrative</div>
+            <div className="mt-1.5 font-display text-3xl font-semibold tabular-nums text-cream">₹3,13,773</div>
+            <div className="mt-1 font-mono text-[11px] text-cream/55">+40.2pp lift · 95% CI · significant</div>
           </div>
         </div>
-        <div className="relative flex items-center gap-5 font-mono text-[11px] uppercase tracking-wider text-slate-500">
-          <span className="flex items-center gap-1.5"><Icon name="shield" className="h-4 w-4 text-emerald-600" /> Policy-as-code</span>
-          <span className="flex items-center gap-1.5"><Icon name="link" className="h-4 w-4 text-emerald-600" /> Exactly-once</span>
-          <span className="flex items-center gap-1.5"><Icon name="audit" className="h-4 w-4 text-emerald-600" /> Audited</span>
+
+        <div className="relative flex items-center gap-5 font-mono text-[11px] uppercase tracking-wider text-cream/60">
+          <span className="flex items-center gap-1.5"><Icon name="shield" className="h-4 w-4 text-mint" /> Policy-as-code</span>
+          <span className="flex items-center gap-1.5"><Icon name="link" className="h-4 w-4 text-mint" /> Exactly-once</span>
+          <span className="flex items-center gap-1.5"><Icon name="audit" className="h-4 w-4 text-mint" /> Audited</span>
         </div>
       </aside>
 
       {/* Form panel */}
-      <main className="flex flex-col bg-paper px-5 py-8 sm:px-8">
+      <main className="flex flex-col bg-cream px-5 py-8 sm:px-8">
         <div className="mb-8">
           {mode === 'signup' ? (
             <button
               onClick={() => switchMode('signin')}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-fog transition-colors hover:bg-forest/5 hover:text-forest"
             >
               <Icon name="arrowLeft" className="h-4 w-4" /> Back to sign in
             </button>
           ) : (
             <Link
               to="/"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-fog transition-colors hover:bg-forest/5 hover:text-forest"
             >
               <Icon name="arrowLeft" className="h-4 w-4" /> Back to home
             </Link>
@@ -126,14 +136,14 @@ export function Login() {
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">
           <Link to="/" className="mb-8 flex items-center gap-2.5 lg:hidden">
             <Logo className="h-9 w-9" />
-            <span className="text-xl font-bold tracking-tight text-ink">Overwatch</span>
+            <span className="text-xl font-bold tracking-tight text-forest">Overwatch</span>
           </Link>
 
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">{heading}</h1>
-          <p className="mt-2 text-sm text-slate-500">{sub}</p>
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-forest">{heading}</h1>
+          <p className="mt-2 text-sm text-fog">{sub}</p>
 
           {error && (
-            <div className="mt-5 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">
+            <div className="mt-5 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">
               <Icon name="power" className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -147,32 +157,32 @@ export function Login() {
             />
           </div>
 
-          <div className="my-6 flex items-center gap-3 text-xs font-medium text-slate-400">
-            <span className="h-px flex-1 bg-slate-200" /> or continue with email <span className="h-px flex-1 bg-slate-200" />
+          <div className="my-6 flex items-center gap-3 text-xs font-medium text-fog">
+            <span className="h-px flex-1 bg-hair" /> or continue with email <span className="h-px flex-1 bg-hair" />
           </div>
 
           <form onSubmit={submitEmail} noValidate className="space-y-4">
             {mode === 'signup' && (
               <div>
-                <label htmlFor="name" className="mb-1.5 block text-sm font-semibold text-slate-700">Full name</label>
+                <label htmlFor="name" className="mb-1.5 block text-sm font-semibold text-forest">Full name</label>
                 <input id="name" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya Sharma" className={field} />
               </div>
             )}
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-slate-700">Work email</label>
+              <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-forest">Work email</label>
               <input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" className={field} />
             </div>
             <div>
               <div className="mb-1.5 flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</label>
-                {mode === 'signin' && <a href="#" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">Forgot?</a>}
+                <label htmlFor="password" className="text-sm font-semibold text-forest">Password</label>
+                {mode === 'signin' && <a href="#" className="text-xs font-semibold text-moss hover:text-forest">Forgot?</a>}
               </div>
               <input id="password" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={field} />
             </div>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-pine px-4 py-3 text-sm font-semibold text-cream shadow-sm shadow-pine/20 transition-colors hover:bg-pine-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-fern focus-visible:ring-offset-2 focus-visible:ring-offset-cream disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting ? (
                 <><Spinner /> Signing in…</>
@@ -182,14 +192,14 @@ export function Login() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-500">
+          <p className="mt-6 text-center text-sm text-fog">
             {mode === 'signin' ? (
               <>New to Overwatch?{' '}
-                <button onClick={() => switchMode('signup')} className="font-semibold text-emerald-600 hover:text-emerald-700">Create an account</button>
+                <button onClick={() => switchMode('signup')} className="font-semibold text-moss hover:text-forest">Create an account</button>
               </>
             ) : (
               <>Already have an account?{' '}
-                <button onClick={() => switchMode('signin')} className="font-semibold text-emerald-600 hover:text-emerald-700">Sign in</button>
+                <button onClick={() => switchMode('signin')} className="font-semibold text-moss hover:text-forest">Sign in</button>
               </>
             )}
           </p>
