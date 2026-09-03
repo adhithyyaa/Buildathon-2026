@@ -32,7 +32,7 @@ Answer each in one breath, then open the proof.
   measurement + governance layer that plugs under Razorpay, not another retry toggle. *Incremental ₹, not gross.*
 
 - **Build quality — does it run, is it structured, would you trust it?** Real money path (exactly-once under
-  concurrency, proven by a test), 85 tests incl. property-based invariants, a tamper-evident **+ DB-enforced
+  concurrency, proven by a test), 86 tests incl. property-based invariants, a tamper-evident **+ DB-enforced
   append-only** ledger, `reproduce.sh` + CI, clean commit history. It runs from a clone; the numbers are
   pinned to their source artifacts so you can trust them by construction, not by our say-so.
 
@@ -161,7 +161,7 @@ count only cash actually banked. The Lab's own incremental (lift × treatment bo
 `recovered` through the signed webhook — the Evidence page then shows the linked case. The captures are
 ₹1 on purpose: real order, real 3DS checkout, real capture, no theatre.
 
-**"85 tests? Others cite hundreds."**
+**"86 tests? Others cite hundreds."**
 Count is a vanity metric. Ours are property-based where it matters — each policy invariant is fuzzed
 over thousands of generated inputs — plus exactly-once under concurrent redelivery, the A/A null test,
 tamper detection, and two honesty guards that fail CI if any headline number drifts from its artifact.

@@ -195,7 +195,7 @@ incremental value" — see [`docs/ARCHITECTURE.md` §13](docs/ARCHITECTURE.md).
 - **Tested where it matters.** The money path (exactly-once recovery under concurrent webhook redelivery), the policy
   guardrails as **property-based invariants** (fast-check — opt-out never contacted, RBI-TAT always held, retry cap
   respected, decisions deterministic, over thousands of randomised inputs), the incremental-lift estimator's **A/A null
-  test**, and the audit chain's tamper detection — **85 tests across 10 suites**, 9 of them property invariants fuzzed at
+  test**, and the audit chain's tamper detection — **86 tests across 10 suites**, 9 of them property invariants fuzzed at
   500–1,000 runs each, plus the two honesty guards that fail CI on any drift.
 
 ### Real captured round-trip (not just a self-test)
