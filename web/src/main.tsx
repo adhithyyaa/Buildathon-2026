@@ -6,6 +6,7 @@ import { RefreshProvider } from './lib/refresh';
 import { ToastProvider } from './lib/toast';
 import { AuthProvider } from './lib/auth';
 import { RequireAuth } from './components/RequireAuth';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
@@ -35,6 +36,7 @@ createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <RefreshProvider>
           <ToastProvider>
+            <ErrorBoundary>
             <Routes>
               {/* Marketing */}
               <Route path="/" element={<Landing />} />
@@ -54,6 +56,7 @@ createRoot(document.getElementById('root')!).render(
                 </Route>
               </Route>
             </Routes>
+            </ErrorBoundary>
           </ToastProvider>
         </RefreshProvider>
       </AuthProvider>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, type CaseRow, type Funnel, type ImpactSeries, type LabReport, type Metrics, type ReasonBreakdownRow } from '../lib/api';
 import { formatINR, titleCase } from '../lib/format';
 import { useRefresh } from '../lib/refresh';
-import { Card, Stat, cx } from '../components/ui';
+import { Button, Card, Stat, cx } from '../components/ui';
 import { Icon } from '../components/icons';
 import { CountUp } from '../components/CountUp';
 import { ImpactChart } from '../components/ImpactChart';
@@ -18,11 +18,22 @@ interface Module {
 }
 
 export function Overview() {
-  const { version, poll } = useRefresh();
+  const { version, poll, bump } = useRefresh();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [lab, setLab] = useState<LabReport | null>(null);
   const [impact, setImpact] = useState<ImpactSeries | null>(null);
   const [recovered, setRecovered] = useState<CaseRow[]>([]);
+  const [seeding, setSeeding] = useState(false);
+
+  const seedDemo = async () => {
+    setSeeding(true);
+    try {
+      await api.seed(120);
+      bump();
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   useEffect(() => {
     api.metrics().then(setMetrics).catch(() => setMetrics(null));
@@ -46,6 +57,25 @@ export function Overview() {
 
   return (
     <div className="space-y-6">
+      {/* Guided first run: a fresh (or just-reset) system should tell the operator what to do next. */}
+      {metrics && metrics.totalCases === 0 && (
+        <Card>
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <span className="grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
+              <Icon name="play" className="h-5 w-5" />
+            </span>
+            <h2 className="text-lg font-bold text-slate-900">No cases yet</h2>
+            <p className="max-w-md text-sm leading-relaxed text-slate-500">
+              Load a reproducible synthetic batch to watch the pipeline detect, decide, act, and measure incremental ₹ against a live control holdout.
+            </p>
+            <Button variant="primary" disabled={seeding} onClick={() => void seedDemo()}>
+              {seeding ? 'Seeding…' : 'Seed 120 demo cases'}
+            </Button>
+            <span className="text-xs text-slate-400">Then run the pipeline from the Demo menu (or press ⌘K).</span>
+          </div>
+        </Card>
+      )}
+
       {/* Essential KPIs only matching reference */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
@@ -67,10 +97,10 @@ export function Overview() {
         />
         {lift ? (
           <Stat
-            label="Incremental ₹ Lift"
+            label="Projected incremental ₹"
             tone="emerald"
             value={<CountUp value={lift.incrementalPaise} format={(n) => formatINR(n)} />}
-            sub={`vs control holdout (${lift.significant ? 'significant' : 'n.s.'})`}
+            sub={`vs control · ${lift.significant ? 'significant' : 'n.s.'}`}
             trend={`${lift.liftPct > 0 ? '+' : ''}${lift.liftPct}pp`}
           />
         ) : (
@@ -82,6 +112,13 @@ export function Overview() {
           />
         )}
       </div>
+
+      {/* First-load skeleton: hold the flagship chart's space instead of flashing an empty gap. */}
+      {impact === null && metrics === null && (
+        <Card title="Measured impact — with Overwatch vs without">
+          <div className="h-56 animate-pulse rounded-xl bg-slate-100" />
+        </Card>
+      )}
 
       {/* Flagship: measured counterfactual impact */}
       {impact && impact.series.length >= 2 ? (
@@ -98,7 +135,7 @@ export function Overview() {
           <p className="mt-2 text-[11px] font-medium leading-relaxed text-slate-400">
             Cash actually banked across the failure timeline, vs the control arm's <b className="text-slate-600">measured</b>{' '}
             {impact.controlRatePct != null ? `${impact.controlRatePct}% ` : ''}recovery rate applied to the same failures — a randomized holdout, not an estimate.
-            The Incremental ₹ Lift KPI projects this lift over the full at-risk book; this chart counts only recovered cash.
+            The Projected incremental ₹ KPI applies the measured lift rate to the at-risk ₹ book — a projection, not banked cash; this chart counts only cash actually recovered.
             {impact.events.length > 0 && (
               <>
                 {' '}Markers: <span className="text-amber-600 font-semibold">● failure-spike incidents</span> · <span className="text-teal-600 font-semibold">● model loads</span>.

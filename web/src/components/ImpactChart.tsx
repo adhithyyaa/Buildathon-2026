@@ -46,10 +46,14 @@ export function ImpactChart({ data }: { data: ImpactSeries }) {
   const last = series[series.length - 1];
   const gap = last.actualPaise - last.baselinePaise;
 
-  // 4 x-axis date ticks + 3 y ticks.
-  const xTicks = [0, Math.floor((series.length - 1) / 3), Math.floor(((series.length - 1) * 2) / 3), series.length - 1];
-  const yTicks = [yMax * 0.33, yMax * 0.66, yMax].map((v) => Math.round(v));
+  // 4 x-axis date ticks + 3 y ticks. Adjacent ticks can land on the same calendar day when the series
+  // spans only a day or two, so collapse duplicate labels rather than print "2 Sept" twice.
   const dateLabel = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  const xTickIdx = [0, Math.floor((series.length - 1) / 3), Math.floor(((series.length - 1) * 2) / 3), series.length - 1];
+  const xTicks = xTickIdx
+    .map((i) => ({ i, label: dateLabel(series[i].t) }))
+    .filter((t, k, arr) => k === 0 || t.label !== arr[k - 1].label);
+  const yTicks = [yMax * 0.33, yMax * 0.66, yMax].map((v) => Math.round(v));
 
   return (
     <div className="overflow-x-auto">
@@ -64,8 +68,8 @@ export function ImpactChart({ data }: { data: ImpactSeries }) {
         <line x1={M.left} x2={W - M.right} y1={y(0)} y2={y(0)} stroke="#cbd5e1" strokeWidth="1" />
 
         {/* x date ticks */}
-        {xTicks.map((i) => (
-          <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="600">{dateLabel(series[i].t)}</text>
+        {xTicks.map((t) => (
+          <text key={t.i} x={x(t.i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="600">{t.label}</text>
         ))}
 
         {/* event annotations */}

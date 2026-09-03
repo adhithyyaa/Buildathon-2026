@@ -48,12 +48,16 @@ export function QueuePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
+  // Client-side pages: a big batch (hundreds of rows) is a scroll-wall and a paint cost, especially on
+  // mobile; page it and reset to the first page whenever the visible set changes.
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const c = await api.cases({ state: filter || undefined, limit: 200 });
+      const c = await api.cases({ state: filter || undefined, limit: 500 });
       setCases(c.cases);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -76,6 +80,10 @@ export function QueuePage() {
   }, [filter, reason, search, setSp]);
 
   useEffect(() => {
+    setPage(0);
+  }, [filter, reason, search]);
+
+  useEffect(() => {
     if (!showFilter) return;
     const onDown = (e: MouseEvent) => {
       if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilter(false);
@@ -92,6 +100,9 @@ export function QueuePage() {
     return true;
   });
   const activeFilter = FILTERS.find((f) => f.key === filter)?.label ?? 'All';
+  const pageCount = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageRows = shown.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   if (error) {
     return (
@@ -182,7 +193,32 @@ export function QueuePage() {
         </div>
       </div>
 
-      {loading && !cases ? <Skeleton rows={8} /> : <CaseTable cases={shown} />}
+      {loading && !cases ? <Skeleton rows={8} /> : <CaseTable cases={pageRows} />}
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
+          <span className="tabular-nums">
+            Showing {safePage * PAGE_SIZE + 1}–{Math.min(shown.length, (safePage + 1) * PAGE_SIZE)} of {shown.length}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ← Prev
+            </button>
+            <span className="px-1 font-semibold tabular-nums text-slate-700">{safePage + 1} / {pageCount}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              disabled={safePage >= pageCount - 1}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

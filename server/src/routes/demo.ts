@@ -196,12 +196,16 @@ demoRouter.post(
 
     // Phase 2 — score ALL ready cases in ONE batched round-trip, instead of a serial ML call per case.
     // This is the win: the single ML replica amortizes its per-request overhead across the whole set.
+    const tBatch = Date.now();
     const predictions = await mlPredictBatch(ready.map((r) => r.features));
+    // Each case's inference cost is its share of the batch call — the honest per-decision latency of
+    // batched scoring (the model-health panel reports it; timing only the injection would read ~0ms).
+    const perCaseMlMs = ready.length ? Math.round((Date.now() - tBatch) / ready.length) : 0;
 
     // Phase 3 — deterministic policy + execute per case, in parallel.
     const finals = await mapLimit(ready, PROCESS_CONCURRENCY, async (prep, i) => {
       try {
-        await finishCase(prep, predictions[i] ?? null, now);
+        await finishCase(prep, predictions[i] ?? null, now, perCaseMlMs);
         return true;
       } catch (e) {
         logger.error('process.finish_failed', { caseId: prep.caseId, error: toMessage(e) });

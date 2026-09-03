@@ -50,7 +50,15 @@ function incentiveFor(recoveryProbability: number, maxPct: number): number {
  * per-case (the single-case path); an object → use it; `null` → treat ML as unreachable → deterministic
  * fallback. Behaviour is otherwise identical to fetching inline.
  */
-export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs, precomputedMl?: MlPrediction | null): Promise<DecideResult> {
+export async function decideCase(
+  ctx: DecisionContext,
+  fargs: FeatureArgs,
+  precomputedMl?: MlPrediction | null,
+  /** The ML round-trip cost for this case when the prediction was precomputed (a batch caller passes its
+   *  per-case share of the batch call). Without it, `latencyMs` would time only the injection (~0ms)
+   *  and misreport inference latency on the model-health panel. */
+  mlLatencyMs?: number,
+): Promise<DecideResult> {
   const started = Date.now();
   const ml = precomputedMl !== undefined ? precomputedMl : await mlPredict(buildFeatures(fargs));
 
@@ -94,7 +102,7 @@ export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs, preco
       anomalyScore: ml.anomaly_score,
       reasonTag,
       perAction: ml.per_action_recovery,
-      latencyMs: Date.now() - started,
+      latencyMs: mlLatencyMs ?? Date.now() - started,
     };
   }
 
@@ -112,6 +120,6 @@ export async function decideCase(ctx: DecisionContext, fargs: FeatureArgs, preco
     anomalyScore: null,
     reasonTag: fb.diagnosis.reason_category as ReasonTag,
     perAction: null,
-    latencyMs: Date.now() - started,
+    latencyMs: mlLatencyMs ?? Date.now() - started,
   };
 }

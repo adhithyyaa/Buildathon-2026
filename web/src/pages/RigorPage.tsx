@@ -131,6 +131,22 @@ export function RigorPage() {
   const all = groups.flatMap((g) => g.items);
   const green = all.filter((i) => i.status === 'pass').length;
 
+
+  // First paint: hold the layout with a skeleton grid instead of flashing empty check cards while the
+  // six report fetches land (cross-region, ~1s).
+  if (!compliance && !forensics && !conformal && !rct && !uplift && !msg) {
+    return (
+      <div className="space-y-6">
+        <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, k) => (
+            <div key={k} className="h-32 animate-pulse rounded-2xl bg-slate-100" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card title="Rigor & trust" right={<Pill tone="emerald">every check in one place</Pill>}>

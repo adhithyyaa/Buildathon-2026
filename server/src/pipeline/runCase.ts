@@ -167,9 +167,9 @@ export async function prepareCase(caseId: string, now: Date = new Date()): Promi
  * drive the remaining transitions + audit, and execute. Split from Phase 1 so the ML call in between
  * can be batched.
  */
-export async function finishCase(prep: PreparedCase, ml: MlPrediction | null, now: Date = new Date()): Promise<RunResult> {
+export async function finishCase(prep: PreparedCase, ml: MlPrediction | null, now: Date = new Date(), mlLatencyMs?: number): Promise<RunResult> {
   const { caseId, kase, ctx, fargs } = prep;
-  const result = await decideCase(ctx, fargs, ml);
+  const result = await decideCase(ctx, fargs, ml, mlLatencyMs);
   const plan = result.plan;
 
   const suggestedRetryAt =
@@ -294,6 +294,7 @@ export async function finishCase(prep: PreparedCase, ml: MlPrediction | null, no
 export async function runCase(caseId: string, now: Date = new Date()): Promise<RunResult> {
   const prepared = await prepareCase(caseId, now);
   if ('done' in prepared) return prepared.done;
+  const t0 = Date.now();
   const ml = await mlPredict(prepared.ready.features);
-  return finishCase(prepared.ready, ml, now);
+  return finishCase(prepared.ready, ml, now, Date.now() - t0);
 }

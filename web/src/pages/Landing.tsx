@@ -1,6 +1,52 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from '../components/Logo';
 import { Icon } from '../components/icons';
+import { api } from '../lib/api';
+import { formatINR } from '../lib/format';
+
+/**
+ * The proof numbers on this page read from the LIVE Recovery Lab when it has a resolved control arm,
+ * so the marketing claim and the dashboard never disagree. Until the lab has data they fall back to a
+ * clearly-labelled illustrative set — never a stale number presented as live.
+ */
+interface LiveProof {
+  live: boolean;
+  liftPct: number;
+  incrementalPaise: number;
+  treatPct: number;
+  controlPct: number;
+  significant: boolean;
+  recoveredPaise: number;
+  recoveredCount: number;
+  totalCases: number;
+}
+const ILLUSTRATIVE: LiveProof = { live: false, liftPct: 40.2, incrementalPaise: 31377300, treatPct: 59, controlPct: 19, significant: true, recoveredPaise: 35847000, recoveredCount: 65, totalCases: 121 };
+
+function useLiveProof(): LiveProof {
+  const [proof, setProof] = useState<LiveProof>(ILLUSTRATIVE);
+  useEffect(() => {
+    Promise.all([api.lab(), api.metrics()])
+      .then(([lab, m]) => {
+        const o = lab.overall;
+        if (lab.totalResolved > 0 && o.control.cases > 0) {
+          setProof({
+            live: true,
+            liftPct: o.liftPct,
+            incrementalPaise: o.incrementalPaise,
+            treatPct: Math.round(o.treatment.recoveryRatePct ?? 0),
+            controlPct: Math.round(o.control.recoveryRatePct ?? 0),
+            significant: o.significant,
+            recoveredPaise: m.recoveredPaise,
+            recoveredCount: m.recoveredCount,
+            totalCases: m.totalCases,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+  return proof;
+}
 
 /**
  * Marketing landing for Overwatch — the revenue-integrity layer that plugs under Razorpay.
@@ -8,17 +54,18 @@ import { Icon } from '../components/icons';
  * (UI), JetBrains Mono (data/proof). Light throughout, matching the app chrome; no gradients-as-crutch.
  */
 export function Landing() {
+  const proof = useLiveProof();
   return (
     <div className="min-h-screen bg-paper font-grotesk text-ink antialiased">
       <AnnounceBar />
       <TopNav />
-      <Hero />
+      <Hero proof={proof} />
       <TrustStrip />
-      <Stats />
+      <Stats proof={proof} />
       <Problem />
       <Features />
       <HowItWorks />
-      <Differentiator />
+      <Differentiator proof={proof} />
       <FinalCTA />
       <Footer />
     </div>
@@ -62,7 +109,7 @@ function TopNav() {
   );
 }
 
-function Hero() {
+function Hero({ proof }: { proof: LiveProof }) {
   return (
     <section
       className="relative overflow-hidden border-b border-slate-200/70 bg-paper text-ink"
@@ -97,13 +144,13 @@ function Hero() {
             Razorpay test-mode · no card required · set up in minutes
           </p>
         </div>
-        <HeroVisual />
+        <HeroVisual proof={proof} />
       </div>
     </section>
   );
 }
 
-function HeroVisual() {
+function HeroVisual({ proof }: { proof: LiveProof }) {
   return (
     <div className="relative">
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-ink shadow-xl shadow-slate-900/10">
@@ -116,14 +163,14 @@ function HeroVisual() {
         <div className="space-y-4 p-5">
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-200/80 bg-white p-4">
-              <div className="text-[11px] font-medium text-slate-500">Recovered</div>
-              <div className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">₹3,58,470</div>
-              <div className="mt-0.5 text-[11px] text-slate-400">65 of 121 cases</div>
+              <div className="text-[11px] font-medium text-slate-500">Recovered{proof.live ? '' : ' · illustrative'}</div>
+              <div className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">{formatINR(proof.recoveredPaise)}</div>
+              <div className="mt-0.5 text-[11px] text-slate-400">{proof.recoveredCount} of {proof.totalCases} cases</div>
             </div>
             <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/70 p-4">
               <div className="text-[11px] font-medium text-emerald-700/80">Incremental ₹ lift</div>
-              <div className="mt-1 font-mono text-2xl font-semibold tabular-nums text-emerald-700">+40.2pp</div>
-              <div className="mt-0.5 text-[11px] text-emerald-700/70">vs control · significant</div>
+              <div className="mt-1 font-mono text-2xl font-semibold tabular-nums text-emerald-700">{proof.liftPct > 0 ? '+' : ''}{proof.liftPct}pp</div>
+              <div className="mt-0.5 text-[11px] text-emerald-700/70">vs control · {proof.significant ? 'significant' : 'n.s.'}</div>
             </div>
           </div>
           <div className="rounded-xl border border-slate-200/80 bg-white p-4">
@@ -178,9 +225,9 @@ function TrustStrip() {
   );
 }
 
-function Stats() {
+function Stats({ proof }: { proof: LiveProof }) {
   const stats = [
-    { v: '+40.2pp', l: 'proven incremental lift', s: '95% bootstrap CI, vs control' },
+    { v: `${proof.liftPct > 0 ? '+' : ''}${proof.liftPct}pp`, l: proof.live ? 'live incremental lift' : 'incremental lift (illustrative)', s: proof.live ? '95% bootstrap CI, vs the live control' : '95% bootstrap CI, vs control' },
     { v: '1.9%', l: 'error on a real RCT', s: 'DR-OPE vs Hillstrom ground truth' },
     { v: '~0.68', l: 'cross-world transfer AUC', s: 'frozen model, unseen world' },
     { v: '100%', l: 'exactly-once recovery', s: 'signed, idempotent webhooks' },
@@ -284,10 +331,10 @@ function HowItWorks() {
   );
 }
 
-function Differentiator() {
+function Differentiator({ proof }: { proof: LiveProof }) {
   const bars = [
-    { label: 'Treatment (ML + policy)', pct: 59, tone: 'bg-emerald-500', text: 'text-emerald-600' },
-    { label: 'Control (no action)', pct: 19, tone: 'bg-slate-300', text: 'text-slate-400' },
+    { label: 'Treatment (ML + policy)', pct: proof.treatPct, tone: 'bg-emerald-500', text: 'text-emerald-600' },
+    { label: 'Control (no action)', pct: proof.controlPct, tone: 'bg-slate-300', text: 'text-slate-400' },
   ];
   return (
     <section id="proof" className="mx-auto max-w-6xl px-5 py-24 lg:px-8">
@@ -311,10 +358,10 @@ function Differentiator() {
           </ul>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/5">
-          <div className="text-sm font-medium text-slate-500">Incremental recovered (vs control)</div>
-          <div className="mt-1 font-display text-5xl font-semibold tracking-tight text-emerald-600 tabular-nums">₹3,13,773</div>
+          <div className="text-sm font-medium text-slate-500">Incremental recovered (vs control){proof.live ? ' · live' : ' · illustrative'}</div>
+          <div className="mt-1 font-display text-5xl font-semibold tracking-tight text-emerald-600 tabular-nums">{formatINR(proof.incrementalPaise)}</div>
           <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-mono text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
-            +40.2pp lift · 95% CI · significant
+            {proof.liftPct > 0 ? '+' : ''}{proof.liftPct}pp lift · 95% CI · {proof.significant ? 'significant' : 'not yet significant'}
           </div>
           <div className="mt-8 space-y-5">
             {bars.map((b) => (

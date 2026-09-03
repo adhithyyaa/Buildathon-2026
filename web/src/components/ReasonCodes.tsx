@@ -36,11 +36,12 @@ export function ReasonCodes({ caseId }: { caseId: string }) {
   return (
     <Card
       title="Why this decision — model reason codes"
-      right={ex.recovery_probability != null ? <Pill tone="emerald">{Math.round(ex.recovery_probability * 100)}% recovery prob.</Pill> : null}
+      right={ex.recovery_probability != null ? <Pill tone="emerald">{Math.round(ex.recovery_probability * 100)}% if {titleCase(ex.action ?? '')}</Pill> : null}
     >
       <p className="mb-3.5 text-[11px] leading-relaxed text-slate-400">
-        SHAP attribution on the recovery model for <b className="text-slate-600">{titleCase(ex.action ?? '')}</b> — which case
-        factors pushed the calibrated probability up (<span className="font-semibold text-emerald-600">↑</span>) or down
+        SHAP attribution on the recovery model for the <b className="text-slate-600">executed</b> action, <b className="text-slate-600">{titleCase(ex.action ?? '')}</b>{' '}
+        — the one the policy engine let through, which can differ from the model’s first choice above — showing which case
+        factors pushed its calibrated probability up (<span className="font-semibold text-emerald-600">↑</span>) or down
         (<span className="font-semibold text-rose-600">↓</span>){ex.base_rate != null ? `, from a ${Math.round(ex.base_rate * 100)}% base rate` : ''}.
       </p>
       <div className="space-y-2.5">
