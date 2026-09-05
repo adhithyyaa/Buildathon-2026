@@ -1,7 +1,7 @@
 # Overwatch — Where Nothing Slips Through
 
 [![Live demo](https://img.shields.io/badge/live_demo-Azure_Container_Apps-059669?style=flat-square)](https://overwatch-web.happytree-e373af54.uaenorth.azurecontainerapps.io)
-[![Demo video](https://img.shields.io/badge/%E2%96%B6_demo_video-4--min_walkthrough-059669?style=flat-square)](docs/assets/overwatch-demo.mp4)
+[![Demo video](https://img.shields.io/badge/%E2%96%B6_demo_video-5--min_walkthrough-059669?style=flat-square)](docs/assets/overwatch-demo.mp4)
 [![Pitch deck](https://img.shields.io/badge/pitch_deck-7_slides-2b6cb0?style=flat-square)](Overwatch_PPT.pptx)
 [![CI](https://img.shields.io/badge/CI-passing_on_every_push-059669?style=flat-square)](.github/workflows/ci.yml)
 [![Claims](https://img.shields.io/badge/claims-artifact--locked-0b1220?style=flat-square)](#honesty-guards--enforced-in-ci-on-every-push)
@@ -25,7 +25,7 @@
 
 ![Overwatch — product walkthrough: Overview + ROI, causal uplift + real-RCT, red-team compliance, tamper-evident evidence, and the rigor scorecard](docs/assets/walkthrough.gif)
 
-**📹 Full 4-minute demo video → [`docs/assets/overwatch-demo.mp4`](docs/assets/overwatch-demo.mp4)** — the complete tour: landing → onboarding → every dashboard page. (The looping GIF above is a quick teaser.)
+**📹 Full 5-minute demo video (personal intro + full walkthrough) → [`docs/assets/overwatch-demo.mp4`](docs/assets/overwatch-demo.mp4)** — the complete tour: landing → onboarding → every dashboard page. (The looping GIF above is a quick teaser.)
 
 **📊 Pitch deck (7 slides) → [`Overwatch_PPT.pptx`](Overwatch_PPT.pptx)** — the judge deck that runs alongside the demo.
 
