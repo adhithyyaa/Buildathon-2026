@@ -245,7 +245,7 @@ function SystemStatus({ health }: { health: HealthInfo | null }) {
     {
       label: 'LLM notes',
       ok: !!health?.integrations.ai,
-      value: health?.integrations.ai ? (health.integrations.aiProvider === 'anthropic' ? 'Claude' : 'live') : 'templates',
+      value: health?.integrations.ai ? 'live' : 'templates',
     },
     { label: 'Razorpay', ok: !!health?.integrations.razorpay, value: health?.integrations.razorpay ? 'test-mode' : 'simulated' },
   ];
