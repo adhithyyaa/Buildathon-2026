@@ -260,24 +260,6 @@ flowchart TB
     LAB --> WEB
     LEDGER --> WEB
     LLM -.->|"off the money path"| WEB
-```bash
-# terminal A
-cd server && RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run dev
-# terminal B
-cd server && RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run replay:roundtrip   # → prints "✅ REPLAYED …"
-```
-
-Full write-up: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md).
-
-## Architecture at a glance
-
-```
-Razorpay webhook / CSV / demo panel
-    → normalize → deterministic risk-score → 21-feature build
-    → ML SERVICE (CatBoost · XGBoost · Uplift/CATE · IsolationForest · calibration)  → decision + per-action uplift + calibrated probabilities
-    → POLICY ENGINE (deterministic, can override) → executor (real payment link / smart retry / message / escalate)
-    → outcome tracker (signed payment.captured webhook) → metrics + model card + audit dashboard
-                         └── LLM narrator (explain / draft / summarize) — on demand, off the money path
 ```
 
 Full write-up (panel-prep): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
