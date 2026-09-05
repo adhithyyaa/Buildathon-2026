@@ -222,6 +222,52 @@ Full write-up: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md).
 
 ## Architecture at a glance
 
+```mermaid
+flowchart TB
+    A["Razorpay webhook · CSV · demo panel"]
+
+    subgraph TS["Money path — TypeScript (Node · Express · Prisma · PostgreSQL)"]
+        direction TB
+        B["Ingest: verify signature, normalize,<br/>de-duplicate, risk-score, build 21 features"]
+        P["Policy engine — deterministic<br/>RBI-TAT · NPCI retry cap · AFA · quiet hours<br/>can override, block, or escalate"]
+        X["Executor — allow-listed<br/>payment link · smart retry · reminder"]
+        O["Outcome tracker<br/>signed payment.captured webhook"]
+        LAB["Recovery Lab<br/>incremental value vs a 20% control, 95% CI"]
+        LEDGER["Audit ledger<br/>SHA-256 hash-chain · append-only"]
+    end
+
+    subgraph PY["Intelligence — Python (FastAPI)"]
+        M["CatBoost · causal uplift · IsolationForest<br/>calibration · conformal prediction"]
+    end
+
+    LLM["LLM narrator<br/>explain · draft · summarize"]
+    WEB["React dashboard (Vite · Tailwind)"]
+
+    A --> B --> M
+    M -->|"proposes: action + calibrated probability + per-action uplift"| P
+    P -->|"approved action only"| X
+    X -->|"test mode"| RZP["Razorpay"]
+    RZP -->|"signed webhook"| O
+    O --> LAB
+    B --> LEDGER
+    P --> LEDGER
+    X --> LEDGER
+    O --> LEDGER
+    M --> WEB
+    LAB --> WEB
+    LEDGER --> WEB
+    LLM -.->|"off the money path"| WEB
+```bash
+# terminal A
+cd server && RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run dev
+# terminal B
+cd server && RAZORPAY_WEBHOOK_SECRET=whsec_local_selftest npm run replay:roundtrip   # → prints "✅ REPLAYED …"
+```
+
+Full write-up: [`docs/WEBHOOKS.md`](docs/WEBHOOKS.md).
+
+## Architecture at a glance
+
 ```
 Razorpay webhook / CSV / demo panel
     → normalize → deterministic risk-score → 21-feature build
@@ -276,11 +322,21 @@ A single role-scoped React console, built to read as a real product:
 - **Everywhere** — a ⌘K command palette (jump to any page, fire demo actions), drill-down from any KPI/reason into the
   pre-filtered queue, and CSV export.
 
-## Tech
+## Tech — how it is built, and why
 
-TypeScript money path — Node + Express + Prisma + **embedded PostgreSQL** (real PG 18, no Docker) · React + Vite +
-Tailwind dashboard · **Python ML tier — FastAPI + CatBoost + XGBoost + scikit-learn** · provider-agnostic LLM
-(any OpenAI-compatible provider) for narration only · Razorpay test-mode APIs.
+Overwatch is three services with one rule between them: **the model proposes, deterministic code disposes, and only an allow-listed executor moves money.** That boundary is the whole design — it keeps every rupee-moving decision auditable and testable, and it lets each tier use the right tool for its job.
+
+**The money path — TypeScript (Node · Express · Prisma · PostgreSQL).** Everything that can touch a payment lives in one typed service. Razorpay webhooks arrive HMAC-signed; ingestion verifies the signature, normalizes the event, and de-duplicates on a stable key, so a redelivered webhook can never recover a case twice — exactly-once is a property the tests enforce, not a hope. State lives in a real embedded PostgreSQL (no Docker, no cloud account), and every state transition is written to an **append-only, SHA-256 hash-chained ledger**: a database trigger refuses `UPDATE` and `DELETE`, and re-walking the chain detects any edit or reorder. A recovery record you cannot trust is worse than none.
+
+**The intelligence tier — Python (FastAPI).** The ML lives where its libraries do. A stateless FastAPI service scores each case with CatBoost and a causal-uplift model, adds calibration and conformal prediction for per-case certainty, and runs an IsolationForest for failure-spike detection. It returns a *proposal* — a calibrated recovery probability, the best next action, and the per-action uplift — and nothing more. It never calls Razorpay and never writes to the ledger. Models are trained offline into versioned artifacts the service loads at boot.
+
+**The control plane — deterministic policy + executor (TypeScript).** Between the model and the money sits a **deterministic policy engine**: India payments rules as code (RBI turnaround time, NPCI retry caps, additional-factor-authentication ceilings, consent and quiet hours) plus a kill switch. It can approve, block, or escalate any proposal — and because it is deterministic, it is covered by property-based tests and judged by independent red-team oracles. Only then does an **allow-listed executor** dispatch the single approved action: a real payment link, a smart retry, or a reminder.
+
+**The narrator — LLM, strictly off the money path.** A provider-agnostic LLM only *explains* a decision, drafts customer copy, and summarizes escalations. Its output is fact-checked against the arithmetic and the policy before anything is sent, with a template fallback. It never decides, and never moves money.
+
+**The dashboard — React (Vite · Tailwind).** A single role-scoped console reads the same APIs a reviewer can hit directly, so what a judge sees on screen is exactly what the system computed.
+
+Everything is typed end-to-end, reproducible with one command, and re-verified in CI on every push.
 
 ## Repo layout
 
@@ -291,43 +347,11 @@ ml/       Python ML tier — feature schema, synthetic world model, training, up
 docs/     ARCHITECTURE.md · DECISIONS.md · SETUP.md · WEBHOOKS.md
 ```
 
-## Quickstart
+## Run it yourself
 
-> Full setup (test keys, ML tier, webhook tunnel, seeding) lives in [`docs/SETUP.md`](docs/SETUP.md). No Docker, no
-> cloud account needed for the database.
-
-```bash
-# 0. Install
-cd server && npm install && cd ../web && npm install && cd ..
-cd ml && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt && cd ..
-
-# 1. Train the models (writes ml/artifacts + ml/metrics.json)
-ml/.venv/Scripts/python ml/src/worldmodel.py
-ml/.venv/Scripts/python ml/src/train.py
-ml/.venv/Scripts/python ml/src/uplift.py    # causal uplift engine → ml/uplift.json (Qini, ECE, policy value, DR-OPE)
-ml/.venv/Scripts/python ml/src/explore.py   # online Thompson-sampling exploration → ml/explore.json
-
-# 2. Run everything (separate terminals)
-cd server && npm run db:local                                            # DB  :5432
-ml/.venv/Scripts/python -m uvicorn serve:app --app-dir ml/src --port 8899 # ML   :8899
-cd server && cp .env.example .env && npm run prisma:migrate && npm run dev # API  :8787
-cd web && npm run dev                                                     # web  :5173
-```
-
-Open http://localhost:5173 → **Seed cases → Run pipeline → Advance retries**, and watch the ML model card + recovered-₹.
-
-### Reproduce the results
-
-```bash
-./reproduce.sh   # installs, typechecks, and runs the full server + web suites (Git Bash on Windows)
-```
-
-One command reproduces every verifiable claim: the real money path (signed webhooks, exactly-once
-recovery over an embedded Postgres it provisions itself), the append-only + tamper-evident audit
-ledger, the policy invariants, the red-team compliance oracles, the outbound-message fact-check, and
-the two honesty guards — `claims.docs` (every headline number matches its source ML artifact) and
-`ml.bands` (every artifact sits inside its quality confidence band). The same steps run in CI
-([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on every push.
+- **Local setup** — test keys, ML tier, webhook self-test, seeding: [`docs/SETUP.md`](docs/SETUP.md). No Docker, and no cloud account for the database (it provisions an embedded PostgreSQL for you).
+- **Deploy to Azure** — [`docs/DEPLOY.md`](docs/DEPLOY.md).
+- **Reproduce every claim in one command** — [`./reproduce.sh`](reproduce.sh) installs, typechecks, runs the full server + web suites, and re-derives every number: the real money path (signed webhooks, exactly-once recovery over an embedded Postgres), the append-only tamper-evident ledger, the policy invariants, the red-team oracles, and the two honesty guards — `claims.docs` (every headline number matches its source artifact) and `ml.bands` (every artifact sits inside its quality band). The same steps run in CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on every push.
 
 ## Status
 
